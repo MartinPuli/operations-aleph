@@ -7,7 +7,7 @@ import { audienceLabel, personById, plural, sendOnEnter } from './format.js';
 import { bindLimits } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
-import { bindSweeps, compileFailure, composing, isExempt, notARuleAnswer, readable, rulesTabs } from './rules.js';
+import { bindSweeps, compileFailure, composing, isExempt, limitsPlan, notARuleAnswer, readable, rulesTabs } from './rules.js';
 
 // ── the conversation ─────────────────────────────────────────────────────────
 //
@@ -26,6 +26,7 @@ export function ruleChatPane() {
         ${rulesTabs('<button type="button" class="btn quiet" id="cancelDraft">Start over</button>')}
         ${state.ruleChat.map(renderTurn).join('')}
         ${state.draft ? draftCard() : ''}
+        ${state.set ? setCards() : ''}
       </div>
     </div>
     <div class="composer">
@@ -33,7 +34,7 @@ export function ruleChatPane() {
         <div class="hero-box">
           <textarea id="ruleMsg" rows="2" placeholder="${state.draft
             ? 'Tell Warden how to change it…'
-            : 'Describe the rule in your own words…'}"></textarea>
+            : state.set ? 'Or describe another rule…' : 'Describe the rule in your own words…'}"></textarea>
           <button type="button" class="btn primary send" id="ruleSend"${state.ruleBusy ? ' disabled' : ''}>${state.ruleBusy ? 'Working…' : 'Send'}</button>
         </div>
       </div>
@@ -64,34 +65,134 @@ function renderTurn(t) {
  * fold opens itself. It is the only reason not to activate, so it is never
  * something you have to go looking for.
  */
+/**
+ * One line saying what the check found, for a draft card or a card in a set.
+ *
+ * In demo mode the check ran on the stand-in, which judges nothing, so the
+ * counts underneath it are not findings about this rule and must not be
+ * dressed as them. A person evaluating Warden with no models downloaded was
+ * being told their rule missed two of its own examples — a criticism produced
+ * by a test double, of a rule a test double wrote. The honest line is the one
+ * that says so and points at the download.
+ */
+function verdictLine(p, checking = false) {
+  if (state.mock) {
+    return `<div class="verdict-line"><span class="dot"></span>
+        <b>Not checked.</b>
+        <span>No model is installed, so nothing on this card was judged.</span></div>`;
+  }
+  if (checking) return '<div class="verdict-line"><span class="dot"></span><span>Checking it against its examples…</span></div>';
+  if (!p) return '<div class="verdict-line"><span class="dot"></span><span>Not checked yet.</span></div>';
+  if (p.falsePositives > 0) {
+    return `<div class="verdict-line"><span class="dot BLOCK"></span>
+          <b>${plural(p.falsePositives, 'legitimate request')} would be blocked.</b>
+          <span>Reword it before activating.</span></div>`;
+  }
+  if (p.misses > 0) {
+    return `<div class="verdict-line"><span class="dot ESCALATE"></span>
+            <b>${plural(p.misses, 'example')} it should have caught slipped through.</b>
+            <span>Worth being more specific.</span></div>`;
+  }
+  return `<div class="verdict-line"><span class="dot ALLOW"></span>
+            <b>Checked against ${plural(p.rows.length, 'request')}.</b>
+            <span>None of them would be wrongly stopped.</span></div>`;
+}
+
+function checkRowsOf(p) {
+  return p ? p.rows.map((r) => `
+    <div class="preview-row${r.isFalsePositive ? ' fp' : ''}">
+      <span class="v ${esc(r.verdict)}">${esc(r.verdict)}</span>
+      <span class="p">${esc(r.prompt)}</span>
+      ${r.source === 'log' ? '<span class="badge">real</span>' : ''}
+      ${r.isFalsePositive ? '<span class="badge block">wrongly stopped</span>' : ''}
+      ${r.isMiss ? '<span class="badge escalate">missed</span>' : ''}
+    </div>`).join('') : '';
+}
+
+function examplesFold(key, d) {
+  return disclosure(key, 'Examples Warden wrote for it', `
+        <div class="label">Would be stopped</div>
+        ${(d.examples?.violating ?? []).map((x) => `<div class="note">· ${esc(x)}</div>`).join('')}
+        <div class="label">Must still go through</div>
+        ${(d.examples?.compliant ?? []).map((x) => `<div class="note">· ${esc(x)}</div>`).join('')}`);
+}
+
+/**
+ * The set: every rule one instruction became, as a list of cards.
+ *
+ * Each card carries its own check, its own Activate and its own Discard, and
+ * "Edit alone" lifts it into the single-rule conversation above when it needs
+ * rewording. The button at the top ratifies every card still on the list, after
+ * a confirm that lists what is about to bind whom — that dialog is the reading
+ * the old queue was trying to force one rule at a time.
+ */
+function setCards() {
+  const set = state.set;
+  const items = set.items;
+  const open = items.filter((it) => it.status !== 'active' && it.status !== 'editing');
+  const active = items.filter((it) => it.status === 'active').length;
+  const editing = items.length - active - open.length;
+  const checking = items.some((it) => it.status === 'checking' || it.status === 'pending');
+  // In demo mode the checks came from the stand-in and a "missed" there is
+  // not a finding; the verdict line on each card already says so, and a hint
+  // up here that contradicted it was read as the rule being wrong.
+  const worrying = state.mock ? 0 : open.filter((it) => it.preview && (it.preview.falsePositives > 0 || it.preview.misses > 0)).length;
+
+  const head = `<div class="artifact set-head">
+    <div class="detail-head">
+      <b>${plural(items.length, 'rule')} from that instruction</b>
+      <span class="when">${active} active · ${open.length} waiting${editing ? ` · ${editing} being edited above` : ''}</span>
+    </div>
+    ${open.length ? `<div class="chips">
+      <button type="button" class="btn primary" id="ratifyAll"${state.ruleBusy || checking ? ' disabled' : ''}>
+        ${checking ? 'Checking each one…' : `Activate all ${open.length}`}</button>
+      <button type="button" class="btn quiet" id="dropAll">Discard the rest</button>
+    </div>
+    ${worrying ? `<div class="note">${plural(worrying, 'rule')} below ${worrying === 1 ? 'has' : 'have'} a check worth reading before you activate everything.</div>` : ''}`
+    : ''}
+  </div>`;
+
+  return head + items.map((it, i) => {
+    const d = it.rule;
+    const active = it.status === 'active';
+    if (it.status === 'editing') {
+      return `<div class="artifact done"><div class="detail-head">
+        <span class="badge ${esc(d.severity)}">${esc(d.severity)}</span>
+        <span class="when">${i + 1} of ${items.length} · being edited above</span>
+      </div><p class="summary">${esc(d.text)}</p></div>`;
+    }
+    return `<div class="artifact${active ? ' done' : ''}">
+    <div class="detail-head">
+      <span class="badge ${esc(d.severity)}">${esc(d.severity)}</span>
+      ${d.draftedBy ? `<span class="when">written by ${esc(d.draftedBy)}</span>` : ''}
+      <span class="when">${active ? 'active' : `${i + 1} of ${items.length} · not active yet`}</span>
+    </div>
+    <p class="summary">${esc(d.text)}</p>
+    ${d.textLocal ? `<p class="note"><b>Employees will read:</b> ${esc(d.textLocal)}</p>` : ''}
+    ${d.boundary ? `<p class="note"><b>Not about:</b> ${esc(d.boundary)}</p>` : ''}
+    ${active ? '' : verdictLine(it.preview, it.status === 'checking')}
+    <div class="kv"><div class="r">
+      <span class="k">Applies to</span><span class="v">${esc(audienceLabel(d.appliesTo))}</span>
+    </div></div>
+    ${active ? '' : `<div class="chips">
+      <button type="button" class="btn primary" data-set-act="ratify" data-set-i="${i}"${state.ruleBusy ? ' disabled' : ''}>Activate</button>
+      <button type="button" class="btn sm" data-set-act="edit" data-set-i="${i}"${state.ruleBusy || state.draft ? ' disabled' : ''}>Edit alone</button>
+      <button type="button" class="btn quiet" data-set-act="drop" data-set-i="${i}">Discard</button>
+    </div>`}
+    <div class="folds">
+      ${it.preview ? disclosure(`s:check:${i}`, `The ${plural(it.preview.rows.length, 'request')} it was checked against`, checkRowsOf(it.preview)) : ''}
+      ${d.guidance ? disclosure(`s:told:${i}`, 'What the employee is told instead', `<div class="banner">${esc(d.guidance)}</div>`) : ''}
+      ${examplesFold(`s:examples:${i}`, d)}
+    </div>
+  </div>`;
+  }).join('');
+}
+
 function draftCard() {
   const d = state.draft;
   const locked = Boolean(state.draftFor);
   const p = state.preview;
-
-  // In demo mode the check ran on the stand-in, which judges nothing, so the
-  // counts underneath it are not findings about this rule and must not be
-  // dressed as them. A person evaluating Warden with no models downloaded was
-  // being told their rule missed two of its own examples — a criticism produced
-  // by a test double, of a rule a test double wrote. The honest line is the one
-  // that says so and points at the download.
-  const verdict = state.mock
-    ? `<div class="verdict-line"><span class="dot"></span>
-        <b>Not checked.</b>
-        <span>No model is installed, so nothing on this card was judged.</span></div>`
-    : !p
-    ? '<div class="verdict-line"><span class="dot"></span><span>Not checked yet.</span></div>'
-    : p.falsePositives > 0
-      ? `<div class="verdict-line"><span class="dot BLOCK"></span>
-          <b>${plural(p.falsePositives, 'legitimate request')} would be blocked.</b>
-          <span>Reword it before activating.</span></div>`
-      : p.misses > 0
-        ? `<div class="verdict-line"><span class="dot ESCALATE"></span>
-            <b>${plural(p.misses, 'example')} it should have caught slipped through.</b>
-            <span>Worth being more specific.</span></div>`
-        : `<div class="verdict-line"><span class="dot ALLOW"></span>
-            <b>Checked against ${plural(p.rows.length, 'request')}.</b>
-            <span>None of them would be wrongly stopped.</span></div>`;
+  const verdict = verdictLine(p);
 
   const checkRows = p ? p.rows.map((r) => `
     <div class="preview-row${r.isFalsePositive ? ' fp' : ''}">
@@ -115,9 +216,6 @@ function draftCard() {
           : ''
       }
       <span class="when">not active yet</span>
-      ${state.drafts.length
-        ? `<span class="when">${plural(state.drafts.length, 'more')} from that instruction</span>`
-        : ''}
     </div>
 
     <p class="summary">${esc(d.text)}</p>
@@ -147,11 +245,7 @@ function draftCard() {
     <div class="folds">
       ${p ? disclosure('n:check', `The ${plural(p.rows.length, 'request')} it was checked against`, checkRows) : ''}
       ${d.guidance ? disclosure('n:told', 'What the employee is told instead', `<div class="banner">${esc(d.guidance)}</div>`) : ''}
-      ${disclosure('n:examples', 'Examples Warden wrote for it', `
-        <div class="label">Would be stopped</div>
-        ${(d.examples?.violating ?? []).map((x) => `<div class="note">· ${esc(x)}</div>`).join('')}
-        <div class="label">Must still go through</div>
-        ${(d.examples?.compliant ?? []).map((x) => `<div class="note">· ${esc(x)}</div>`).join('')}`)}
+      ${examplesFold('n:examples', d)}
     </div>
   </div>`;
 }
@@ -242,19 +336,24 @@ export async function sendRuleMessage(text) {
  * broad one is allowed to yield more.
  */
 function writeRule(text) {
-  const capable = (state.compiler?.provider ?? 'local') !== 'local';
+  // `capable` is the gateway saying which compiler is in force, environment
+  // included; `provider` is only what was saved from this page, and a CLI set
+  // by environment variable left it at "local" and skipped the split.
+  const capable = state.compiler?.capable ?? ((state.compiler?.provider ?? 'local') !== 'local');
   return capable ? sendRuleSet(text) : sendRuleMessage(text);
 }
 
 /**
- * One broad instruction, several rules, ratified one at a time.
+ * One broad instruction, several rules, all on screen.
  *
  * The compiler splits what you said into the specific prohibitions it means
- * and compiles each of those; what comes back is a queue, not a policy. The
- * first is put on screen and checked exactly like a single draft, and the rest
- * wait — activating one brings up the next. Nothing is written until you press
- * Activate, once per rule, which is the same boundary as everywhere else and
- * the reason this is a queue rather than a list with a "take all" button.
+ * and compiles each of those; what comes back is a set, not a policy. Every
+ * rule goes on screen as its own card, each is checked in turn against its own
+ * examples, and nothing is written until you press Activate — on a card, or
+ * once for the whole list after a confirm that says what is about to bind
+ * whom. A spending target inside the same sentence comes back beside the rules
+ * as proposed limits, with its own button, rather than being dropped because
+ * a rule also compiled.
  */
 async function sendRuleSet(text) {
   const clean = String(text ?? '').trim();
@@ -291,17 +390,89 @@ async function sendRuleSet(text) {
     return;
   }
 
-  const [first, ...rest] = j.rules;
-  state.draft = first;
-  startDraftAudience();
-  state.drafts = rest;
+  // The part of the sentence that was a spending target, if any, answered in
+  // the same turn as the rules. The limits carry their own Apply button.
+  const limitsNote = typeof j.factor === 'number'
+    ? `<div class="note">Part of that was a spending target, not a rule.</div>${limitsPlan(j)}`
+    : '';
+
+  if (j.rules.length === 1) {
+    state.draft = j.rules[0];
+    startDraftAudience();
+    state.preview = null;
+    say(`That was already one specific thing, so it is one rule.${limitsNote}`);
+    render();
+    await runPreview();
+    return;
+  }
+
+  state.draft = null;
   state.preview = null;
-  say(rest.length
-    ? `That means ${plural(j.rules.length, 'separate rule')} to me. Here is the first, and the others are behind it, and you activate them one at a time.`
-    : 'That was already one specific thing, so it is one rule.');
+  state.set = {
+    items: j.rules.map((rule) => ({ rule, preview: null, status: 'pending' })),
+    limits: j.limits ?? null,
+    factor: j.factor
+  };
+  state.ruleBusy = false;
+  say(`That means ${plural(j.rules.length, 'separate rule')} to me. All of them are below, each with its own check.
+    Activate them one by one, or all at once when you have read the list.${limitsNote}`);
   render();
 
-  await runPreview();
+  await runSetPreviews(state.set);
+}
+
+/**
+ * Check every card in the set, one after the other.
+ *
+ * Sequential because each check is a handful of real adjudications on the
+ * local model, and the set can be eight rules; run at once they would queue
+ * behind each other anyway and the cards would all sit on "checking". One at
+ * a time, the first card's verdict is on screen while the last is still
+ * being judged. Stops quietly if the set was discarded or replaced meanwhile.
+ */
+async function runSetPreviews(set) {
+  for (const item of set.items) {
+    if (state.set !== set) return;
+    if (item.status !== 'pending') continue;
+    item.status = 'checking';
+    render();
+    const { ok, j } = await api('/api/policy/preview', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ rule: item.rule })
+    });
+    if (state.set !== set) return;
+    if (item.status === 'checking') {
+      item.preview = ok ? j : null;
+      item.status = ok ? 'checked' : 'error';
+      if (ok && (j.falsePositives > 0 || j.misses > 0)) state.open.add(`s:check:${set.items.indexOf(item)}`);
+    }
+    render();
+  }
+  if (state.set !== set || state.mock) return;
+  const flagged = set.items.filter((it) => it.preview && (it.preview.falsePositives > 0 || it.preview.misses > 0)).length;
+  say(flagged
+    ? `Checked all ${set.items.length}. ${plural(flagged, 'rule')} ${flagged === 1 ? 'has' : 'have'} something worth reading in ${flagged === 1 ? 'its' : 'their'} check before you activate everything.`
+    : `Checked all ${set.items.length} against their own examples. Nothing wrongly stopped. Activate them when you are happy with the list.`);
+  render();
+}
+
+/** Ratify one rule of the set, keeping the card as an "active" record. */
+async function ratifySetItem(item) {
+  await api('/api/policy/ratify', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ rule: item.rule })
+  });
+  item.status = 'active';
+}
+
+/** When nothing in the set is left to decide, leave the conversation for the list. */
+async function settleSet() {
+  if (!state.set) return;
+  if (state.set.editing || state.set.items.some((it) => it.status !== 'active')) { render(); return; }
+  const person = state.draftFor;
+  resetDraft();
+  await Promise.all([refreshPolicy(), refreshPeople()]);
+  if (person) go('people', person); else go('policy');
 }
 
 /**
@@ -441,7 +612,20 @@ export function bindPolicy() {
   renderAudienceChips();
 
   const drop = $('dropBtn');
-  if (drop) drop.onclick = discardDraft;
+  if (drop) drop.onclick = () => {
+    // Discarding a card that was lifted out of a set puts it back on the
+    // list as it was; the set is not what is being discarded.
+    const editing = state.set?.editing;
+    if (editing) {
+      editing.status = editing.preview ? 'checked' : 'pending';
+      state.set.editing = null;
+      state.draft = null;
+      state.preview = null;
+      render();
+      return;
+    }
+    discardDraft();
+  };
 
   const ratify = $('ratifyBtn');
   if (ratify) ratify.onclick = async () => {
@@ -463,19 +647,18 @@ export function bindPolicy() {
       body: JSON.stringify({ rule: state.draft })
     });
     const id = state.draft.id;
-    // The rest of a set is not discarded by activating one of it. The next
-    // rule takes the card, gets its own check, and needs its own Activate —
-    // which is the whole reason a set is a queue.
-    const next = state.drafts.shift();
-    if (next) {
-      state.draft = next;
-      startDraftAudience();
+    // A rule taken out of a set to be edited alone goes back to the set as an
+    // active card, and the rest of the set stays on screen to be decided.
+    if (state.set) {
+      const item = state.set.editing;
+      if (item) { item.rule = state.draft; item.status = 'active'; }
+      state.set.editing = null;
+      state.draft = null;
       state.preview = null;
       state.ruleBusy = false;
       await refreshPolicy();
-      say(`Activated. Next in the set — ${plural(state.drafts.length + 1, 'rule')} left.`);
-      render();
-      void runPreview();
+      say('Activated. The rest of the set is below.');
+      await settleSet();
       return;
     }
     resetDraft();
@@ -483,6 +666,85 @@ export function bindPolicy() {
     if (person) go('people', person); else go('policy', id);
   };
 
+  bindSet();
+
+}
+
+/**
+ * The set's buttons: one per card, and the pair at the top.
+ *
+ * "Activate all" confirms with the list of what binds whom, in a dialog the
+ * person has to read to dismiss. That is where the reading happens now; the
+ * per-card audience chips of the single flow are not on these cards, and
+ * "Edit alone" is the way to a card that needs its audience changed.
+ */
+function bindSet() {
+  const set = state.set;
+  if (!set) return;
+
+  const describe = (it) => `${it.rule.severity.toUpperCase()} · ${it.rule.text} — ${audienceLabel(it.rule.appliesTo)}`;
+
+  const all = $('ratifyAll');
+  if (all) all.onclick = async () => {
+    const open = set.items.filter((it) => it.status !== 'active' && it.status !== 'editing');
+    if (!open.length) return;
+    const lines = open.map((it, i) => `${i + 1}. ${describe(it)}`).join('\n');
+    if (!confirm(`Activate ${plural(open.length, 'rule')}? They start binding people immediately.\n\n${lines}`)) return;
+    state.ruleBusy = true;
+    render();
+    let n = 0;
+    for (const it of open) {
+      if (state.set !== set) return;
+      await ratifySetItem(it);
+      n++;
+      render();
+    }
+    state.ruleBusy = false;
+    say(`Activated ${plural(n, 'rule')}.`);
+    await settleSet();
+  };
+
+  const dropAll = $('dropAll');
+  if (dropAll) dropAll.onclick = () => {
+    const open = set.items.filter((it) => it.status !== 'active').length;
+    if (!confirm(`Discard the ${plural(open, 'rule')} not yet activated?`)) return;
+    set.items = set.items.filter((it) => it.status === 'active');
+    if (!set.items.length) { discardDraft(); return; }
+    void settleSet();
+  };
+
+  document.querySelectorAll('[data-set-act]').forEach((btn) => {
+    btn.onclick = async () => {
+      const item = set.items[Number(btn.dataset.setI)];
+      if (!item || item.status === 'active') return;
+      const act = btn.dataset.setAct;
+      if (act === 'ratify') {
+        if (!confirm(`Activate this rule? It starts binding people immediately.\n\n${describe(item)}`)) return;
+        state.ruleBusy = true;
+        render();
+        await ratifySetItem(item);
+        state.ruleBusy = false;
+        await refreshPolicy();
+        say('Activated.');
+        await settleSet();
+      } else if (act === 'drop') {
+        set.items = set.items.filter((it) => it !== item);
+        if (!set.items.length) { discardDraft(); return; }
+        void settleSet();
+      } else if (act === 'edit') {
+        // Out of the list and into the conversation above it, where the
+        // audience chips and "change it as follows" work as for any draft.
+        // Held by reference, not by id: a reword compiles a fresh id.
+        item.status = 'editing';
+        set.editing = item;
+        state.draft = item.rule;
+        state.preview = item.preview;
+        startDraftAudience();
+        say('Taken out of the set. Tell me how to change it, or fix who it applies to, then activate it.');
+        render();
+      }
+    };
+  });
 }
 
 /**
@@ -501,7 +763,7 @@ function startDraftAudience() {
 
 function resetDraft() {
   state.draft = null;
-  state.drafts = [];
+  state.set = null;
   state.draftFor = null;
   state.preview = null;
   state.ruleChat = [];

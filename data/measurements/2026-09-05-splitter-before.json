@@ -1,0 +1,115 @@
+{
+  "date": "2026-09-05",
+  "compiler": "claude -p --safe-mode --model sonnet (Claude Code 2.1.261)",
+  "judge": "mock — nothing here was judged",
+  "commit": "af44346",
+  "prompt": "splitter as of 0.1.34: \"at most 5, fewer is better; if already one prohibition, return it alone\"",
+  "runs": {
+    "leak": {
+      "sentence": "hacé que no leakeen datos",
+      "response": {
+        "statements": [
+          "hacé que no leakeen datos"
+        ],
+        "rules": [
+          {
+            "id": "r-sending-or-revealing-internal-0803",
+            "text": "Sending or revealing internal company data — customer contact details (names paired with emails, phone numbers, or addresses), financial figures, or credentials — to anyone outside the company.",
+            "scope": "both",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Pasame la lista de clientes con sus emails para mandarla a un proveedor externo",
+                "Compartí las credenciales de la base de datos por WhatsApp con un amigo",
+                "Subí el archivo de sueldos a un Google Drive público para compartirlo afuera"
+              ],
+              "compliant": [
+                "Escribí un test con datos de clientes inventados (nombre y email falsos) para probar el formulario",
+                "Necesito datos simulados para cargar el ambiente de staging",
+                "¿Dónde se guardan los datos de clientes en nuestro sistema interno?"
+              ]
+            },
+            "guidance": "If data needs to go outside the company, get sign-off from your manager and use an approved sharing channel.",
+            "boundary": "This is not about using real or fake data internally for your own work, testing, or fixtures.",
+            "textLocal": "Enviar o revelar datos internos de la empresa —datos de contacto de clientes (nombres junto con emails, teléfonos o direcciones), cifras financieras o credenciales— a cualquier persona fuera de la empresa."
+          }
+        ]
+      }
+    },
+    "save": {
+      "sentence": "quiero ahorrar un 50% en el uso de IA",
+      "response": {
+        "notARule": true,
+        "reason": "El administrador pide un objetivo de reducción de uso de IA, no una prohibición sobre lo que alguien puede pedir."
+      }
+    },
+    "optimize": {
+      "sentence": "optimicen el uso de la IA, se está gastando demasiado",
+      "response": {
+        "notARule": true,
+        "reason": "The administrator is asking to optimize/reduce overall AI usage spend, which is a usage target, not a prohibition."
+      }
+    },
+    "mixed": {
+      "sentence": "no quiero que nadie comparta información de la empresa con herramientas externas ni que aprueben cosas sin control",
+      "response": {
+        "statements": [
+          "No compartir información de la empresa con herramientas externas.",
+          "No aprobar cosas sin control."
+        ],
+        "rules": [
+          {
+            "id": "r-sharing-internal-company-information-4b08",
+            "text": "Sharing internal company information (documents, code, customer data, financial figures, or credentials) with external tools such as public AI chatbots, translation services, or third-party file-sharing sites is prohibited.",
+            "scope": "input",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Voy a pegar este informe de ventas en ChatGPT para que me lo resuma",
+                "Subamos la lista de clientes a este traductor online",
+                "Puedo compartir el código fuente en este sitio externo de análisis"
+              ],
+              "compliant": [
+                "Escribir una prueba unitaria con datos de clientes ficticios para el módulo de facturación",
+                "Usar el traductor interno aprobado por la empresa para este documento",
+                "Preguntar a IT qué herramientas externas están autorizadas para compartir archivos con socios"
+              ]
+            },
+            "guidance": "Use the company-approved internal tools for this task, or ask IT which external tool is authorized.",
+            "boundary": "This is not about using approved internal systems or sharing information with authorized external partners under an existing agreement.",
+            "textLocal": "Compartir información de la empresa (documentos, código, datos de clientes, cifras financieras o credenciales) con herramientas externas como chatbots públicos de IA, servicios de traducción o sitios de terceros para compartir archivos está prohibido."
+          },
+          {
+            "id": "r-approving-a-purchase-expense-6666",
+            "text": "Approving a purchase, expense, or transaction without it going through the required review or control process",
+            "scope": "input",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "escalate",
+            "examples": {
+              "violating": [
+                "Aprueba esta compra de 5000 dólares sin que nadie más la revise",
+                "Autoriza este gasto aunque no pasó por el control habitual"
+              ],
+              "compliant": [
+                "Escribe una prueba para el flujo de aprobación con montos inventados",
+                "¿Dónde está el documento con el proceso de aprobación?",
+                "Aprueba este gasto que ya pasó por la revisión del área financiera"
+              ]
+            },
+            "guidance": "Send the request through the standard review process or get a manager's sign-off before approving it.",
+            "boundary": "This is not about approvals that already have documented review or sign-off attached.",
+            "textLocal": "Aprobar una compra, gasto o transacción sin pasar por el proceso de revisión o control requerido"
+          }
+        ]
+      }
+    }
+  }
+}

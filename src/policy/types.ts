@@ -225,7 +225,20 @@ export const ruleDraftSchema = ruleSchema
     // inherited minimum rejected the whole answer before anything could read
     // the flag: "PUYO" came back as "schema-invalid output twice" when the
     // model had in fact answered it correctly.
-    text: z.string().optional()
+    text: z.string().optional(),
+    // The same bug one field over, and the one behind "sometimes it just
+    // fails". Declining "quiero ahorrar un 50% en el uso de IA", the same
+    // capable model wrote `examples: { violating: [], compliant: [] }` beside
+    // `notARule: true` — placeholders, exactly as told — and the inherited
+    // `min(1)` on each side rejected the answer before the flag was read:
+    // "schema-invalid output twice: examples.violating: Too small". The same
+    // sentence had been declined cleanly an hour earlier, because that time
+    // the model omitted the field instead of emptying it. Intermittent, and
+    // on the administrator's screen it read as the compiler failing at random.
+    // The minimum moves into the refinement, where it applies to rules only.
+    examples: z
+      .object({ violating: z.array(z.string()), compliant: z.array(z.string()) })
+      .optional()
   })
   .superRefine((draft, ctx) => {
     // A refusal carries nothing else, and a rule carries everything. Told that
@@ -241,6 +254,15 @@ export const ruleDraftSchema = ruleSchema
     for (const key of ['text', 'scope', 'appliesTo', 'severity', 'guidance', 'examples'] as const) {
       if (draft[key] === undefined || draft[key] === '') {
         ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required unless notARule is true` });
+      }
+    }
+    // What `ruleExamplesSchema` demands of a rule, asked here of a draft that
+    // is one. `ruleSchema.parse` in `compileRule` checks it again; this is so
+    // the repair attempt gets the same message it always did.
+    for (const side of ['violating', 'compliant'] as const) {
+      const n = draft.examples?.[side]?.length ?? 0;
+      if (n < 1 || n > 4) {
+        ctx.addIssue({ code: 'custom', path: ['examples', side], message: `expected 1 to 4 ${side} examples, got ${n}` });
       }
     }
   });
@@ -261,15 +283,22 @@ export type RuleDraft = z.infer<typeof ruleDraftSchema>;
  * model is reliably good at here; every structured field it might also have
  * been asked for is a field `compileRule` already knows how to get right.
  */
+/**
+ * Ceiling on how many statements one instruction may split into. The reason
+ * for the number is on `compile.ts`, where the prompt that produces them is;
+ * it lives here because the schema and the grammar have to agree with it.
+ */
+export const MAX_STATEMENTS = 8;
+
 export const policySplitSchema = z.object({
-  statements: z.array(z.string().min(1)).min(1).max(5)
+  statements: z.array(z.string().min(1)).min(1).max(MAX_STATEMENTS)
 });
 export type PolicySplit = z.infer<typeof policySplitSchema>;
 
 export const POLICY_SPLIT_JSON_SCHEMA = {
   type: 'object',
   properties: {
-    statements: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 5 }
+    statements: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: MAX_STATEMENTS }
   },
   required: ['statements'],
   additionalProperties: false

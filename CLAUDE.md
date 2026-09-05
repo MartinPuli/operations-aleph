@@ -217,41 +217,30 @@ Warden was built fast and the repo says so rather than pretending otherwise.
 - Six attachment-bearing corpus prompts are skipped in every run, because the
   OCR model resolves only over the P2P registry. `document-borne` has never been
   measured.
-- **The policy splitter does not split.** `compilePolicy` was built to turn one
-  broad instruction into several specific rules. Run against the real
-  `Qwen3-1.7B-Q4_0` on 2026-09-01, it returned **one statement on three of
-  three inputs** — English and Spanish — so what it currently is, is
-  `compileRule` plus a thirty-second model call. Two of those three runs were
-  also actively worse than not splitting: *"nadie puede mandar datos de
-  clientes afuera de la empresa"* came back as *"nadar datos de clientes"*, and
-  *"dejen de filtrar datos de clientes"* compiled into a `warn` rule against
-  **filtering** customer data — the false friend — whose compliant example was
-  *"send customer data to a third-party for analysis"*. A draft that permits
-  the leak it was asked to stop.
-
-  The boundary held: nothing was enacted, and an administrator ratifying that
-  draft would have rejected it. The paraphrase failure is now structurally
-  impossible — a split of one returns the administrator's own sentence, never
-  the model's rewrite of it.
-
-  **It works on a capable compiler, which was the stated precondition.** Same
-  day, same sentences, through `qvac/cli-compiler.ts` on the `claude` CLI
-  (sonnet): *"no quiero que se filtren datos de clientes ni que aprueben pagos
-  grandes sin mi"* split into two statements and compiled into a `block` rule
-  about customer data and an `escalate` rule about payment approval, in 25
-  seconds; *"quiero que dejen de filtrar datos de clientes"* — the false friend
-  the 1.7B inverted — came back as `block`, "Employees must not share or leak
-  customer data outside authorized channels", with Spanish examples on both
-  sides, in 9. So the pass is not wrong; the local 1.7B is too small for it.
-
-  It still ships off the measured path on the default configuration, because
-  the default configuration is that 1.7B: `/api/policy/draft` is untouched,
-  `/api/policy/draft-set` is its own route behind its own button, and no
-  single-rule compile pays for it. What has changed is that there is now a way
-  to turn it on that costs nothing — the coding agent already signed in on the
-  machine. What is still missing is a corpus of broad instructions paired with
-  the rules they ought to become, so "works" here means three sentences and a
-  human reading the output, not a measurement.
+- **The policy splitter splits on a capable compiler, and only there.**
+  `compilePolicy` turns one broad instruction into the specific rules it
+  means. Run against the real `Qwen3-1.7B-Q4_0` on 2026-09-01 it returned
+  **one statement on three of three inputs** and paraphrased two of them
+  wrongly (*"dejen de filtrar datos de clientes"* became a `warn` rule against
+  **filtering**, the false friend), so the console never routes the local
+  model to it, and a split of one returns the administrator's own sentence
+  rather than the model's rewrite of it. Through `qvac/cli-compiler.ts` on the
+  `claude` CLI it works, and on 2026-09-05 it was made to do the job it was
+  built for: the prompt used to say "at most five, fewer is better, and if it
+  is already one prohibition return it alone", and a capable model obeyed —
+  *"hacé que no leakeen datos"* came back as one statement and one rule
+  naming three categories in a sentence. It now asks for what the worry is
+  made of, one concrete thing per statement, up to eight; the same sentence
+  becomes five rules (customer contacts, credentials, unreleased financials,
+  source code, internal documents), a spending target inside the sentence
+  survives as its own statement and comes back as proposed limits beside the
+  rules, and the console shows the whole set with a check under each card and
+  one button to activate all of them, on the owner's decision. See
+  `docs/MEASUREMENTS.md`, "The splitter, asked to enumerate". Still missing: a
+  corpus of broad instructions paired with the rules they ought to become, so
+  "works" means five sentences and a person reading the output, and whether
+  item-shaped rules judge better than category-shaped ones on the real judge
+  is a hypothesis that row sets up and does not test.
 - Quota counters live in memory and reset with the process.
 - API keys are stored in plaintext in the directory file, and so is the compiler
   provider key in `data/settings.json` (written `0600`, gitignored).

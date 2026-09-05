@@ -17,6 +17,7 @@ import { EVERYONE, employeeIdOf, employeeToken, sanitiseAudience } from './audie
 import { loadDirectory } from './people.js';
 import { loadPolicy, savePolicy } from './store.js';
 import {
+  MAX_STATEMENTS,
   POLICY_SPLIT_JSON_SCHEMA,
   RULE_DRAFT_JSON_SCHEMA,
   policySplitSchema,
@@ -107,7 +108,13 @@ export async function compileRule(
     '',
     'A sentence with no prohibition and no target in it — a name, a greeting, a',
     'question, a fragment — is nothing Warden can act on. Set notARule to true with',
-    'a short reason, and leave usageFactor out.',
+    'a short reason, and leave usageFactor out. A target with no number in it',
+    '("optimicen el uso", "se gasta demasiado") is this case too: say in the reason',
+    'that Warden needs a fraction or a percentage to set limits from.',
+    '',
+    // The reason is read by the administrator, on the console, and it was
+    // coming back in English under a Spanish sentence.
+    'Write notARuleReason in the language the administrator wrote in.',
     '',
     'When notARule is true the other fields are ignored, so do not labour over them.',
     '',
@@ -267,15 +274,20 @@ export async function compileRule(
 }
 
 /**
- * Ceiling on how many rules one instruction may become.
+ * Why the ceiling on how many rules one instruction may become is what it is.
+ * The number itself is `MAX_STATEMENTS` in `types.ts`, beside the schema.
  *
- * Not a tuning knob. It is here because "stop people leaking data" is an
- * invitation to enumerate, and a model that answers it with fifteen rules has
- * handed the administrator a ratification queue nobody works through — at
- * which point they activate the list without reading it, and a model has
- * written policy after all. Five is the most a person will actually read.
+ * Not a tuning knob. "Stop people leaking data" is an invitation to enumerate,
+ * and a model that answers it with fifteen rules has handed the administrator
+ * a list nobody reads before activating — at which point a model has written
+ * policy after all. It was five, and five was the wrong number for the other
+ * reason: a data-leak worry at this company is customer contact details,
+ * credentials, unreleased financials, source code and internal documents,
+ * and the channels they leave by, and a cap of five with a prompt that said
+ * "fewer is better" returned one. Eight is enough to hold the worry an
+ * administrator actually types, and the console now shows the whole set on
+ * one screen with a check under each card, which is what makes eight readable.
  */
-const MAX_STATEMENTS = 5;
 
 /**
  * Split one broad instruction into the specific prohibitions it means.
@@ -290,21 +302,51 @@ const MAX_STATEMENTS = 5;
 async function splitStatement(qvac: QvacAdapter, text: string): Promise<string[]> {
   const iso = isolate(text);
 
+  // What this prompt is for, stated against what the last one did. Measured
+  // 2026-09-05 through `claude -p --model sonnet` (docs/MEASUREMENTS.md, "The
+  // splitter, asked to enumerate"): "hacé que no leakeen datos" came back as
+  // ONE statement — the administrator's own words — and compiled into one rule
+  // that named customer contacts, financial figures and credentials in a
+  // single sentence. That is the category-shaped rule the judge stretches over
+  // anything nearby, and it is what "at most five, and fewer is better" plus
+  // "if it is already one prohibition, return it alone" told a capable model
+  // to do. The administrator typed a worry; the job here is to write down what
+  // the worry is made of, one concrete thing per statement, because one
+  // concrete thing per rule is the shape the judge can apply.
+  //
+  // The security instruction survives unchanged: the concrete kinds of the
+  // thing they named are inside what they asked; a different subject is not.
   const system = [
     'A company administrator has said what they want stopped, in their own words.',
-    'Split it into separate, specific prohibitions — one sentence each.',
+    'They have named a worry, not a rule. Write down the specific prohibitions',
+    'that worry is made of — one sentence each, one concrete thing per sentence —',
+    'so that each becomes one rule a small model can apply to one request.',
     '',
-    `- At most ${MAX_STATEMENTS} statements, and fewer is better.`,
-    '- Each one stands alone and names one concrete thing that is prohibited.',
-    '- Never restate another one in different words.',
+    `- At most ${MAX_STATEMENTS} statements. Use as many as the worry actually contains, no more.`,
+    '- Each one stands alone and names ONE concrete thing that is prohibited:',
+    '  the thing itself, not a category. When the administrator named a category',
+    '  — data, information, money, code, documents, customers — list the concrete',
+    '  kinds inside it that a company like this one has to protect, each as its',
+    '  own statement. For a data leak: customer contact details; credentials, API',
+    '  keys and passwords; financial figures not yet public; source code; internal',
+    '  documents. Split by the thing protected, not by the channel it leaves by.',
+    '- Two worries joined by "and", "ni" or a comma are two statements.',
+    '- Carry every limit the administrator gave (an amount, a role, a system, a',
+    '  moment) into the statement it belongs to. Do not invent limits.',
+    '- A target for how much is used or spent — "ahorrar 50%", "gastar la mitad",',
+    '  "reducir el uso" — is ONE statement on its own, in the administrator\'s own',
+    '  words. Never rewrite it as a prohibition; Warden handles it as a limit.',
+    '- Never restate another statement in different words.',
     // The one instruction that is a security instruction rather than a quality
     // one. An administrator who asks about customer data and gets back a rule
     // about overtime has been handed policy nobody asked for, and the fact
     // that they still have to ratify it is not a reason to put it in front of
-    // them: a queue of plausible rules is exactly how ratification stops being
-    // read.
-    '- Stay strictly inside what was asked. Never add a prohibition the administrator did not ask for.',
-    '- If what they said is already one specific prohibition, return it as the only statement.',
+    // them. The concrete kinds of what they named are inside what they asked;
+    // a different subject is not.
+    '- Stay strictly inside what was asked. The concrete kinds of the thing they',
+    '  named are inside it. A different subject is not: never add one.',
+    '- If the sentence already names one concrete thing and nothing else, return',
+    '  it as the only statement.',
     '- Write them in the language the administrator used.',
     isolationPreamble(iso.nonce),
     thinkingMarker('compiler')
@@ -316,12 +358,13 @@ async function splitStatement(qvac: QvacAdapter, text: string): Promise<string[]
         role: 'compiler',
         system,
         user: `${iso.envelope}\n\nSplit the instruction above.`,
-        // Five statements of ordinary length are well inside this, and the
-        // margin is deliberate: a split that overran the cap would come back
-        // as truncated JSON, fail to parse, and be caught below as "compile
-        // the administrator's sentence as one rule" — a silent degradation
-        // that looks exactly like the model deciding it was already specific.
-        maxTokens: 512,
+        // Eight statements of ordinary length in Spanish are inside this, and
+        // the margin is deliberate: a split that overran the cap would come
+        // back as truncated JSON, fail to parse, and be caught below as
+        // "compile the administrator's sentence as one rule" — a silent
+        // degradation that looks exactly like the model deciding it was
+        // already specific.
+        maxTokens: 900,
         timeoutMs: 60_000
       },
       policySplitSchema,
@@ -380,15 +423,18 @@ async function splitStatement(qvac: QvacAdapter, text: string): Promise<string[]
  * is also simply faster.
  *
  * Which makes this the slowest thing in the product by a distance: the split,
- * then up to five compilations, each of which takes what a compilation takes.
+ * then up to eight compilations, each of which takes what a compilation takes.
  * On the four-core CPU the 46-second figure in CLAUDE.md was measured on, a
  * five-rule set is minutes. That is a fact about the machine and not a reason
  * to parallelise it into unreproducibility, but a caller putting this behind a
  * request needs to know it is not a request that returns quickly.
  *
  * **The boundary is unchanged.** The model drafts, the administrator ratifies,
- * one rule at a time, and a draft nobody ratified has never judged anybody.
- * Nothing in this function writes to the policy.
+ * and a draft nobody ratified has never judged anybody. Nothing in this
+ * function writes to the policy. The console shows the set as a list with a
+ * check under each rule and one button that ratifies all of them; that button
+ * is still a person reading a list and deciding, which is the boundary, and
+ * it is on the administrator that the list is short enough to read.
  */
 export async function compilePolicy(
   qvac: QvacAdapter,

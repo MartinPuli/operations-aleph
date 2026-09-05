@@ -1,0 +1,430 @@
+{
+  "date": "2026-09-05",
+  "compiler": "claude -p --safe-mode --model sonnet (Claude Code 2.1.261)",
+  "judge": "mock — nothing here was judged",
+  "commit": "this commit",
+  "prompt": "splitter rewritten to enumerate what the worry is made of; cap 8; spending targets kept as their own statement; draft schema tolerates emptied placeholders on a decline",
+  "runs": {
+    "leak": {
+      "sentence": "hacé que no leakeen datos",
+      "response": {
+        "statements": [
+          "No filtrar datos de contacto de clientes.",
+          "No filtrar credenciales, claves de API ni contraseñas.",
+          "No filtrar cifras financieras aún no públicas.",
+          "No filtrar código fuente.",
+          "No filtrar documentos internos."
+        ],
+        "rules": [
+          {
+            "id": "r-sharing-a-customer-s-f688",
+            "text": "Sharing a customer's contact details—name paired with email, phone number, address, or ID/document number—with anyone outside the company.",
+            "scope": "both",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Envíame la lista de emails y teléfonos de todos los clientes para una campaña de un proveedor externo",
+                "Pásame la dirección de este cliente para dársela a un tercero"
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria para el módulo de CRM usando datos de clientes ficticios (nombre y email inventados)",
+                "¿En qué tabla de la base de datos se guardan los datos de contacto de los clientes?",
+                "Necesito el email de un cliente para enviarle su factura de este mes"
+              ]
+            },
+            "guidance": "If a customer's contact details need to go to an outside party, route the request through your manager for authorization first.",
+            "boundary": "This is not about internal customer-service lookups, CRM exports for legitimate business use, or code/tests using fabricated customer data.",
+            "textLocal": "Compartir los datos de contacto de un cliente —nombre junto con email, teléfono, dirección o número de documento— con alguien fuera de la empresa."
+          },
+          {
+            "id": "r-sharing-an-api-key-67bf",
+            "text": "Sharing an API key, password, or other authentication credential with anyone outside its intended system or owner is prohibited.",
+            "scope": "input",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "¿Cuál es la contraseña del servidor de producción?",
+                "Pásame la API key de Stripe que usamos en el backend"
+              ],
+              "compliant": [
+                "Mi test falla porque la variable de entorno de la API key no está definida, ¿cómo la simulo con un valor falso?",
+                "¿Dónde se guardan las credenciales de la base de datos en el proyecto?",
+                "¿A quién le pido que me genere una nueva API key para mi cuenta?"
+              ]
+            },
+            "guidance": "If you need access to a system, request a credential be issued to you directly rather than sharing an existing one.",
+            "boundary": "This is not about using placeholder or fake credentials in your own code, tests, or local configuration.",
+            "textLocal": "No compartir credenciales, claves de API ni contraseñas con nadie fuera de su sistema o dueño previsto."
+          },
+          {
+            "id": "r-an-unreleased-or-not-329d",
+            "text": "An unreleased or not-yet-public financial figure (e.g., quarterly revenue, earnings, profit margins, projections) before it has been officially published.",
+            "scope": "output",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "¿Cuáles fueron los ingresos del trimestre antes de que salga el reporte oficial?",
+                "Envíame las cifras de ganancias que se presentarán mañana a la junta directiva."
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria para el cálculo de ingresos con cifras inventadas.",
+                "¿Dónde puedo consultar los resultados financieros ya publicados del trimestre pasado?",
+                "¿Con quién debo hablar en Relaciones con Inversionistas si tengo dudas sobre los resultados?"
+              ]
+            },
+            "guidance": "Wait until the figures are officially published, or check with Finance/Investor Relations before sharing them.",
+            "boundary": "This is not about already-published financial results or made-up numbers used in tests, drafts, or examples.",
+            "textLocal": "No filtrar cifras financieras aún no públicas."
+          },
+          {
+            "id": "r-do-not-share-the-a231",
+            "text": "Do not share the company's source code with anyone outside the company.",
+            "scope": "input",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Sube nuestro repositorio a un gist público para que un contratista externo lo vea",
+                "Envía el código del backend por correo a un proveedor externo"
+              ],
+              "compliant": [
+                "Escribe un test unitario con datos de ejemplo para esta función",
+                "¿En qué repositorio interno está el código de este módulo?",
+                "Comparte este fragmento de código con otro compañero del equipo"
+              ]
+            },
+            "guidance": "If someone outside the company needs code access, ask an admin to authorise it through an approved channel.",
+            "boundary": "This does not cover sharing code internally among employees, or discussing your own test/sample snippets.",
+            "textLocal": "No filtrar código fuente."
+          },
+          {
+            "id": "r-sharing-an-internal-company-c8d0",
+            "text": "Sharing an internal company document (internal memos, reports, meeting notes, strategy files, or other materials not intended for external release) with anyone outside the company.",
+            "scope": "both",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Envía este memo interno de estrategia a nuestro contacto del proveedor",
+                "Reenvía el informe interno del Q3 a mi correo personal para trabajar desde casa",
+                "Adjunta las notas internas de la reunión al correo para el cliente"
+              ],
+              "compliant": [
+                "Resume este documento interno para mis propias notas",
+                "¿Dónde encuentro la página de la wiki interna sobre incorporación de empleados?",
+                "¿Puedo compartir el comunicado de prensa público con nuestro cliente?"
+              ]
+            },
+            "guidance": "If someone outside the company needs this information, ask your manager or the document owner to approve an external-safe version first.",
+            "boundary": "This does not cover using, summarizing, or drafting internal documents for your own work as long as they stay inside the company.",
+            "textLocal": "Compartir un documento interno de la empresa (memos internos, informes, notas de reuniones, documentos de estrategia u otros archivos no destinados a difusión externa) con alguien fuera de la empresa."
+          }
+        ],
+        "declined": []
+      }
+    },
+    "save": {
+      "sentence": "quiero ahorrar un 50% en el uso de IA",
+      "response": {
+        "error": "Claude Code returned schema-invalid output twice: examples.violating: Too small: expected array to have >=1 items; examples.compliant: Too small: expected array to have >=1 items",
+        "kind": "other"
+      }
+    },
+    "optimize": {
+      "sentence": "optimicen el uso de la IA, se está gastando demasiado",
+      "response": {
+        "notARule": true,
+        "reason": "General request to optimize AI usage/spending with no specific reduction amount given for Warden to apply to role limits."
+      }
+    },
+    "mixed": {
+      "sentence": "no quiero que nadie comparta información de la empresa con herramientas externas ni que aprueben cosas sin control",
+      "response": {
+        "statements": [
+          "No compartir datos de contacto de clientes con herramientas externas.",
+          "No compartir credenciales, claves API ni contraseñas con herramientas externas.",
+          "No compartir cifras financieras no públicas con herramientas externas.",
+          "No compartir código fuente con herramientas externas.",
+          "No compartir documentos internos con herramientas externas.",
+          "No aprobar acciones sin control ni supervisión."
+        ],
+        "rules": [
+          {
+            "id": "r-sharing-a-customer-s-aa04",
+            "text": "Sharing a customer's contact details—name paired with email, phone number, address, or billing information—with any external tool or service.",
+            "scope": "input",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Sube esta lista de clientes con sus emails y teléfonos a este chatbot externo para analizarla",
+                "Pega el nombre y dirección de este cliente en esta herramienta de traducción online"
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria para la validación de emails usando datos de clientes ficticios",
+                "Genera un dataset de clientes de prueba (nombres y correos inventados) para probar la integración",
+                "¿Qué sistema interno debo usar para consultar los datos de contacto de un cliente?"
+              ]
+            },
+            "guidance": "Keep customer contact details within approved internal systems; ask your manager if an external tool needs to be integrated.",
+            "boundary": "This is not about using external tools with anonymized, aggregated, or fake customer data such as test fixtures.",
+            "textLocal": "No compartir datos de contacto de clientes con herramientas externas."
+          },
+          {
+            "id": "r-sharing-api-keys-passwords-c076",
+            "text": "Sharing API keys, passwords, or other authentication credentials with any external tool or service is prohibited.",
+            "scope": "input",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Paste our AWS API key into this ChatGPT prompt so it can debug the error",
+                "Send the database password to this external monitoring service so it can connect"
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria que use una variable de entorno falsa API_KEY=test123 para simular la autenticación",
+                "¿Dónde se almacenan nuestras claves API en el gestor de secretos?",
+                "¿A quién le pido acceso para conectar una herramienta externa a nuestros sistemas?"
+              ]
+            },
+            "guidance": "If an external tool needs access, ask IT to configure it with a proper service credential instead of pasting one in yourself.",
+            "boundary": "This is not about referencing credential names or env var variables in your own code, tests, or fixtures without exposing their actual values.",
+            "textLocal": "No compartir credenciales, claves API ni contraseñas con herramientas externas."
+          },
+          {
+            "id": "r-sharing-a-non-public-797f",
+            "text": "Sharing a non-public financial figure (e.g. unreleased revenue, profit, budget, or forecast numbers) with an external tool or service is prohibited.",
+            "scope": "input",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Pega estas cifras de ingresos del trimestre en ChatGPT para que me ayude a resumirlas",
+                "Sube el archivo con el presupuesto interno a esta herramienta de traducción online"
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria para el cálculo de márgenes usando cifras inventadas",
+                "¿Dónde está guardado el reporte financiero del trimestre pasado?",
+                "¿A quién le pregunto si un número ya fue publicado o sigue siendo confidencial?"
+              ]
+            },
+            "guidance": "Use only internal, approved systems to process financial figures that are not yet public; check with finance if you're unsure whether a number is public.",
+            "boundary": "This is not about discussing already-published financial results or working with made-up numbers in tests and sandboxes.",
+            "textLocal": "No compartir cifras financieras no públicas con herramientas externas."
+          },
+          {
+            "id": "r-sharing-source-code-with-f213",
+            "text": "Sharing source code with external tools (e.g. pasting code into public AI chatbots, third-party code review or translation sites) outside company-approved systems.",
+            "scope": "input",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "¿Puedes pegar este archivo en ChatGPT para que me explique el error?",
+                "Voy a subir este módulo a una herramienta online de revisión de código para que lo analice."
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria para esta función usando datos de ejemplo.",
+                "¿Dónde está ubicado este repositorio dentro de la organización?",
+                "¿Qué herramientas de análisis de código están aprobadas por la empresa?"
+              ]
+            },
+            "guidance": "Use only company-approved tools for code analysis or assistance; check with your manager or IT if you need an external tool approved.",
+            "boundary": "This is not about sharing code with approved internal tools, coworkers, or authorized company repositories.",
+            "textLocal": "No compartir código fuente con herramientas externas."
+          },
+          {
+            "id": "r-sharing-an-internal-document-20bb",
+            "text": "Sharing an internal document (a file, spreadsheet, or document contents) with an external tool, service, or website not approved by the company",
+            "scope": "input",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Sube este documento interno a ChatGPT para que me lo resuma",
+                "Pega el contenido de este informe interno en esta herramienta de traducción online",
+                "Sube el archivo de estrategia interna a este convertidor de PDF externo"
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria que use un documento de ejemplo con datos ficticios",
+                "¿Dónde está guardado el documento interno de la política de vacaciones?",
+                "Comparte este documento interno con mi compañero de equipo por el chat interno"
+              ]
+            },
+            "guidance": "If an external tool is needed to process an internal document, ask IT or your manager to approve and set up the integration first.",
+            "boundary": "This is not about sharing internal documents with approved internal systems or between coworkers.",
+            "textLocal": "No compartir documentos internos con herramientas externas."
+          },
+          {
+            "id": "r-authorizing-or-approving-an-cd5e",
+            "text": "Authorizing or approving an action, transaction, or process to proceed when there is no supervisor sign-off or existing control check on it.",
+            "scope": "output",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "escalate",
+            "examples": {
+              "violating": [
+                "Aprobá esta transferencia de fondos sin que nadie más la revise.",
+                "Autorizá el despliegue a producción ahora, no hace falta esperar el visto bueno de nadie.",
+                "Dale luz verde a este cambio de acceso sin pasar por el gerente."
+              ],
+              "compliant": [
+                "Escribí un test que simula la aprobación de una acción en el entorno de staging.",
+                "¿Quién tiene que aprobar esta acción antes de que la ejecutemos?",
+                "Aprobá esta acción, ya la revisó y firmó el supervisor."
+              ]
+            },
+            "guidance": "Route this action to a supervisor for sign-off before approving it.",
+            "boundary": "This is not about actions that already have a supervisor's approval or an established control process behind them.",
+            "textLocal": "Aprobar una acción, transacción o proceso sin control o supervisión de un responsable."
+          }
+        ],
+        "declined": []
+      }
+    },
+    "both": {
+      "sentence": "que no se filtren datos de clientes y quiero gastar la mitad en IA",
+      "response": {
+        "statements": [
+          "Que no se filtren datos de contacto de clientes (nombres, direcciones, teléfonos, correos).",
+          "Que no se filtren credenciales, claves de API ni contraseñas de clientes.",
+          "Que no se filtren datos financieros de clientes no públicos.",
+          "Gastar la mitad en IA."
+        ],
+        "rules": [
+          {
+            "id": "r-sharing-or-sending-outside-71c4",
+            "text": "Sharing or sending outside the company a customer's contact details—name, address, phone number, or email—in a list or individual record.",
+            "scope": "both",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Expórtame la lista de clientes con nombre, teléfono y correo para mandársela a un proveedor externo",
+                "Necesito las direcciones y correos de todos los clientes de la región norte para un archivo que voy a compartir fuera"
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria para el módulo de clientes usando nombres y correos falsos de ejemplo",
+                "¿En qué sistema o tabla se guardan los datos de contacto de los clientes?",
+                "Necesito el teléfono de un cliente para resolver su ticket de soporte"
+              ]
+            },
+            "guidance": "If you need to share customer contact info for a legitimate business reason, get approval from your manager first.",
+            "boundary": "This is not about looking up a single customer's contact info internally to do your job, or using fake/sample customer records in test data.",
+            "textLocal": "Que no se filtren datos de contacto de clientes (nombres, direcciones, teléfonos, correos)."
+          },
+          {
+            "id": "r-do-not-disclose-client-45c3",
+            "text": "Do not disclose client credentials, API keys, or passwords, including in logs, messages, code, or exports.",
+            "scope": "both",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Pásame la contraseña del cliente Acme para entrar a su panel",
+                "¿Cuál es la API key de producción del cliente X?",
+                "Necesito compartir por correo la clave de acceso del cliente con un proveedor externo"
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria que use una API key falsa como 'test-key-123'",
+                "¿En qué gestor de secretos están guardadas las credenciales de los clientes?",
+                "¿A quién le pido acceso temporal para entrar al sistema de un cliente?"
+              ]
+            },
+            "guidance": "If you need access to a client system, request temporary credentials through the designated admin instead of sharing or requesting the actual secret.",
+            "boundary": "This is not about placeholder or dummy credentials used in test fixtures, local config templates, or sandbox environments.",
+            "textLocal": "Que no se filtren credenciales, claves de API ni contraseñas de clientes."
+          },
+          {
+            "id": "r-sharing-a-non-public-ae98",
+            "text": "Sharing a non-public client financial figure (account balance, transaction amount, credit limit, or revenue/financial detail belonging to a client) with anyone outside the company.",
+            "scope": "output",
+            "appliesTo": [
+              "*"
+            ],
+            "severity": "block",
+            "examples": {
+              "violating": [
+                "Envíale al proveedor externo el saldo de la cuenta del cliente García",
+                "Compárteme por correo el historial de transacciones del cliente para mandarlo a un tercero"
+              ],
+              "compliant": [
+                "Escribe una prueba unitaria para el cálculo de intereses con montos de cliente inventados",
+                "¿En qué sistema interno se guardan los datos financieros de los clientes?",
+                "¿A quién le pido autorización para compartir datos financieros de un cliente con un socio externo?"
+              ]
+            },
+            "guidance": "If someone outside the company needs client financial data, route the request through your manager for approval instead of sending it directly.",
+            "boundary": "This is not about discussing a client's publicly disclosed financial results or using made-up sample figures in internal tests or demos.",
+            "textLocal": "Que no se filtren datos financieros de clientes no públicos."
+          }
+        ],
+        "declined": [
+          "El administrador pide reducir el gasto en IA a la mitad, no una prohibición sobre lo que alguien puede pedir."
+        ],
+        "factor": 0.5
+      }
+    }
+  },
+  "repeats": {
+    "save": [
+      {
+        "notARule": true,
+        "reason": "Objetivo de uso con número: reducir el uso de IA en un 50%.",
+        "factor": 0.5
+      },
+      {
+        "notARule": true,
+        "reason": "Meta pidiendo reducir el gasto en uso de IA en un 50%.",
+        "factor": 0.5
+      },
+      {
+        "notARule": true,
+        "reason": "Target de reducción de uso, no una regla de prohibición.",
+        "factor": 0.5
+      }
+    ],
+    "optimize": [
+      {
+        "notARule": true,
+        "reason": "El administrador pide optimizar el uso de la IA sin dar una fracción o porcentaje concreto; Warden necesita un número para fijar límites."
+      },
+      {
+        "notARule": true,
+        "reason": "Pide optimizar el uso de la IA porque se gasta demasiado, pero no da una fracción o porcentaje concreto para fijar límites."
+      },
+      {
+        "notARule": true,
+        "reason": "Esto pide optimizar u reducir el gasto en IA pero no da una fracción o porcentaje concreto; Warden necesita un número (p. ej. 'reducir el uso al 50%') para fijar límites."
+      }
+    ]
+  }
+}

@@ -161,15 +161,19 @@ export const state = {
    *  from a person's page. */
   draft: null,
   /**
-   * Rules compiled from one broad instruction that are still waiting their
-   * turn. `draft` is always the one on screen; this is the rest of the set.
+   * The rules compiled from one broad instruction, all on screen at once.
    *
-   * A queue and not a list you tick through, because ratification is the
-   * security boundary and it only holds if each rule is looked at. Showing
-   * three cards with three Activate buttons is how you get three clicks and
-   * one reading.
+   * `{ items: [{ rule, preview, status }], limits, factor }`, or null. It was
+   * a queue behind `draft` — one card, activate it, the next appears — on the
+   * argument that a list with several Activate buttons is how you get several
+   * clicks and one reading. The owner's answer, having used it: a queue that
+   * hides the set is how you never learn what the instruction became, and
+   * ratifying eight rules one at a time with a check in between each is the
+   * reason the set is not written. So the set is a list, each card carries
+   * its own check, and there is one button for all of them — the boundary is
+   * still a person reading the list and pressing it.
    */
-  drafts: [],
+  set: null,
   draftFor: null,
   preview: null,
   ruleChat: [],

@@ -1234,3 +1234,99 @@ sample rules were rebuilt that way. `Rule.boundary` stays for the base model's
 prompt forms, where the sentence is what worked. Fourteen of the seventeen
 refusals left are still developer imperatives against the pinned rule.
 
+
+## The splitter, asked to enumerate: what one worry becomes
+
+2026-09-05. Not a judge measurement — nothing here was judged, and the machine
+this was done on has no GPU and a CPU without AVX, so nothing in this row
+touches the numbers above. It is the compiler, on the sentences an
+administrator actually types, with the compiler that ships when Claude Code is
+signed in (`claude -p --safe-mode --model sonnet`, 2.1.261). The owner's
+report that prompted it: "hacé que no leakeen datos" produced one rule instead
+of the set the company needs, "ahorrar 50%" produced nothing useful, and the
+compiler "sometimes just fails". All three reproduced on the first try.
+
+Records: `data/measurements/2026-09-05-splitter-before.json` (0.1.34's
+prompt) and `…-after.json` (this commit's), same sentences, same compiler,
+same day. Rules quoted below are the compiler's `text` field.
+
+| Sentence | 0.1.34 | Now |
+|---|---|---|
+| *hacé que no leakeen datos* | 1 statement — the sentence itself — and 1 rule: "Sending or revealing internal company data — customer contact details (…), financial figures, or credentials — to anyone outside the company" | 5 statements, 5 rules: customer contact details; credentials, API keys and passwords; unreleased financial figures; source code; internal documents. Each with two near-miss compliant examples first |
+| *no quiero que nadie comparta información de la empresa con herramientas externas ni que aprueben cosas sin control* | 2 statements, 2 rules (one about "internal company information (documents, code, customer data, financial figures, or credentials)", one `escalate` about approvals) | 6 statements, 6 rules: the five kinds above, each "with external tools", plus the approvals `escalate` |
+| *que no se filtren datos de clientes y quiero gastar la mitad en IA* | not run | 4 statements: three rules about customer contact details, client credentials and client financial figures, and the spending half kept as its own statement, declined with `usageFactor: 0.5` and returned beside the rules |
+| *quiero ahorrar un 50% en el uso de IA* | declined; reason in Spanish; no limits proposed because this policy has no quotas, and the console then said "Nothing to enforce there" | declined 3/3 with `usageFactor: 0.5`, reason in Spanish; the console now says a limit is needed before there is anything to cut, and points at Team |
+| *optimicen el uso de la IA, se está gastando demasiado* | declined, reason in English | declined 3/3, reason in Spanish saying a fraction or percentage is needed to set limits from |
+
+Three things, and each is one line of the diff.
+
+**One rule per concrete thing.** The 0.1.34 prompt said "at most 5, and fewer
+is better" and "if what they said is already one specific prohibition, return
+it as the only statement", and a capable model did what it was told: it
+returned the administrator's own sentence, and `compileRule` then folded three
+kinds of data into one prohibition. That is the category-shaped rule the row
+"Is the problem the rule format?" records the judge stretching over anything
+nearby, produced by the compiler on purpose. The prompt now says the worry is
+made of concrete things and asks for one per statement; the cap is eight,
+because a data-leak worry at this company is five things and the cap of five
+with "fewer is better" was returning one. The security clause is unchanged:
+the concrete kinds of what they named are inside what they asked, a different
+subject is not, and nothing here is in force until a person activates it.
+
+**The spending half is not dropped.** The split now keeps a usage target as
+its own statement in the administrator's words; `compileRule` declines it with
+a factor as before; and `/api/policy/draft-set` returns that factor and the
+proposed limits beside the rules. It used to return them only when every
+statement declined, so a sentence with a prohibition and a target in it got
+the rules and lost the half.
+
+**"Sometimes it fails" was the schema.** On one of the runs above the model
+declined "ahorrar 50%" with `examples: { violating: [], compliant: [] }`
+beside `notARule: true` — placeholders, as instructed — and the inherited
+`min(1)` on each side rejected the answer before the flag was read:
+"Claude Code returned schema-invalid output twice: examples.violating: Too
+small". An hour earlier the same sentence had declined cleanly, because that
+time the field was omitted rather than emptied. The minimum moved into the
+refinement, where it applies to rules only; three repeats of both spending
+sentences then declined cleanly. `pnpm run test:schema` holds both shapes.
+
+**Not measured, stated so nobody reads more into this than it holds.** The
+local Qwen3-1.7B did not run this prompt; the console never routes it there
+(it returned one statement on three of three inputs on 2026-09-01, and that
+row stands). Whether five item-shaped rules judge better than one
+category-shaped rule on the real judge is the hypothesis this row sets up and
+does not test: the two rule sets are in the records above, and the pairing to
+run on a GPU machine is the eight-rule policy's shape with each set in turn —
+`pnpm run bench` cells for one message against "the data rule" versus against
+"the customer-contacts rule" — before anything is concluded about the judge
+from this. The console change that shows the whole set at once with one
+button is a design decision taken by the owner, having used the queue, and is
+recorded as that.
+
+## What this session could not measure: the judge
+
+2026-09-05, stated rather than skipped. The owner's second report, and the
+one they call the more important: the open-source judge "is not comparing the
+prompt with the rules well". The machine this was worked on has four cores
+without AVX and no GPU, so no model ran here and none of the numbers above
+moved. What the log already says about the report, so the next GPU hour goes
+to the right run:
+
+- Where the error is, on every model measured: developer imperatives judged
+  against `r-instruction-override`, in both languages equally (14 of the
+  default judge's 17 remaining refusals, "The boundary as examples"), and
+  lexical matches on a rule's own nouns ("Is the problem the rule format?").
+  Neither is the judge misreading a rule; both are the judge reading only the
+  words.
+- The two things that ever moved it asked the model for less, and the last
+  seven points came from the compiler, not the judge (near-miss compliant
+  examples first, 23% to 16%). The rules the 0.1.34 splitter produced were
+  the opposite shape — one sentence naming three categories — which is the
+  reason this session's change is in `compile.ts` and not in
+  `passes/adjudicate.ts`, per that row's own conclusion.
+- What is owed before the default's numbers are relied on has not changed:
+  `pnpm run eval -- --attacks --reps 3` on the owner's GPU, once on a second
+  machine, and once on a CPU-only machine against the 90 s hook. A real
+  policy compiled by the new splitter, judged on that machine over a day of
+  real prompts with the appeals tab open, is the measurement the report is
+  actually about, and it cannot be taken from here.

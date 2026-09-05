@@ -23,7 +23,7 @@ import { VIEWS } from './views.js';
  * come back to, and the conversation you start.
  */
 function onNewRule() { return state.view === 'policy' && state.sel === 'new'; }
-function inConversation() { return onNewRule() && (state.ruleChat.length > 0 || Boolean(state.draft)); }
+function inConversation() { return onNewRule() && (state.ruleChat.length > 0 || Boolean(state.draft) || Boolean(state.set)); }
 export function composing() { return inConversation(); }
 
 VIEWS.policy = {
@@ -39,7 +39,7 @@ export function rulesTabs(right = '') {
   const on = onNewRule();
   return `<div class="toolbar">
     <span class="seg">
-      <button type="button" class="${on ? 'on' : ''}" data-go="policy" data-sel="new">New rule${!on && state.draft ? ' •' : ''}</button>
+      <button type="button" class="${on ? 'on' : ''}" data-go="policy" data-sel="new">New rule${!on && (state.draft || state.set) ? ' •' : ''}</button>
       <button type="button" class="${on ? '' : 'on'}" data-go="policy">Rules</button>
     </span>
     <span class="spacer"></span>
@@ -108,13 +108,30 @@ export function readable(err) {
  */
 export function notARuleAnswer(j) {
   const reason = esc(j.reason || 'There is no prohibition in it.');
-  if (!Array.isArray(j.limits) || j.limits.length === 0) {
+  if (typeof j.factor !== 'number') {
     return `<b>Nothing to enforce there.</b> ${reason}`;
   }
+  return `<b>That is a spending target, not a rule.</b> ${reason}${limitsPlan(j)}`;
+}
+
+/**
+ * The limits the compiler's fraction proposes, with the button that applies
+ * them — or, when no role has a limit yet, the reason there is nothing to cut.
+ *
+ * The second case was invisible: a fresh policy has no quotas, "quiero
+ * ahorrar 50%" produced an empty plan, and the screen said "Nothing to
+ * enforce there", which reads as Warden not understanding the sentence. It
+ * understood it; there was no number to halve. Now it says that, and points at
+ * where the numbers are set.
+ */
+export function limitsPlan(j) {
   const pct = Math.round((1 - j.factor) * 100);
+  if (!Array.isArray(j.limits) || j.limits.length === 0) {
+    return `<div>Cutting ${pct}% needs a limit to cut. No role has a daily limit yet, so set one per role on
+      <button type="button" class="linkish" data-go="people">Team</button> and say this again.</div>`;
+  }
   state.pendingLimits = j.limits;
-  return `<b>That is a spending target, not a rule.</b> ${reason}
-    <div>Cutting every daily limit by ${pct}%:</div>
+  return `<div>Cutting every daily limit by ${pct}%:</div>
     <div class="limit-plan">${j.limits.map((row) => `
       <div class="r"><span class="k">${esc(row.role)}</span>
         <span class="v num">${row.from} → ${row.to} a day</span></div>`).join('')}</div>

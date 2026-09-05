@@ -965,6 +965,11 @@ button.quota .quota-row b { margin-left: auto; }
 }
 .quota-actions { display: flex; gap: var(--s-2); margin-top: var(--s-2); }
 
+/* A card in a compiled set that is already active, or lifted out to be
+   edited: still on the list as a record, visibly not a decision to make. */
+.artifact.done { opacity: .55; }
+.artifact.done .summary { text-decoration: none; }
+
 /* The record kept a hash, not the text. A bare em dash reads as missing data;
    this reads as a promise being kept. */
 .nokeep { font-style: normal; color: var(--muted); opacity: 0.65; }

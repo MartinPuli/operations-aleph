@@ -10,6 +10,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Router } from 'express';
 import { detectCliTools } from '../../qvac/cli-compiler.js';
+import { remoteCompiler } from '../../qvac/index.js';
 import { forgetRole, resolvedModel } from '../../qvac/client.js';
 import { ADJUDICATOR_CHOICES, modelsDir } from '../../qvac/models.js';
 import { remoteCompilerSource, validate as validateCompilerEndpoint } from '../../qvac/remote.js';
@@ -115,6 +116,14 @@ settingsRoutes.get('/api/settings/compiler', asyncRoute(async (_req, res) => {
     // the page did not save.
     activeSource: source ?? 'local',
     overriddenByEnv: source === 'env',
+    // Whether a compiler better than the local weights is actually in force —
+    // a CLI or an endpoint, from the environment or from the saved settings.
+    // The console was reading `provider`, which is the SAVED setting, and so a
+    // gateway started with `WARDEN_COMPILER_CLI=claude` compiled every
+    // sentence through the single-rule route as if the 1.7B were answering:
+    // the split never ran, and the instruction that should have become five
+    // rules became one. This is the adapter's own answer, not the file's.
+    capable: remoteCompiler() !== null,
     localModel: resolvedModel('adjudicator')
   });
 }));
