@@ -2,7 +2,7 @@
  * "This device": the reduced console for protecting one machine rather than administering a team.
  */
 import { verdictWord } from './activity.js';
-import { $, api, attr, esc, severityMeans, state } from './core.js';
+import { $, api, attr, esc, post, severityMeans, state } from './core.js';
 import { render } from './render.js';
 import { go } from './router.js';
 import { notARuleAnswer, readable } from './answers.js';
@@ -54,7 +54,7 @@ async function refreshSoloRules() {
  * every other call this view makes.
  */
 async function onEnterSolo() {
-  await api('/api/solo/setup', { method: 'POST' });
+  await post('/api/solo/setup');
   await Promise.all([refreshSoloPresets(), refreshSoloRules()]);
   render();
 }
@@ -165,10 +165,7 @@ function bindSolo() {
     const id = decodeURIComponent(box.dataset.preset);
     state.soloToggling = id;
     render();
-    await api(`/api/solo/presets/${encodeURIComponent(id)}/toggle`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ active: box.checked })
-    });
+    await post(`/api/solo/presets/${encodeURIComponent(id)}/toggle`, { active: box.checked });
     state.soloToggling = null;
     await Promise.all([refreshSoloPresets(), refreshSoloRules()]);
     render();
@@ -184,9 +181,7 @@ function bindSolo() {
     state.soloRuleNote = 'Checking it…';
     render();
 
-    const { ok, j } = await api('/api/solo/rules', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text })
-    });
+    const { ok, j } = await post('/api/solo/rules', { text });
 
     state.soloBusy = false;
     // Same compiler, same failure mode as the team console (spec §5): a
@@ -211,7 +206,7 @@ function bindSolo() {
     state.soloTestResult = null;
     render();
 
-    const setup = await api('/api/solo/protect', { method: 'POST' });
+    const setup = await post('/api/solo/protect');
     if (!setup.ok) {
       state.soloProtecting = false;
       state.soloProtectError = setup.j?.error ?? 'Could not finish setting this up.';
@@ -221,9 +216,7 @@ function bindSolo() {
 
     // The confirmation step: run a real prompt through the guard and show
     // what happened, rather than stopping at a bare "done" (PRD §3.4).
-    const test = await api('/api/solo/test', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({})
-    });
+    const test = await post('/api/solo/test', {});
     state.soloProtecting = false;
     state.soloTestResult = test.ok ? test.j : { verdict: null, reason: test.j?.error ?? 'could not run a check' };
     await Promise.all([refreshSoloPresets(), refreshSoloRules()]);

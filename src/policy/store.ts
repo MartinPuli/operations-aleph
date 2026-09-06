@@ -321,3 +321,17 @@ export function invalidate(): void {
 function nowIso(): string {
   return new Date().toISOString();
 }
+
+/**
+ * A policy read from a seed file and hashed as if ratified, for the harnesses
+ * that measure against a fixed policy rather than the live one. Three scripts
+ * had their own copy of this; the epoch timestamp is deliberate, so two runs
+ * of the same file get the same version.
+ */
+export function policyFromFile(path: string): PolicySpec {
+  const seed = JSON.parse(readFileSync(path, 'utf8')) as { rules?: Rule[]; quotas?: Quota[]; exemptRoles?: string[] };
+  const rules = seed.rules ?? [];
+  const quotas = seed.quotas ?? [];
+  const exemptRoles = seed.exemptRoles ?? ['admin'];
+  return { version: hashPolicy(rules, quotas, exemptRoles), updatedAt: new Date(0).toISOString(), rules, quotas, exemptRoles };
+}

@@ -53,8 +53,8 @@ import { createHash } from 'node:crypto';
 import { isolate } from '../src/guard/isolate.js';
 import { adjudicate, type AdjudicateOptions } from '../src/guard/passes/adjudicate.js';
 import { detectInjection } from '../src/guard/passes/injection.js';
-import { hashPolicy, rulesForActor } from '../src/policy/store.js';
-import type { PolicySpec, Quota, Rule } from '../src/policy/types.js';
+import { policyFromFile, rulesForActor } from '../src/policy/store.js';
+import type { PolicySpec, Rule } from '../src/policy/types.js';
 import { adapter, adapterName, isMock } from '../src/qvac/index.js';
 import { resolvedModel } from '../src/qvac/client.js';
 
@@ -138,22 +138,7 @@ type CellFile = {
 };
 
 function benchmarkPolicy(): PolicySpec {
-  const path = process.env['WARDEN_BENCHMARK_POLICY'] ?? 'data/seed/benchmark-policy.json';
-  const seed = JSON.parse(readFileSync(path, 'utf8')) as {
-    rules?: Rule[];
-    quotas?: Quota[];
-    exemptRoles?: string[];
-  };
-  const rules = seed.rules ?? [];
-  const quotas = seed.quotas ?? [];
-  const exemptRoles = seed.exemptRoles ?? ['admin'];
-  return {
-    version: hashPolicy(rules, quotas, exemptRoles),
-    updatedAt: new Date(0).toISOString(),
-    rules,
-    quotas,
-    exemptRoles
-  };
+  return policyFromFile(process.env['WARDEN_BENCHMARK_POLICY'] ?? 'data/seed/benchmark-policy.json');
 }
 
 /** Legitimate prompts the corpus already carries, so the bench covers them too. */

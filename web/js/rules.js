@@ -3,7 +3,7 @@
  */
 import { bindLogPeek } from './answers.js';
 import { compilerLine } from './compiler.js';
-import { $, api, attr, esc, severityMeans, state } from './core.js';
+import { $, attr, del, esc, post, severityMeans, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindPolicy, ruleChatPane } from './draft.js';
 import { audienceLabel, clip, isPersonal, plural, ruleName } from './format.js';
@@ -115,7 +115,7 @@ export function bindSweeps() {
   const clear = $('clearSample');
   if (clear) clear.onclick = async () => {
     clear.disabled = true;
-    const { ok, j } = await api('/api/company/sample/clear', { method: 'POST' });
+    const { ok, j } = await post('/api/company/sample/clear');
     clear.disabled = false;
     if (!ok) return;
     await Promise.all([refreshPolicy(), refreshPeople()]);
@@ -133,7 +133,7 @@ export function bindSweeps() {
     const n = state.policy.rules.length;
     if (!confirm(`Delete all ${n} rules? Warden will stop nothing until you write another. Limits by role are kept.`)) return;
     wipe.disabled = true;
-    await api('/api/policy/rules', { method: 'DELETE' });
+    await del('/api/policy/rules');
     await Promise.all([refreshPolicy(), refreshPeople()]);
     render();
   };

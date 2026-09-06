@@ -2,7 +2,7 @@
  * Inbox: held requests waiting for a person, and blocks somebody said were wrong.
  */
 import { decisionDetail, pendingEscalations } from './activity.js';
-import { $, api, attr, esc, state } from './core.js';
+import { $, attr, esc, post, state } from './core.js';
 import { refreshAppeals, refreshEscalations } from './data.js';
 import { clip, ruleName } from './format.js';
 import { render } from './render.js';
@@ -104,11 +104,7 @@ function bindInbox() {
     btn.onclick = async () => {
       const note = $('reviewNote')?.value.trim();
       btn.disabled = true;
-      const { ok, j } = await api(`/api/escalations/${encodeURIComponent(btn.dataset.id)}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ outcome: btn.dataset.review, ...(note ? { note } : {}) })
-      });
+      const { ok, j } = await post(`/api/escalations/${encodeURIComponent(btn.dataset.id)}`, { outcome: btn.dataset.review, ...(note ? { note } : {}) });
       if (!ok) {
         btn.disabled = false;
         const err = $('reviewNote_err');

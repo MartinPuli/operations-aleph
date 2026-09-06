@@ -53,6 +53,7 @@ import {
   type StructuredResult
 } from './types.js';
 import { resolvedModel } from './client.js';
+import { completeWithRepair } from './json.js';
 import { modelsDir } from './models.js';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -197,35 +198,14 @@ export class LlamaCppAdapter implements QvacAdapter {
     zodSchema: ZodType<T>,
     jsonSchema: Record<string, unknown>
   ): Promise<StructuredResult<T>> {
-    const first = await this.#run(req, jsonSchema);
-    const parsed = this.#parse(first.text, zodSchema);
-    if (parsed.ok) {
-      this.#firstTry++;
-      return { value: parsed.value, attempts: 1, repaired: false, stats: first.stats };
+    try {
+      const result = await completeWithRepair((r) => this.#run(r, jsonSchema), req, zodSchema, 'structured output');
+      if (result.repaired) this.#repaired++; else this.#firstTry++;
+      return result;
+    } catch (err) {
+      if (err instanceof FailClosedError) this.#failed++;
+      throw err;
     }
-
-    // One repair attempt, and the same reasoning as the QVAC adapter: a small
-    // model that missed twice is confused about the task, not the format.
-    const second = await this.#run(
-      {
-        ...req,
-        user: [req.user, '', 'Your previous answer was rejected:', parsed.error, 'Answer again, correcting exactly that.'].join('\n')
-      },
-      jsonSchema
-    );
-    const retry = this.#parse(second.text, zodSchema);
-    const stats: GenStats = { ...second.stats, ms: first.stats.ms + second.stats.ms };
-
-    if (retry.ok) {
-      this.#repaired++;
-      return { value: retry.value, attempts: 2, repaired: true, stats };
-    }
-
-    this.#failed++;
-    throw new FailClosedError(
-      `structured output failed validation twice for role "${req.role}": ${retry.error}`,
-      { role: req.role, attempts: 2, lastRaw: second.text.slice(0, 400) }
-    );
   }
 
   async embed(texts: string[]): Promise<number[][]> {
@@ -337,22 +317,4 @@ export class LlamaCppAdapter implements QvacAdapter {
     }
   }
 
-  #parse<T>(text: string, schema: ZodType<T>): { ok: true; value: T } | { ok: false; error: string } {
-    let json: unknown;
-    try {
-      const trimmed = text.trim();
-      const start = trimmed.indexOf('{');
-      const end = trimmed.lastIndexOf('}');
-      json = JSON.parse(start !== -1 && end > start ? trimmed.slice(start, end + 1) : trimmed);
-    } catch (err) {
-      return { ok: false, error: `not valid JSON: ${err instanceof Error ? err.message : err}` };
-    }
-
-    const result = schema.safeParse(json);
-    if (result.success) return { ok: true, value: result.data };
-    return {
-      ok: false,
-      error: result.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ')
-    };
-  }
 }

@@ -1,7 +1,7 @@
 /**
  * The render loop: carry the fields across the swap, draw the shell, let the view draw itself, then bind.
  */
-import { $, api, esc, state, val } from './core.js';
+import { $, esc, post, state, val } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindGetModels } from './engine.js';
 import { renderNav } from './nav.js';
@@ -97,7 +97,7 @@ export function render() {
   if (sample) sample.onclick = async () => {
     sample.disabled = true;
     sample.textContent = 'Loading…';
-    await api('/api/company/sample', { method: 'POST' });
+    await post('/api/company/sample');
     await Promise.all([refreshPolicy(), refreshPeople()]);
     go('policy');
   };

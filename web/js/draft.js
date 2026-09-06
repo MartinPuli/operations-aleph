@@ -1,7 +1,7 @@
 /**
  * Writing a rule as a conversation: the turns, the draft card, the check, the audience, and Activate.
  */
-import { $, REGRESSION_SAMPLE, api, esc, severityVerb, state } from './core.js';
+import { $, REGRESSION_SAMPLE, del, esc, post, severityVerb, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { audienceLabel, personById, plural, sendOnEnter } from './format.js';
 import { bindLimits } from './limits.js';
@@ -125,15 +125,6 @@ function draftCard() {
   const p = state.preview;
   const verdict = verdictLine(p);
 
-  const checkRows = p ? p.rows.map((r) => `
-    <div class="preview-row${r.isFalsePositive ? ' fp' : ''}">
-      <span class="v ${esc(r.verdict)}">${esc(r.verdict)}</span>
-      <span class="p">${esc(r.prompt)}</span>
-      ${r.source === 'log' ? '<span class="badge">real</span>' : ''}
-      ${r.isFalsePositive ? '<span class="badge block">wrongly stopped</span>' : ''}
-      ${r.isMiss ? '<span class="badge escalate">missed</span>' : ''}
-    </div>`).join('') : '';
-
   return `<div class="artifact">
     <div class="detail-head">
       <span class="badge ${esc(d.severity)}">${esc(d.severity)}</span>
@@ -174,7 +165,7 @@ function draftCard() {
     </div>
 
     <div class="folds">
-      ${p ? disclosure('n:check', `The ${plural(p.rows.length, 'request')} it was checked against`, checkRows) : ''}
+      ${p ? disclosure('n:check', `The ${plural(p.rows.length, 'request')} it was checked against`, checkRowsOf(p)) : ''}
       ${d.guidance ? disclosure('n:told', 'What the employee is told instead', `<div class="banner">${esc(d.guidance)}</div>`) : ''}
       ${examplesFold('n:examples', d)}
     </div>
@@ -192,6 +183,27 @@ export function say(html, pending = false) {
 
 function dropPending() {
   state.ruleChat = state.ruleChat.filter((t) => !t.pending);
+}
+
+/**
+ * What both compile routes have in common once the answer is back: the
+ * pending turn goes, and a decline or a failure is said and ends the turn.
+ *
+ * A decline is an answer, not an error. "Quiero reducir mi uso al 50%" is a
+ * spending target, and the honest reply is the screen that holds spending
+ * targets, not a prohibition invented to fit the shape; before the compiler
+ * could decline, that sentence became a rule forbidding anyone to be limited
+ * on the basis of a usage goal, which is the request inside out.
+ *
+ * Returns true when there is a draft to go on with.
+ */
+function compiled(ok, j) {
+  dropPending();
+  if (ok && !j?.notARule) return true;
+  state.ruleBusy = false;
+  say(j?.notARule ? notARuleAnswer(j) : compileFailure(j));
+  render();
+  return false;
 }
 
 export async function sendRuleMessage(text) {
@@ -215,30 +227,9 @@ export async function sendRuleMessage(text) {
     : { text: clean };
   if (state.draftFor) body.lockTo = [`@${state.draftFor}`];
 
-  const { ok, j } = await api('/api/policy/draft', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
-  });
+  const { ok, j } = await post('/api/policy/draft', body);
 
-  dropPending();
-
-  // The compiler read the sentence and says it is not a rule. "Quiero reducir
-  // mi uso al 50%" is a spending target, and the honest answer is the screen
-  // that holds spending targets, not a prohibition invented to fit the shape.
-  // Before it had one, that sentence compiled into a rule forbidding anyone to
-  // be limited on the basis of a usage goal, which is the request inside out.
-  if (ok && j.notARule) {
-    state.ruleBusy = false;
-    say(notARuleAnswer(j));
-    render();
-    return;
-  }
-
-  if (!ok) {
-    state.ruleBusy = false;
-    say(compileFailure(j));
-    render();
-    return;
-  }
+  if (!compiled(ok, j)) return;
 
   state.draft = j;
   startDraftAudience();
@@ -300,26 +291,9 @@ async function sendRuleSet(text) {
   const body = { text: clean };
   if (state.draftFor) body.lockTo = [`@${state.draftFor}`];
 
-  const { ok, j } = await api('/api/policy/draft-set', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
-  });
+  const { ok, j } = await post('/api/policy/draft-set', body);
 
-  dropPending();
-
-  // Same refusal, same handling. This route is the one that was forgotten.
-  if (ok && j.notARule) {
-    state.ruleBusy = false;
-    say(notARuleAnswer(j));
-    render();
-    return;
-  }
-
-  if (!ok || !Array.isArray(j.rules) || j.rules.length === 0) {
-    state.ruleBusy = false;
-    say(compileFailure(j));
-    render();
-    return;
-  }
+  if (!compiled(ok && Array.isArray(j.rules) && j.rules.length > 0, j)) return;
 
   // The part of the sentence that was a spending target, if any, answered in
   // the same turn as the rules. The limits carry their own Apply button.
@@ -365,10 +339,7 @@ async function runPreview(against = []) {
     : 'Checking it…', true);
   render();
 
-  const { ok, j } = await api('/api/policy/preview', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(against.length ? { rule: state.draft, against } : { rule: state.draft })
-  });
+  const { ok, j } = await post('/api/policy/preview', against.length ? { rule: state.draft, against } : { rule: state.draft });
 
   dropPending();
   state.ruleBusy = false;
@@ -419,7 +390,7 @@ export function bindPolicy() {
   const del = $('delRule');
   if (del) del.onclick = async () => {
     if (!confirm('Remove this rule? It stops binding everyone immediately.')) return;
-    await api(`/api/policy/rules/${encodeURIComponent(del.dataset.id)}`, { method: 'DELETE' });
+    await del(`/api/policy/rules/${encodeURIComponent(del.dataset.id)}`);
     await Promise.all([refreshPolicy(), refreshPeople()]);
     go('policy');
   };
@@ -431,10 +402,7 @@ export function bindPolicy() {
   if (apply) apply.onclick = async () => {
     apply.disabled = true;
     apply.textContent = 'Applying…';
-    const { ok, j } = await api('/api/quotas/apply', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ limits: state.pendingLimits ?? [] })
-    });
+    const { ok, j } = await post('/api/quotas/apply', { limits: state.pendingLimits ?? [] });
     if (!ok) { apply.disabled = false; apply.textContent = 'Apply these limits'; return; }
     state.pendingLimits = null;
     await refreshPolicy();
@@ -518,10 +486,7 @@ export function bindPolicy() {
 
     ratify.disabled = true;
     const person = state.draftFor;
-    await api('/api/policy/ratify', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ rule: state.draft })
-    });
+    await post('/api/policy/ratify', { rule: state.draft });
     const id = state.draft.id;
     // A rule taken out of a set to be edited alone goes back to the set as an
     // active card, and the rest of the set stays on screen to be decided.

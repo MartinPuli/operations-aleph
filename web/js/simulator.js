@@ -2,7 +2,7 @@
  * The simulator: send a prompt as somebody on the team, and the two ways out of a refusal.
  */
 import { passRow } from './activity.js';
-import { $, api, attr, esc, state } from './core.js';
+import { $, attr, esc, post, state } from './core.js';
 import { refreshAppeals } from './data.js';
 import { say } from './draft.js';
 import { personById, plural, ruleName, sendOnEnter } from './format.js';
@@ -108,13 +108,8 @@ async function judge(text, person, who) {
   // console deliberately has no privileged way to assert an identity — it
   // exercises the same path an employee's tool does, so a break here breaks
   // the demo too.
-  const { j } = await api('/api/guard/check', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      ...(person?.apiKey ? { authorization: `Bearer ${person.apiKey}` } : {})
-    },
-    body: JSON.stringify({ prompt: text, source: 'console' })
+  const { j } = await post('/api/guard/check', { prompt: text, source: 'console' }, {
+    headers: person?.apiKey ? { authorization: `Bearer ${person.apiKey}` } : {}
   });
 
   if (j?.error === 'unknown_api_key') {
@@ -213,11 +208,7 @@ function bindFollowUps() {
 
   async function askRewrite(m) {
     m.busy = 'rewrite'; m.error = null; render();
-    const { ok, j } = await api('/api/guard/rewrite', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${keyOf(m)}` },
-      body: JSON.stringify({ auditId: m.followUp.auditId, prompt: m.followUp.prompt })
-    });
+    const { ok, j } = await post('/api/guard/rewrite', { auditId: m.followUp.auditId, prompt: m.followUp.prompt }, { headers: { authorization: `Bearer ${keyOf(m)}` } });
     m.busy = null;
     // A refusal comes back as a reason rather than an error, and both 200 and
     // 409 carry one; only a shapeless failure is worth showing as an error.
@@ -229,11 +220,7 @@ function bindFollowUps() {
   async function sendAppeal(m) {
     m.busy = 'appeal'; m.error = null; render();
     const note = $('appealNote')?.value.trim();
-    const { ok, j } = await api('/api/guard/appeal', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${keyOf(m)}` },
-      body: JSON.stringify({ auditId: m.followUp.auditId, ...(note ? { note } : {}) })
-    });
+    const { ok, j } = await post('/api/guard/appeal', { auditId: m.followUp.auditId, ...(note ? { note } : {}) }, { headers: { authorization: `Bearer ${keyOf(m)}` } });
     m.busy = null;
     if (!ok) { m.error = j?.error ?? 'could not send that'; render(); return; }
     m.appealed = true;

@@ -107,21 +107,26 @@ export function recordDecision(
     prevHash
   };
 
-  const entry: AuditEntry = {
-    ...body,
-    entryHash: createHash('sha256').update(prevHash + JSON.stringify(body)).digest('hex')
-  };
+  return append(body);
+}
 
-  // Counted before the append, or the new line gets counted twice: the read
-  // inside `currentCount()` would already see it.
+/**
+ * Chain, write, witness. The one append every kind of entry goes through, so
+ * `verifyChain` never has to know there are two kinds: it rebuilds each
+ * entry's hash from whatever fields the entry has.
+ *
+ * The count is taken before the append, or the new line gets counted twice.
+ * The witness is written after the entry, never before: a witness claiming an
+ * entry that was not appended would report tampering on a log that is merely
+ * mid-write.
+ */
+function append<T extends { prevHash: string }>(body: T): T & { entryHash: string } {
+  const entry = { ...body, entryHash: createHash('sha256').update(body.prevHash + JSON.stringify(body)).digest('hex') };
   const nextCount = currentCount() + 1;
-
   mkdirSync(dirname(AUDIT_PATH), { recursive: true });
   appendFileSync(AUDIT_PATH, JSON.stringify(entry) + '\n');
   lastHash = entry.entryHash;
   entryCount = nextCount;
-  // Written after the entry, never before: a witness claiming an entry that was
-  // not appended would report tampering on a log that is merely mid-write.
   writeFileSync(WITNESS_PATH, JSON.stringify({ entries: nextCount, head: entry.entryHash }) + '\n');
   return entry;
 }
@@ -129,9 +134,7 @@ export function recordDecision(
 /**
  * Record an administrative change in the same chain as the decisions.
  *
- * Deliberately the same append and the same hashing as `recordDecision`, so
- * `verifyChain` covers both without knowing there are two kinds — it rebuilds
- * each entry's hash from whatever fields the entry has.
+ * The same `append` as a decision, so the chain has one shape.
  */
 export function recordAdminAction(
   actor: { id: string; role: string },
@@ -148,16 +151,7 @@ export function recordAdminAction(
     status,
     prevHash
   };
-  const entry: AdminAuditEntry = {
-    ...body,
-    entryHash: createHash('sha256').update(prevHash + JSON.stringify(body)).digest('hex')
-  };
-  const nextCount = currentCount() + 1;
-  mkdirSync(dirname(AUDIT_PATH), { recursive: true });
-  appendFileSync(AUDIT_PATH, JSON.stringify(entry) + '\n');
-  lastHash = entry.entryHash;
-  entryCount = nextCount;
-  writeFileSync(WITNESS_PATH, JSON.stringify({ entries: nextCount, head: entry.entryHash }) + '\n');
+  const entry: AdminAuditEntry = append(body);
   return entry;
 }
 

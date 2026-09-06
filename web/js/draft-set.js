@@ -8,7 +8,7 @@
  * single draft, and activating it there hands it back here as an active
  * card, so the two files share `state.set` and nothing else.
  */
-import { $, api, esc, state } from './core.js';
+import { $, esc, post, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { audienceLabel, plural } from './format.js';
 import { disclosure, render } from './render.js';
@@ -101,10 +101,7 @@ export async function runSetPreviews(set) {
     if (item.status !== 'pending') continue;
     item.status = 'checking';
     render();
-    const { ok, j } = await api('/api/policy/preview', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ rule: item.rule })
-    });
+    const { ok, j } = await post('/api/policy/preview', { rule: item.rule });
     if (state.set !== set) return;
     if (item.status === 'checking') {
       item.preview = ok ? j : null;
@@ -123,10 +120,7 @@ export async function runSetPreviews(set) {
 
 /** Ratify one rule of the set, keeping the card as an "active" record. */
 async function ratifySetItem(item) {
-  await api('/api/policy/ratify', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ rule: item.rule })
-  });
+  await post('/api/policy/ratify', { rule: item.rule });
   item.status = 'active';
 }
 

@@ -1,7 +1,7 @@
 /**
  * Engine: is the guard working, which model judges, and what is on this disk.
  */
-import { $, api, esc, state } from './core.js';
+import { $, esc, post, state } from './core.js';
 import { refreshAdjudicator, refreshCompiler } from './data.js';
 import { modelLabel } from './format.js';
 import { render } from './render.js';
@@ -161,7 +161,7 @@ export function bindGetModels() {
     models.onclick = async () => {
     models.disabled = true;
     models.textContent = 'Starting the download…';
-    const { ok, j } = await api('/api/gateway/leave-demo', { method: 'POST' });
+    const { ok, j } = await post('/api/gateway/leave-demo');
     if (!ok) {
       models.disabled = false;
       models.textContent = label;
@@ -183,11 +183,7 @@ function bindEngine() {
       const model = seat.dataset.seat;
       if (model === (state.adjudicator?.model ?? 'default')) return;
       seat.disabled = true;
-      const { ok, j } = await api('/api/settings/adjudicator', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model })
-      });
+      const { ok, j } = await post('/api/settings/adjudicator', { model });
       seat.disabled = false;
       if (!ok) {
         seat.insertAdjacentHTML('afterend', `<span class="note bad">${esc(readable(j) ?? 'could not change it')}</span>`);

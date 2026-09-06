@@ -74,6 +74,16 @@ export const api = async (path, opts, retried) => {
   }
   return { ok: r.ok, status: r.status, j };
 };
+
+/** A JSON request. Every write the console makes is one of these, and they all read the same.
+ *  `extra` takes a `method` other than POST, or `headers` for the simulator's borrowed identity. */
+export const post = (path, body, extra = {}) =>
+  api(path, {
+    method: extra.method ?? 'POST',
+    headers: { 'content-type': 'application/json', ...(extra.headers ?? {}) },
+    body: JSON.stringify(body ?? {})
+  });
+export const del = (path) => api(path, { method: 'DELETE' });
 /**
  * What a severity actually does, in the admin's words.
  *

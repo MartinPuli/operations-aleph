@@ -381,23 +381,6 @@ from the tool name every hook call carries. What someone was told to install and
 what they installed are different things, and the difference is a directory that
 looks deployed while governing nobody.
 
-### Who the policy does not govern
-
-`exemptRoles` in the policy names roles that are measured against nothing. The
-person who ratifies the rules should not be tripping over them: five of the
-eight seed rules bind `*`, including the pinned injection rule, so without this
-there was no role an operator could hold and still work.
-
-It lives inside `PolicySpec` rather than in an environment variable because "who
-is exempt" is the most security-relevant sentence in the whole spec — it belongs
-in the version hash, where changing it is detectable, next to the rules it
-overrides. The check runs in `rulesForActor()` before `appliesTo`, so a rule
-written for everyone cannot quietly re-capture an exempt role.
-
-This is only ever as strong as the identity behind the role, which is why it is
-safe now and would not have been a day ago: the role comes from a directory
-entry behind an issued API key, not from anything the caller can set.
-
 ### People
 
 The People tab is the directory: add someone, assign their role, create a role
@@ -696,7 +679,9 @@ Pinned to [`b854bb800dac`](https://github.com/Wardenlabs/warden/tree/b854bb800da
 
 | Role | Model | QVAC capability |
 |---|---|---|
-| Adjudicator, compiler | `QWEN3_1_7B_INST_Q4` | text generation, grammar-constrained structured output |
+| Adjudicator (the judge) | `DynaGuard-4B` Q6_K, the default since 2026-09-04; Qwen3 1.7B / 8B and DynaGuard 1.7B / 8B are seats in the console | text generation, grammar-constrained structured output |
+| Compiler (writes rules) | `QWEN3_1_7B_INST_Q4` on this machine, or Claude Code / Codex / an OpenAI-shaped endpoint if you point it there | text generation |
+| Detector (injection pass, off) | `QWEN3_600M_INST_Q4` | text generation |
 | Retrieval | `EMBEDDINGGEMMA_300M_Q8_0` | text embeddings |
 | Attachments | `OCR_LATIN` | OCR |
 | Protected assistant | local QVAC server | OpenAI-compatible serving |
@@ -716,9 +701,16 @@ pnpm run dev              # server + console on :8080
 pnpm run smoke            # structured-output reliability over N runs
 pnpm run redteam          # full corpus → REPORT.md
 pnpm run redteam -- --class guard-targeted --reps 5
+pnpm run eval -- --attacks --reps 3 --label "…"   # the product run, paired by prompt
+pnpm run bench -- --a base --b <variant>         # one message against one rule, with a p-value
 pnpm run verify-audit     # recompute the audit hash chain
-pnpm run test:vote        # semantics of the confirmation vote
 pnpm run typecheck
+
+pnpm run test:hook        # the hook: fail-open deadlines, refusals in both languages
+pnpm run test:cli         # the CLI compiler's command line, against a stand-in claude
+pnpm run test:schema      # what a compiler's answer may look like, declines included
+pnpm run test:vote        # semantics of the confirmation vote
+pnpm run test:screen      # the policy screen and the native DynaGuard form
 
 pnpm run build            # compile server + desktop shell to dist/ and desktop/dist/
 pnpm start                # run the compiled server (what the desktop app runs)
