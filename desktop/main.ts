@@ -13,11 +13,11 @@
  * firewall prompt belongs to.
  */
 import { app, BrowserWindow, clipboard, dialog, Menu, shell } from 'electron';
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { askMode, ensureModels, modelsPresent, sendState } from './first-run.js';
+import { askMode, ensureModels, modelsPresent, sendState, setupLibReady } from './first-run.js';
 import {
   fetchHealth,
   pickPort,
@@ -37,6 +37,20 @@ const PRELOAD = join(HERE, 'preload.cjs');
 const ICON_PNG = join(APP_ROOT, 'desktop', 'icons', 'icon.png');
 /** CI boot proof: forces mock, quits 0 once the console actually loads. */
 const SMOKE = process.env['WARDEN_SMOKE'] === '1';
+
+/**
+ * Where a smoke run reports, besides stdout. A GUI process on Windows has no
+ * console attached, so the runner that launches the packaged .exe reads this
+ * file instead of a pipe; on Linux and macOS both work and the file is the
+ * one that does not depend on how the app was started.
+ */
+const SMOKE_FILE = process.env['WARDEN_SMOKE_FILE'];
+function smokeReport(line: string): void {
+  (line.includes('OK') ? console.log : console.error)(line);
+  if (SMOKE_FILE) {
+    try { appendFileSync(SMOKE_FILE, line + '\n'); } catch { /* the console line still stands */ }
+  }
+}
 
 let userData = '';
 let settings: DesktopSettings = { lanEnabled: false, exposeEnabled: false, adapter: 'real' };
@@ -141,9 +155,18 @@ async function main(): Promise<void> {
   if (SMOKE) {
     settings = { ...settings, adapter: 'mock', lanEnabled: false, exposeEnabled: false };
     setTimeout(() => {
-      console.error('WARDEN_SMOKE_TIMEOUT');
+      smokeReport('WARDEN_SMOKE_TIMEOUT');
       app.exit(1);
     }, 120_000).unref();
+    // The part of first-run the smoke otherwise skips: mock mode never asks
+    // for models, so the modules that download them are never loaded, and a
+    // server export the shell needs can vanish with every check green.
+    try {
+      await setupLibReady(APP_ROOT);
+    } catch (err) {
+      await gatewayFailed(`setup modules: ${err instanceof Error ? err.message : String(err)}`);
+      return;
+    }
   }
 
   splash = new BrowserWindow({
@@ -355,10 +378,10 @@ function openConsole(port: number, hash?: string): void {
 async function smokeVerify(): Promise<void> {
   const health = await fetchHealth(activePort);
   if (health?.ok) {
-    console.log('WARDEN_SMOKE_OK');
+    smokeReport('WARDEN_SMOKE_OK');
     await shutdownAndExit(0);
   } else {
-    console.error('WARDEN_SMOKE_FAIL: /health did not answer');
+    smokeReport('WARDEN_SMOKE_FAIL: /health did not answer');
     await shutdownAndExit(1);
   }
 }
@@ -401,7 +424,7 @@ function onGatewayExit(code: number): void {
 
 async function gatewayFailed(reason: string): Promise<void> {
   if (SMOKE) {
-    console.error(`WARDEN_SMOKE_FAIL: ${reason}`);
+    smokeReport(`WARDEN_SMOKE_FAIL: ${reason}`);
     await shutdownAndExit(1);
     return;
   }
