@@ -1041,7 +1041,7 @@ async function main() {
       ].join('\n');
       process.stderr.write(`${reason}\n`);
       process.stdout.write(
-        JSON.stringify({ continue: false, stopReason: reason, decision: 'block', reason })
+        JSON.stringify({ continue: false, stopReason: reason, decision: 'block', reason, systemMessage: reason })
       );
       process.exitCode = 2;
       return;
@@ -1087,9 +1087,23 @@ async function main() {
    * are what that tool actually stops on — while an extra key is inert to a
    * tool that ignores it. The non-zero exit below is still the part that must
    * always happen, because it is the one signal every caller understands.
+   *
+   * `systemMessage` is the refusal one more time, for the surfaces that show
+   * nothing else. In the terminal, Claude Code prints `reason` (or stderr) when
+   * it erases the prompt. The desktop app does not: the prompt vanished and
+   * the person saw no rule, no guidance and no audit id, which is a block with
+   * every reason to appeal it removed. Claude Code documents `systemMessage`
+   * as the one field that reaches the person on every platform, so the same
+   * text goes there too. A tool that does not know the key ignores it.
    */
   process.stdout.write(
-    JSON.stringify({ continue: false, stopReason: message, decision: 'block', reason: message }) + '\n'
+    JSON.stringify({
+      continue: false,
+      stopReason: message,
+      decision: 'block',
+      reason: message,
+      systemMessage: message
+    }) + '\n'
   );
 
   process.exitCode = 2;
