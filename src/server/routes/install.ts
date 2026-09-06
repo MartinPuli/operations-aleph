@@ -97,9 +97,17 @@ echo "Downloading the Warden hook…"
 curl -fsSL "${url}/warden-hook.mjs" -o "$HOOK"
 chmod +x "$HOOK"
 
-PROFILE="$HOME/.zshrc"
-[ -n "$BASH_VERSION" ] && PROFILE="$HOME/.bashrc"
-[ -f "$PROFILE" ] || PROFILE="$HOME/.profile"
+# $BASH_VERSION is not "the shell chose bash": on macOS /bin/sh is bash
+# under the hood, so it is set here even though this ran as sh, and every
+# install used to land in ~/.bashrc — a file zsh (the default shell since
+# Catalina) never sources, so the export was invisible to the very terminal
+# it was written for. $SHELL is the login shell the OS actually launches,
+# which is what a person's next terminal will be.
+case "$SHELL" in
+  */zsh) PROFILE="$HOME/.zshrc" ;;
+  */bash) PROFILE="$HOME/.bashrc"; [ -f "$PROFILE" ] || PROFILE="$HOME/.bash_profile" ;;
+  *) PROFILE="$HOME/.profile" ;;
+esac
 
 # Idempotent: re-running after a role change or a new gateway address replaces
 # the old block instead of stacking a second, contradictory one.
@@ -125,14 +133,37 @@ echo "Open a new terminal (or: source $PROFILE)."
 # ends on an inventory that says "governed" instead of on a sentence telling
 # them to go and configure three programs by hand.
 #
-# \`|| true\` covers a machine with no node, which would be a strange place to
-# be installing a node hook but is not a reason for the install to end red.
-#
+# This has to find node itself rather than trust PATH. Run from a terminal,
+# \`node\` resolves through the profile's own PATH — but the desktop app runs
+# this same script from a spawned /bin/sh that inherits launchd's minimal
+# PATH, not the shell's, so a node installed via Homebrew or nvm is invisible
+# to it even though every terminal on the machine can see it. That failure was
+# silent before this comment existed: \`node\` exited "command not found",
+# \`--fix\` never ran, and \`|| true\` swallowed it — the install reported
+# success while Claude Code stayed unwired. Checked in order: PATH first (so a
+# terminal-launched install costs nothing extra), then the install locations
+# that actually exist on this machine (\`which node\` above resolved to
+# /opt/homebrew/bin/node here).
+NODE_BIN="$(command -v node 2>/dev/null || true)"
+if [ -z "$NODE_BIN" ]; then
+  for candidate in /opt/homebrew/bin/node /usr/local/bin/node /usr/local/opt/node/bin/node "$HOME/.volta/bin/node" "$HOME/.local/bin/node" "$HOME"/.nvm/versions/node/*/bin/node; do
+    if [ -x "$candidate" ]; then NODE_BIN="$candidate"; break; fi
+  done
+fi
+
 # The two values just written to the profile go to --fix on its own line,
 # because this shell never sourced that profile and --fix copies them into
-# Claude Code's settings: a Claude Code opened from the desktop app does not
-# read the profile either, and without them its hook fails open.
-WARDEN_URL="${url}" WARDEN_API_KEY="${person.apiKey}" node "$HOOK" --fix || true
+# Claude Code's settings.json \`env\` block too: a Claude Code opened from the
+# desktop app never sourced the profile either, and without them its hook
+# fails open.
+if [ -n "$NODE_BIN" ]; then
+  WARDEN_URL="${url}" WARDEN_API_KEY="${person.apiKey}" "$NODE_BIN" "$HOOK" --fix || true
+else
+  echo ""
+  echo "Could not find Node on this machine, so Claude Code / Codex were not wired automatically."
+  echo "Install Node, then run this once:"
+  echo "  WARDEN_URL=${url} WARDEN_API_KEY=${person.apiKey} node \"$HOOK\" --fix"
+fi
 
 echo "Anything it could not wire: ${url}  ->  People  ->  ${safeName}  ->  Onboarding"
 `;
