@@ -36,7 +36,7 @@ export function ruleChatPane() {
         <div class="hero-box">
           <textarea id="ruleMsg" rows="2" placeholder="${state.draft
             ? 'Tell Warden how to change it…'
-            : state.set ? 'Or describe another rule…' : 'Describe the rule in your own words…'}"></textarea>
+            : state.set ? 'Refine the set (“solo para ventas”, “sumá…”), or describe another rule…' : 'Describe the rule in your own words…'}"></textarea>
           <button type="button" class="btn primary send" id="ruleSend"${state.ruleBusy ? ' disabled' : ''}>${state.ruleBusy ? 'Working…' : 'Send'}</button>
         </div>
       </div>
@@ -186,6 +186,22 @@ function dropPending() {
 }
 
 /**
+ * The conversation so far, for the compiler: what the administrator said
+ * before this message, and the rules on the table now. Without it every
+ * message compiled as if it were the first, and "hacelo solo para ventas"
+ * after a set of five became a rule about sales. The current message is
+ * already the last turn in `ruleChat`, so it is left out of the history.
+ */
+function conversation() {
+  const said = state.ruleChat.filter((t) => t.from === 'you').map((t) => t.text);
+  const history = said.slice(0, -1).slice(-6);
+  const current = state.set
+    ? state.set.items.filter((it) => it.status !== 'active').map((it) => it.rule.text)
+    : state.draft ? [state.draft.text] : [];
+  return { history, current };
+}
+
+/**
  * What both compile routes have in common once the answer is back: the
  * pending turn goes, and a decline or a failure is said and ends the turn.
  *
@@ -223,8 +239,8 @@ export async function sendRuleMessage(text) {
   // the current rule plus the correction. Restating the rule is what keeps the
   // second turn from being read as a brand new one.
   const body = state.draft
-    ? { text: `${state.draft.text}\n\nChange it as follows: ${clean}` }
-    : { text: clean };
+    ? { text: `${state.draft.text}\n\nChange it as follows: ${clean}`, ...conversation() }
+    : { text: clean, ...conversation() };
   if (state.draftFor) body.lockTo = [`@${state.draftFor}`];
 
   const { ok, j } = await post('/api/policy/draft', body);
@@ -288,8 +304,11 @@ async function sendRuleSet(text) {
   say('Working out what that means, then compiling each part…', true);
   if (composing()) render(); else go('policy', 'new');
 
-  const body = { text: clean };
+  const body = { text: clean, ...conversation() };
   if (state.draftFor) body.lockTo = [`@${state.draftFor}`];
+  // A follow-up replaces the rules still on the table; the ones already
+  // activated stay as the record they are.
+  const kept = state.set ? state.set.items.filter((it) => it.status === 'active') : [];
 
   const { ok, j } = await post('/api/policy/draft-set', body);
 
@@ -301,7 +320,8 @@ async function sendRuleSet(text) {
     ? `<div class="note">Part of that was a spending target, not a rule.</div>${limitsPlan(j)}`
     : '';
 
-  if (j.rules.length === 1) {
+  const followUp = kept.length > 0 || Boolean(state.set);
+  if (j.rules.length === 1 && !followUp) {
     state.draft = j.rules[0];
     startDraftAudience();
     state.preview = null;
@@ -314,12 +334,14 @@ async function sendRuleSet(text) {
   state.draft = null;
   state.preview = null;
   state.set = {
-    items: j.rules.map((rule) => ({ rule, preview: null, status: 'pending' })),
+    items: [...kept, ...j.rules.map((rule) => ({ rule, preview: null, status: 'pending' }))],
     limits: j.limits ?? null,
     factor: j.factor
   };
   state.ruleBusy = false;
-  say(`That’s ${plural(j.rules.length, 'rule')}. Each has its own check below. Activate one, or all of them once you’ve read the list.${limitsNote}`);
+  say(followUp
+    ? `Updated: ${plural(j.rules.length, 'rule')} on the table now, each checked again below.${limitsNote}`
+    : `That’s ${plural(j.rules.length, 'rule')}. Each has its own check below. Activate one, or all of them once you’ve read the list.${limitsNote}`);
   render();
 
   await runSetPreviews(state.set);

@@ -53,7 +53,9 @@ function gauge(used: number | undefined, limit: number | undefined, warnAt: numb
 export function checkBudget(
   spec: PolicySpec,
   actor: Actor,
-  usage: ReportedUsage | undefined
+  usage: ReportedUsage | undefined,
+  /** Length of the prompt under judgement. The one gauge the gateway measures itself. */
+  promptChars = 0
 ): BudgetCheck {
   const started = Date.now();
   const quota = spec.quotas.find((q) => q.role === actor.role);
@@ -61,6 +63,7 @@ export function checkBudget(
 
   const output = gauge(usage?.outputTokens, quota?.maxSessionOutputTokens, warnAt);
   const context = gauge(usage?.contextTokens, quota?.maxContextTokens, warnAt);
+  const prompt = gauge(promptChars, quota?.maxPromptChars, warnAt);
 
   // Reporting nothing is not the same as being under budget, and the trace has
   // to be able to tell them apart. A tool that never reports is a tool whose
@@ -69,8 +72,8 @@ export function checkBudget(
   const unreported =
     usage?.outputTokens === undefined && usage?.contextTokens === undefined;
 
-  const status: BudgetStatus = { output, context, unreported };
-  const over = output.over || context.over;
+  const status: BudgetStatus = { output, context, prompt, unreported };
+  const over = output.over || context.over || prompt.over;
 
   const reasons: string[] = [];
   if (output.over) {
@@ -85,13 +88,20 @@ export function checkBudget(
         `over the ${context.limit?.toLocaleString('en-US')} allowed for role "${actor.role}"`
     );
   }
+  if (prompt.over) {
+    reasons.push(
+      `this prompt is ${prompt.used.toLocaleString('en-US')} characters, ` +
+        `over the ${prompt.limit?.toLocaleString('en-US')} allowed for role "${actor.role}"`
+    );
+  }
 
   return {
     verdict: over ? 'ESCALATE' : 'ALLOW',
     status,
     explanation: over
-      ? `Held on budget: ${reasons.join('; ')}. Start a new session, or ask an ` +
-        `administrator to raise the ceiling.`
+      ? `Held on budget: ${reasons.join('; ')}. ${prompt.over
+          ? 'Send the part that matters rather than the whole file, or ask an administrator to raise the ceiling.'
+          : 'Start a new session, or ask an administrator to raise the ceiling.'}`
       : '',
     trace: {
       pass: 'budget',
@@ -112,7 +122,8 @@ export function checkBudget(
          */
         model: usage?.model ?? null,
         output: { used: output.used, limit: output.limit, pct: output.pct, warn: output.warn },
-        context: { used: context.used, limit: context.limit, pct: context.pct, warn: context.warn }
+        context: { used: context.used, limit: context.limit, pct: context.pct, warn: context.warn },
+        prompt: { used: prompt.used, limit: prompt.limit, pct: prompt.pct, warn: prompt.warn }
       }
     }
   };

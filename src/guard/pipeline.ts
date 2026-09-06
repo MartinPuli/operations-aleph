@@ -83,7 +83,7 @@ export async function evaluate(
   // Observes only. Its ESCALATE is combined at the end rather than returned
   // here, because returning it would make a prompt that ALSO breaks a rule come
   // back held instead of refused — a decision loosened by adding a control.
-  const budget = checkBudget(policy, input.actor, input.usage);
+  const budget = checkBudget(policy, input.actor, input.usage, input.prompt.length);
   passes.push(budget.trace);
 
   // ── pass -1: secrets ───────────────────────────────────────────────────────

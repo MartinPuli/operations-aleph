@@ -27,7 +27,10 @@ function quotaCard(q) {
   if (q.maxContextTokens) {
     rows.push(`<div class="quota-row"><span>context</span><b>${tokens(q.maxContextTokens)}</b></div>`);
   }
-  if (!q.maxSessionOutputTokens && !q.maxContextTokens) {
+  if (q.maxPromptChars) {
+    rows.push(`<div class="quota-row"><span>prompt</span><b>${tokens(q.maxPromptChars)} chars</b></div>`);
+  }
+  if (!q.maxSessionOutputTokens && !q.maxContextTokens && !q.maxPromptChars) {
     rows.push('<div class="quota-row unmetered"><span>tokens</span><b>no limit</b></div>');
   }
   return `<button type="button" class="quota" data-quota="${esc(q.role)}">
@@ -84,6 +87,8 @@ function quotaEditor(q) {
       <input type="number" min="1" step="1" id="qOut" value="${q.maxSessionOutputTokens ?? ''}" placeholder="none"></label>
     <label class="quota-row"><span>context</span>
       <input type="number" min="1" step="1" id="qCtx" value="${q.maxContextTokens ?? ''}" placeholder="none"></label>
+    <label class="quota-row"><span>prompt chars</span>
+      <input type="number" min="1" step="1" id="qPrompt" value="${q.maxPromptChars ?? ''}" placeholder="none"></label>
     ${state.quotaError ? `<div class="note bad">${esc(state.quotaError)}</div>` : ''}
     <div class="quota-actions">
       <button type="submit" class="btn primary">Save</button>
@@ -127,7 +132,8 @@ export function bindLimits() {
     const { ok, j } = await post(`/api/quotas/${encodeURIComponent(role)}`, {
         maxRequestsPerDay: num('qDay'),
         maxSessionOutputTokens: num('qOut'),
-        maxContextTokens: num('qCtx')
+        maxContextTokens: num('qCtx'),
+        maxPromptChars: num('qPrompt')
       }, { method: 'PUT' });
     if (!ok) {
       state.quotaError = j.error ?? 'could not save that limit';

@@ -147,6 +147,18 @@ export const quotaSchema = z.object({
   /** Ceiling on how full the session's context may get. Absolute, for the same reason. */
   maxContextTokens: z.number().int().positive().optional(),
   /**
+   * Ceiling on how long one prompt may be, in characters.
+   *
+   * The one spending lever that needs nothing from the tool: the gateway has
+   * the prompt in its hands. It exists because "la gente manda prompts
+   * larguísimos" is a sentence an administrator actually says, and the
+   * answer used to be a rule a small judge had to apply to the text, when
+   * counting is what code does perfectly. Characters rather than tokens
+   * because Warden does not know the tokenizer of whatever model the prompt
+   * is bound for, and a number nobody ratified must not sit under a hold.
+   */
+  maxPromptChars: z.number().int().positive().optional(),
+  /**
    * Fraction of either ceiling at which the console warns without holding
    * anything. Warning is not a verdict and never reaches the employee's tool.
    */
@@ -220,6 +232,13 @@ export const ruleDraftSchema = ruleSchema
      * satisfy, in the one currency it has for spending.
      */
     usageFactor: z.number().gt(0).lt(1).optional(),
+    /**
+     * The roles a spending target is aimed at, when the administrator named
+     * them: "solo para los interns" after "quiero ahorrar 50%". Empty or
+     * absent means every role that has a limit. Names only; Warden checks
+     * them against the directory and does the arithmetic.
+     */
+    usageRoles: z.array(z.string()).optional(),
     // `text` loses its min(1) here and gets it back in the refinement below.
     // Declining, a model writes `notARule: true` next to `text: ""`, and the
     // inherited minimum rejected the whole answer before anything could read
@@ -314,6 +333,7 @@ export const RULE_DRAFT_JSON_SCHEMA = {
     notARule: { type: 'boolean' },
     notARuleReason: { type: 'string' },
     usageFactor: { type: 'number' },
+    usageRoles: { type: 'array', items: { type: 'string' } },
     text: { type: 'string' },
     scope: { type: 'string', enum: ['input', 'output', 'both'] },
     appliesTo: { type: 'array', items: { type: 'string' } },

@@ -6,7 +6,7 @@
  * model returns from here is policy until an administrator presses Activate.
  */
 import { Router } from 'express';
-import { compilePolicy, compileRule, isDeclined } from '../../policy/compile.js';
+import { compilePolicy, compileRule, isDeclined, type CompileOptions } from '../../policy/compile.js';
 import { previewRule } from '../../policy/preview.js';
 import { ratifyRule, removeRule } from '../../policy/ratify.js';
 import { loadPolicy, savePolicy } from '../../policy/store.js';
@@ -60,13 +60,14 @@ function draftedBy(remote: string | null): string {
  * Proposed, not applied. Same boundary as a rule: the administrator presses the
  * button, and until they do the policy is untouched.
  */
-function proposedLimits(factor: number | undefined): {
+function proposedLimits(factor: number | undefined, roles?: string[]): {
   limits?: { role: string; from: number; to: number }[];
   factor?: number;
 } {
   if (typeof factor !== 'number' || !(factor > 0) || !(factor < 1)) return {};
   const limits = loadPolicy()
-    .quotas.map((q) => ({
+    .quotas.filter((q) => !roles?.length || roles.includes(q.role))
+    .map((q) => ({
       role: q.role,
       from: q.maxRequestsPerDay,
       // Never below one: a quota of zero is a role that cannot ask anything,
@@ -78,16 +79,29 @@ function proposedLimits(factor: number | undefined): {
   return limits.length ? { limits, factor } : {};
 }
 
-/** `lockTo` is set when the admin writes a rule from inside one person's page. */
-function lockToOf(body: unknown): { lockTo: string[] } | Record<string, never> {
-  const raw = (body as { lockTo?: unknown } | undefined)?.lockTo;
-  return Array.isArray(raw) ? { lockTo: raw.map(String) } : {};
+/**
+ * What the console sends beside the sentence: `lockTo` when the rule is being
+ * written from inside one person's page, and the conversation so far —
+ * the administrator's earlier messages and the rules on the table — so a
+ * follow-up compiles as one. Both capped: a compile prompt is prefill, and
+ * the compiler needs the last few turns, not the afternoon.
+ */
+function optionsOf(body: unknown): CompileOptions {
+  const b = (body ?? {}) as { lockTo?: unknown; history?: unknown; current?: unknown };
+  const strings = (v: unknown, max: number): string[] =>
+    Array.isArray(v) ? v.map((x) => String(x).slice(0, 1000)).filter(Boolean).slice(-max) : [];
+  const history = strings(b.history, 6);
+  const current = strings(b.current, 12);
+  return {
+    ...(Array.isArray(b.lockTo) ? { lockTo: b.lockTo.map(String) } : {}),
+    ...(history.length || current.length ? { conversation: { history, current } } : {})
+  };
 }
 
 policyRoutes.post('/api/policy/draft', asyncRoute(async (req, res) => {
   const text = String(req.body?.text ?? '').trim();
   if (!text) return res.status(400).json({ error: 'text is required' });
-  const rule = await compileRule(adapter(), text, loadPolicy(), lockToOf(req.body));
+  const rule = await compileRule(adapter(), text, loadPolicy(), optionsOf(req.body));
   // The compiler declining is an answer, not a failure. It reaches the console
   // as its own shape so the console can send somebody to the limits editor
   // rather than handing them a prohibition built out of a budget sentence.
@@ -99,7 +113,7 @@ policyRoutes.post('/api/policy/draft', asyncRoute(async (req, res) => {
     return res.json({
       notARule: true,
       reason: rule.notARuleReason,
-      ...proposedLimits(rule.usageFactor),
+      ...proposedLimits(rule.usageFactor, rule.usageRoles),
       ...(rule.usageFactor !== undefined ? { factor: rule.usageFactor } : {})
     });
   }
@@ -122,11 +136,11 @@ policyRoutes.post('/api/policy/draft', asyncRoute(async (req, res) => {
 policyRoutes.post('/api/policy/draft-set', asyncRoute(async (req, res) => {
   const text = String(req.body?.text ?? '').trim();
   if (!text) return res.status(400).json({ error: 'text is required' });
-  const { statements, rules, declined, declinedFactors } = await compilePolicy(
+  const { statements, rules, declined, declinedFactors, declinedRoles } = await compilePolicy(
     adapter(),
     text,
     loadPolicy(),
-    lockToOf(req.body)
+    optionsOf(req.body)
   );
   // The spending target inside the instruction, when there was one. "No
   // quiero que se filtren datos y quiero gastar la mitad" is two things, and
@@ -134,8 +148,9 @@ policyRoutes.post('/api/policy/draft-set', asyncRoute(async (req, res) => {
   // declines with a factor. That factor used to be dropped on the floor the
   // moment any rule compiled: the limits were only proposed when EVERYTHING
   // declined. So the administrator got the rules and lost the half.
-  const factor = declinedFactors.find((f) => typeof f === 'number');
-  const limits = proposedLimits(factor);
+  const at = declinedFactors.findIndex((f) => typeof f === 'number');
+  const factor = at === -1 ? undefined : declinedFactors[at];
+  const limits = proposedLimits(factor, at === -1 ? undefined : declinedRoles[at]);
   // Everything the compiler was given, it declined. Same answer the single-rule
   // route gives, in the same shape, so the console has one case to handle.
   if (rules.length === 0 && declined.length > 0) {
