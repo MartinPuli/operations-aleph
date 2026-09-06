@@ -56,6 +56,13 @@ const DEFAULT_HEALTH_TIMEOUT_MS = 2000;
  */
 const DEFAULT_DECISION_TIMEOUT_MS = 90_000;
 
+/**
+ * The other half of that deadline: what `--fix` writes into Claude Code's
+ * hook entry, in seconds, so the harness does not kill the hook before Warden
+ * has answered. Claude Code's own default for this event is 30 s.
+ */
+const CLAUDE_CODE_HOOK_TIMEOUT_S = 120;
+
 function timeoutFromEnv(name, fallback) {
   const raw = process.env[name];
   if (raw === undefined) return fallback;
@@ -694,14 +701,29 @@ function fixClaudeCode() {
 
   const hooks = (settings.hooks ??= {});
   const list = Array.isArray(hooks.UserPromptSubmit) ? hooks.UserPromptSubmit : (hooks.UserPromptSubmit = []);
-  if (JSON.stringify(list).includes('warden-hook')) return null;
+
+  // Claude Code kills a UserPromptSubmit command hook at 30 seconds unless the
+  // entry says otherwise (it used to be 60), and a hook it kills is a prompt
+  // that goes through unjudged: the output is discarded and the prompt reaches
+  // the model. Warden's own deadline is 90 s because the 8B was measured at
+  // 46 s on four CPU cores, so an entry without a timeout is a guard that
+  // silently stops guarding on exactly the machines where it is slow. The
+  // shipped integrations/claude-code/settings.json has carried 120 since the
+  // deadline moved; this writes the same number, and repairs an entry an
+  // earlier --fix wrote without one.
+  const ours = list.flatMap((entry) => entry?.hooks ?? []).find((h) => String(h?.command ?? '').includes('warden-hook'));
+  if (ours && ours.timeout >= CLAUDE_CODE_HOOK_TIMEOUT_S) return null;
 
   if (!backup(file)) return 'backup failed, so nothing was written';
-  list.push({ hooks: [{ type: 'command', command: `node ${hookPath()}` }] });
+  if (ours) ours.timeout = CLAUDE_CODE_HOOK_TIMEOUT_S;
+  else list.push({ hooks: [{ type: 'command', command: `node ${hookPath()}`, timeout: CLAUDE_CODE_HOOK_TIMEOUT_S }] });
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
-  return null;
+  return ours ? REPAIRED : null;
 }
+
+/** A fixer's answer when the tool was wired already and it fixed the entry rather than adding one. */
+const REPAIRED = Symbol('repaired');
 
 function fixCodex() {
   const file = join(homedir(), '.codex', 'config.toml');
@@ -760,21 +782,25 @@ async function fixMode(agents) {
   for (const agent of agents) {
     const fix = fixers[agent.id];
     if (!agent.installed || !agent.governable || !fix) continue;
-    if (agent.wired) {
-      process.stdout.write(`  · ${agent.name.padEnd(12)} already wired, left alone\n`);
-      continue;
-    }
-    let problem;
+    // A wired tool is still run through its fixer, because an entry written
+    // before the timeout existed is wired and wrong at once; the fixer says
+    // which by returning REPAIRED, and leaves a correct entry untouched.
+    let outcome;
     try {
-      problem = await fix();
+      outcome = await fix();
     } catch (err) {
-      problem = err?.message ?? String(err);
+      outcome = err?.message ?? String(err);
     }
-    process.stdout.write(
-      problem
-        ? `  ✗ ${agent.name.padEnd(12)} ${problem}\n`
-        : `  ✓ ${agent.name.padEnd(12)} wired, restart it to pick this up\n`
-    );
+    const name = agent.name.padEnd(12);
+    if (outcome === REPAIRED) {
+      process.stdout.write(`  ✓ ${name} was wired without a timeout; set to ${CLAUDE_CODE_HOOK_TIMEOUT_S} s, restart it to pick this up\n`);
+    } else if (agent.wired) {
+      process.stdout.write(`  · ${name} already wired, left alone\n`);
+    } else if (outcome) {
+      process.stdout.write(`  ✗ ${name} ${outcome}\n`);
+    } else {
+      process.stdout.write(`  ✓ ${name} wired, restart it to pick this up\n`);
+    }
   }
 
   const cursor = agents.find((a) => a.id === 'cursor');

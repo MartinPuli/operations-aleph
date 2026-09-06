@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 type HookResult = { code: number | null; stdout: string; stderr: string };
 type Handler = (req: IncomingMessage, res: ServerResponse) => void;
@@ -165,6 +167,29 @@ async function main(): Promise<void> {
     assert.match(result.stderr, /must be a positive finite number/);
   }
   console.log('✓ timeout configuration rejects non-positive and non-finite values');
+
+  // Claude Code cancels a UserPromptSubmit hook at 30 s unless the entry says
+  // otherwise, and a cancelled hook lets the prompt through. So the entry
+  // --fix writes has to carry the timeout, and an entry written before it did
+  // has to be repaired rather than left alone as "already wired".
+  const home = mkdtempSync(join(tmpdir(), 'warden-fix-'));
+  const settings = join(home, '.claude', 'settings.json');
+  mkdirSync(join(home, '.claude'), { recursive: true });
+  const fix = async () => {
+    const child = spawn(process.execPath, [hook, '--fix'], { env: { ...process.env, HOME: home }, stdio: 'ignore' });
+    await once(child, 'close');
+    return JSON.parse(readFileSync(settings, 'utf8')) as { hooks: { UserPromptSubmit: { hooks: { command: string; timeout?: number }[] }[] } };
+  };
+  writeFileSync(settings, '{}');
+  let entries = (await fix()).hooks.UserPromptSubmit.flatMap((e) => e.hooks);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.timeout, 120);
+  writeFileSync(settings, JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node /old/.warden-hook.mjs' }] }] } }));
+  entries = (await fix()).hooks.UserPromptSubmit.flatMap((e) => e.hooks);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.command, 'node /old/.warden-hook.mjs');
+  assert.equal(entries[0]?.timeout, 120);
+  console.log('✓ --fix writes the Claude Code hook timeout and repairs an entry without one');
 }
 
 main().catch((err) => {

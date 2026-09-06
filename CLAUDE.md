@@ -200,7 +200,10 @@ something. The parts that matter while you are editing:
   slow guard, it is an absent one. Raising it costs a person waiting; leaving
   it costs the check. Both halves of the deadline have to move together — the
   harness kills the hook on its own clock, so `integrations/claude-code/settings.json`
-  carries `timeout: 120` beside it.
+  carries `timeout: 120` beside it, and `warden-hook --fix` writes the same
+  number into `~/.claude/settings.json`. Claude Code's own default for this
+  event is 30 seconds (checked 2026-09-06), and an entry without the field is
+  a guard that stops guarding on the machines where it is slow.
 
 ## What is honestly unfinished
 

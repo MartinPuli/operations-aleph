@@ -102,6 +102,13 @@ stderr. A cold Codex decision was observed exceeding the 30-second deadline on
 is a product decision the deployment gets to make, not one this repo makes for
 it. Until it is configurable, treat the deadline as the guarantee's edge.
 
+The deadline has two halves and both fail open. Warden's own is 90 seconds.
+Claude Code has one of its own for `UserPromptSubmit` hooks, 30 seconds by
+default as of September 2026, and a hook it cancels is a prompt that reaches
+the model with the hook's output discarded. So the hook entry in
+`~/.claude/settings.json` has to carry `"timeout": 120`; `warden-hook --fix`
+writes it, and repairs an entry written before it did.
+
 **Both hook integrations are NOT VERIFIED end to end.** See
 [`docs/HOOK-VERIFICATION.md`](docs/HOOK-VERIFICATION.md).
 
