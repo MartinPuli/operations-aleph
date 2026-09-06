@@ -56,6 +56,26 @@ which supports blocking JSON or exit code 2 with the reason on stderr.
 gateway unavailable, health timeout, decision-body timeout, invalid response,
 and invalid timeout configuration.
 
+## The desktop app, 2026-09-06
+
+Claude Code inside the Claude desktop app (`CLAUDE_CODE_ENTRYPOINT=claude-desktop`,
+Claude Code 2.1.260, macOS) runs the hook from the same `~/.claude/settings.json`
+and blocks the prompt. Its transcript records the refusal in full, as a
+`system` entry of subtype `informational`, level `warning`, with
+`preventContinuation: true`, next to a user message marked `isMeta`. The app
+draws neither: the person sees the prompt vanish and a spinner, with no rule,
+no guidance and no audit id. That was with `reason`, `stopReason` and
+`systemMessage` all carrying the refusal.
+
+Two consequences. The block itself is real on the desktop app and can be
+verified from the transcript, so a verification run there should read the
+session's `.jsonl` under `~/.claude/projects/` rather than the screen. And
+since 0.1.45 the hook, when it sees that entrypoint on macOS, also opens an
+OS dialog with the refusal, spawned detached so it cannot hold the hook past
+Claude Code's deadline. Whether the app will one day render the warning
+itself is not something this repo controls; the dialog is the message until
+then. Not done: the same on Windows under the desktop app.
+
 ## Real QVAC observations
 
 Cold benign evaluation: `ALLOW`, 26,602 ms wall / 26,342 ms pipeline. After a
