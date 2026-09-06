@@ -101,32 +101,6 @@ export function seedIfEmpty(seedPath: string): PolicySpec {
 }
 
 /**
- * Is the stored policy exactly the one we ship, untouched?
- *
- * Compared by the policy's own version hash rather than by rule ids, so a rule
- * whose text or severity was edited no longer matches even though its id did
- * not change. That is the property the boot migration needs: it may only
- * remove a policy that demonstrably contains nothing a human wrote, and an
- * identical hash is the strongest available statement of that.
- *
- * `exemptRoles` is taken from the stored spec, not from the default, because
- * it is inside the hash — an admin who changed who is exempt has changed the
- * policy, and this has to say so.
- */
-export function isShippedSeed(seedPath: string): boolean {
-  if (!existsSync(seedPath)) return false;
-  const current = loadPolicy();
-  if (current.rules.length === 0) return false;
-  try {
-    const seed = JSON.parse(readFileSync(seedPath, 'utf8')) as { rules: Rule[]; quotas: Quota[] };
-    const exempt = current.exemptRoles ?? DEFAULT_EXEMPT_ROLES;
-    return current.version === hashPolicy(seed.rules ?? [], seed.quotas ?? [], exempt);
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Remove the rules and quotas that came out of the shipped seed, keeping
  * everything else.
  *
@@ -346,4 +320,18 @@ export function invalidate(): void {
  */
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+/**
+ * A policy read from a seed file and hashed as if ratified, for the harnesses
+ * that measure against a fixed policy rather than the live one. Three scripts
+ * had their own copy of this; the epoch timestamp is deliberate, so two runs
+ * of the same file get the same version.
+ */
+export function policyFromFile(path: string): PolicySpec {
+  const seed = JSON.parse(readFileSync(path, 'utf8')) as { rules?: Rule[]; quotas?: Quota[]; exemptRoles?: string[] };
+  const rules = seed.rules ?? [];
+  const quotas = seed.quotas ?? [];
+  const exemptRoles = seed.exemptRoles ?? ['admin'];
+  return { version: hashPolicy(rules, quotas, exemptRoles), updatedAt: new Date(0).toISOString(), rules, quotas, exemptRoles };
 }

@@ -6,14 +6,9 @@
  * model returns from here is policy until an administrator presses Activate.
  */
 import { Router } from 'express';
-import {
-  compilePolicy,
-  compileRule,
-  isDeclined,
-  previewRule,
-  ratifyRule,
-  removeRule
-} from '../../policy/compile.js';
+import { compilePolicy, compileRule, isDeclined } from '../../policy/compile.js';
+import { previewRule } from '../../policy/preview.js';
+import { ratifyRule, removeRule } from '../../policy/ratify.js';
 import { loadPolicy, savePolicy } from '../../policy/store.js';
 import { resolvedModel } from '../../qvac/client.js';
 import { adapter, isMock, remoteCompiler } from '../../qvac/index.js';
@@ -97,7 +92,16 @@ policyRoutes.post('/api/policy/draft', asyncRoute(async (req, res) => {
   // as its own shape so the console can send somebody to the limits editor
   // rather than handing them a prohibition built out of a budget sentence.
   if (isDeclined(rule)) {
-    return res.json({ notARule: true, reason: rule.notARuleReason, ...proposedLimits(rule.usageFactor) });
+    // `factor` travels even when no limits could be proposed from it, so the
+    // console can tell "there is nothing here" from "there is a target here
+    // and no role has a limit yet to cut". Those read the same without it,
+    // and the second one is the administrator being sent to set limits.
+    return res.json({
+      notARule: true,
+      reason: rule.notARuleReason,
+      ...proposedLimits(rule.usageFactor),
+      ...(rule.usageFactor !== undefined ? { factor: rule.usageFactor } : {})
+    });
   }
   // Who wrote the draft, so the administrator ratifying it can see whether it
   // came off their own machine. `null` means local, which is the default.
@@ -124,18 +128,31 @@ policyRoutes.post('/api/policy/draft-set', asyncRoute(async (req, res) => {
     loadPolicy(),
     lockToOf(req.body)
   );
+  // The spending target inside the instruction, when there was one. "No
+  // quiero que se filtren datos y quiero gastar la mitad" is two things, and
+  // the split now keeps the second as its own statement, which `compileRule`
+  // declines with a factor. That factor used to be dropped on the floor the
+  // moment any rule compiled: the limits were only proposed when EVERYTHING
+  // declined. So the administrator got the rules and lost the half.
+  const factor = declinedFactors.find((f) => typeof f === 'number');
+  const limits = proposedLimits(factor);
   // Everything the compiler was given, it declined. Same answer the single-rule
   // route gives, in the same shape, so the console has one case to handle.
   if (rules.length === 0 && declined.length > 0) {
-    return res.json({ notARule: true, reason: declined[0] ?? '', ...proposedLimits(declinedFactors[0]) });
+    return res.json({ notARule: true, reason: declined[0] ?? '', ...limits, ...(factor !== undefined ? { factor } : {}) });
   }
   const remote = remoteCompiler();
   res.json({
     statements,
-    // Stamped per rule and not once for the set, because the administrator
-    // ratifies them one at a time and the card in front of them has to be able
-    // to say where that rule came from on its own.
-    rules: rules.map((rule) => ({ ...rule, draftedBy: draftedBy(remote), draftedRemotely: remote !== null }))
+    // Stamped per rule and not once for the set, because the console shows
+    // each as its own card and the card has to be able to say where the rule
+    // came from on its own.
+    rules: rules.map((rule) => ({ ...rule, draftedBy: draftedBy(remote), draftedRemotely: remote !== null })),
+    // What the compiler declined, in words, so the console can say which part
+    // of the sentence became no rule rather than silently narrowing it.
+    declined,
+    ...limits,
+    ...(factor !== undefined ? { factor } : {})
   });
 }));
 
@@ -153,7 +170,7 @@ policyRoutes.post('/api/policy/preview', asyncRoute(async (req, res) => {
         }))
         .filter((c: { prompt: string }) => c.prompt.length > 0)
     : [];
-  res.json(await previewRule(adapter(), req.body?.rule, loadPolicy(), against));
+  res.json(await previewRule(adapter(), req.body?.rule, against));
 }));
 
 policyRoutes.post('/api/policy/ratify', asyncRoute(async (req, res) => {

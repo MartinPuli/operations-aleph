@@ -1,7 +1,7 @@
 /**
  * Team: the company, how it is reached, the people, and one person opened in place with their setup.
  */
-import { $, api, attr, esc, state } from './core.js';
+import { $, api, attr, del, esc, post, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindPolicy, sendRuleMessage } from './draft.js';
 import { TOOL_NAMES, avatar, clip, copyText, personById, plural, ruleName } from './format.js';
@@ -59,8 +59,7 @@ function reachBlock() {
         ${on ? 'Take it off the internet' : 'Put it on the internet'}
       </button>
       ${state.mock ? '<span class="note">Not while Warden is in demo mode: nothing here is really judged.</span>' : ''}
-    </div>` : `<div class="note">Run this inside the Warden app to open a tunnel from here,
-      or put your own proxy in front of it.</div>`}
+    </div>` : `<div class="note">Open a tunnel from the Warden app, or put your own proxy in front of it.</div>`}
   </div>`;
 }
 
@@ -170,10 +169,7 @@ function bindPeopleList() {
   if (orgSave) orgSave.onclick = async () => {
     const name = $('orgInput').value.trim();
     if (!name) return;
-    const { ok, j } = await api('/api/company', {
-      method: 'PUT', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
+    const { ok, j } = await post('/api/company', { name }, { method: 'PUT' });
     state.orgNote = ok ? 'Renamed.' : (j?.error ?? 'could not rename');
     if (ok) await refreshPeople();
     render();
@@ -190,10 +186,7 @@ function bindPeopleList() {
       `Remove ${people === 1 ? 'the 1 person' : `all ${people} people`} and issue the administrator a new key?\n\n` +
       'Their keys stop working right away. Your rules stay.'
     )) return;
-    const { ok, j } = await api('/api/company/reset', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
+    const { ok, j } = await post('/api/company/reset', { name });
     state.orgNote = ok ? 'Started fresh. Add your team below.' : (j?.error ?? 'could not reset');
     if (ok) await refreshPeople();
     render();
@@ -221,10 +214,7 @@ function bindPeopleList() {
     const added = [];
     const failed = [];
     for (const name of names) {
-      const { ok, j } = await api('/api/people', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, role })
-      });
+      const { ok, j } = await post('/api/people', { name, role });
       if (ok) added.push(j); else failed.push(`${name}: ${j.error ?? 'failed'}`);
     }
 
@@ -263,10 +253,7 @@ function bindPeopleList() {
   if (addRole) addRole.onclick = async () => {
     const role = $('newRoleName').value.trim();
     if (!role) return;
-    const { ok, j } = await api('/api/roles', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ role, maxRequestsPerDay: Number($('newRoleQuota').value || 0) })
-    });
+    const { ok, j } = await post('/api/roles', { role, maxRequestsPerDay: Number($('newRoleQuota').value || 0) });
     if (!ok) { $('roleNote').textContent = j.error ?? 'failed'; return; }
     await Promise.all([refreshPeople(), refreshPolicy()]);
     render();
@@ -278,7 +265,7 @@ function bindPeopleList() {
     if (!x) return;
     const role = decodeURIComponent(x.dataset.role);
     if (!confirm(`Remove the role "${role}"? Its daily limit goes with it.`)) return;
-    const { ok, j } = await api(`/api/roles/${encodeURIComponent(role)}`, { method: 'DELETE' });
+    const { ok, j } = await del(`/api/roles/${encodeURIComponent(role)}`);
     if (!ok) { $('roleNote').textContent = j.error ?? 'failed'; return; }
     await Promise.all([refreshPeople(), refreshPolicy()]);
     render();
@@ -371,24 +358,21 @@ async function renderPerson(id) {
   bindDisclosures();
 
   $('editRole').onchange = async (e) => {
-    const { ok, j } = await api('/api/people', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: p.id, name: p.name, role: e.target.value })
-    });
+    const { ok, j } = await post('/api/people', { id: p.id, name: p.name, role: e.target.value });
     $('personNote').textContent = ok ? `Now judged as ${j.role}.` : (j.error ?? 'failed');
     if (ok) { await refreshPeople(); void renderPerson(p.id); }
   };
 
   $('rotateKey').onclick = async () => {
     if (!confirm('Issue a new key? Their current one stops working immediately.')) return;
-    await api(`/api/people/${encodeURIComponent(p.id)}/key`, { method: 'POST' });
+    await post(`/api/people/${encodeURIComponent(p.id)}/key`);
     await refreshPeople();
     void renderPerson(p.id);
   };
 
   $('removePerson').onclick = async () => {
     if (!confirm(`Remove ${p.name}? Their key stops working immediately.`)) return;
-    const { ok, j } = await api(`/api/people/${encodeURIComponent(p.id)}`, { method: 'DELETE' });
+    const { ok, j } = await del(`/api/people/${encodeURIComponent(p.id)}`);
     if (!ok) { $('personNote').textContent = j.error ?? 'failed'; return; }
     await refreshPeople();
     go('people');

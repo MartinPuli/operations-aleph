@@ -2,7 +2,7 @@
  * Inbox: held requests waiting for a person, and blocks somebody said were wrong.
  */
 import { decisionDetail, pendingEscalations } from './activity.js';
-import { $, api, attr, esc, state } from './core.js';
+import { $, attr, esc, post, state } from './core.js';
 import { refreshAppeals, refreshEscalations } from './data.js';
 import { clip, ruleName } from './format.js';
 import { render } from './render.js';
@@ -26,7 +26,7 @@ VIEWS.inbox = {
     if (!state.appeals.length && !state.escalations.length) {
       return `<div class="sheet"><div class="empty">
         <b>Nothing waiting</b>
-        <span>Held requests wait here for your call, next to blocks somebody says were wrong.</span>
+        <span>Requests that need your sign-off land here, next to blocks somebody says were wrong.</span>
       </div></div>`;
     }
     return `<div class="sheet">
@@ -73,7 +73,7 @@ function escalationDetail(e) {
   const entry = state.audit.find((x) => x.auditId === e.auditId);
   const who = esc(e.employeeName ?? e.employeeId);
 
-  const head = `<p class="summary">${who} sent something the <b>${esc(ruleName(e.ruleId ?? ''))}</b> rule says needs a person to sign off. They were not refused, only told to wait, and they are still waiting.</p>
+  const head = `<p class="summary">${who} sent something the <b>${esc(ruleName(e.ruleId ?? ''))}</b> rule says needs sign-off. Not refused, just waiting on you.</p>
     ${e.employeeNote ? `<div class="group">
       <div class="label">They added</div>
       <div class="banner">“${esc(e.employeeNote)}”</div>
@@ -104,11 +104,7 @@ function bindInbox() {
     btn.onclick = async () => {
       const note = $('reviewNote')?.value.trim();
       btn.disabled = true;
-      const { ok, j } = await api(`/api/escalations/${encodeURIComponent(btn.dataset.id)}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ outcome: btn.dataset.review, ...(note ? { note } : {}) })
-      });
+      const { ok, j } = await post(`/api/escalations/${encodeURIComponent(btn.dataset.id)}`, { outcome: btn.dataset.review, ...(note ? { note } : {}) });
       if (!ok) {
         btn.disabled = false;
         const err = $('reviewNote_err');

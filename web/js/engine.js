@@ -1,11 +1,12 @@
 /**
  * Engine: is the guard working, which model judges, and what is on this disk.
  */
-import { $, api, esc, state } from './core.js';
+import { $, esc, post, state } from './core.js';
 import { refreshAdjudicator, refreshCompiler } from './data.js';
+import { modelLabel } from './format.js';
 import { render } from './render.js';
 import { go } from './router.js';
-import { readable } from './rules.js';
+import { readable } from './answers.js';
 import { VIEWS } from './views.js';
 
 /**
@@ -53,7 +54,7 @@ function engineStatus(m) {
   return {
     tone: 'ok',
     title: 'Judging is running. Every prompt is being checked.',
-    detail: `${m.judging.model} on this machine. Nothing leaves it.`
+    detail: `${modelLabel(m.judging.model)} on this machine. Nothing leaves it.`
   };
 }
 
@@ -72,14 +73,17 @@ function enginePage() {
   const fallback = (a?.choices ?? []).find((c) => c.id === 'default');
   const waiting = Boolean(picked && !picked.onDisk && picked.id !== 'default');
 
+  // In demo mode the banner over the whole console already says nothing is
+  // being judged; a second headline saying it again on this page was the
+  // same sentence twice on one screen.
   return `<div class="sheet settings">
-    <div class="headline">
+    ${m?.mock ? '' : `<div class="headline">
       <span class="dot ${st.tone}"></span>
       <div>
         <div class="t">${esc(st.title)}</div>
         ${st.detail ? `<div class="m">${esc(st.detail)}</div>` : ''}
       </div>
-    </div>
+    </div>`}
 
     ${m?.runtime && !m.runtime.ok ? `<div class="section">
       <div class="label">What is wrong</div>
@@ -106,7 +110,7 @@ ${esc(m.runtime.detail)}</pre>
 
       ${a?.overriddenByEnv ? `<div class="banner warn">
         <b>The environment is setting this.</b> <code>WARDEN_MODEL_ADJUDICATOR</code> wins over what you pick here,
-        and <b>${esc(a.inForce)}</b> is what answers.
+        and <b>${esc(modelLabel(a.inForce))}</b> is what answers.
       </div>` : waiting ? `<div class="banner warn">
         <b>These weights are not on this disk yet.</b>
         ${esc(fallback?.label ?? 'The smaller model')} keeps judging until the download finishes.
@@ -122,7 +126,7 @@ ${esc(m.runtime.detail)}</pre>
       ${m ? `<div class="models">
         ${m.models.filter((x) => x.role !== 'adjudicator').map((x) => `<div class="model ${x.onDisk ? 'have' : 'off'}">
           <span class="role">${esc(x.role)}</span>
-          <span class="file">${esc(x.name)}</span>
+          <span class="file">${esc(modelLabel(x.name))}</span>
           <span class="state">${x.onDisk
             ? `on disk${x.bytes ? ` · ${(x.bytes / 1e9).toFixed(2)} GB` : ''}`
             : x.fetchable === false ? 'off — no download exists' : 'not downloaded'}</span>
@@ -134,7 +138,7 @@ ${esc(m.runtime.detail)}</pre>
     <div class="section">
       <div class="label">Not part of judging</div>
       <div class="elsewhere">
-        <span>Rules are drafted by <b>${esc(m?.drafting.model ?? 'this machine')}</b> through ${esc(m?.drafting.where ?? 'this machine')}, which never sees an employee prompt.</span>
+        <span>Rules are drafted by <b>${esc(modelLabel(m?.drafting.model) || 'this machine')}</b> through ${esc(m?.drafting.where ?? 'this machine')}, which never sees an employee prompt.</span>
         <button type="button" class="btn" data-go="compiler">Change it</button>
       </div>
     </div>
@@ -157,7 +161,7 @@ export function bindGetModels() {
     models.onclick = async () => {
     models.disabled = true;
     models.textContent = 'Starting the download…';
-    const { ok, j } = await api('/api/gateway/leave-demo', { method: 'POST' });
+    const { ok, j } = await post('/api/gateway/leave-demo');
     if (!ok) {
       models.disabled = false;
       models.textContent = label;
@@ -179,11 +183,7 @@ function bindEngine() {
       const model = seat.dataset.seat;
       if (model === (state.adjudicator?.model ?? 'default')) return;
       seat.disabled = true;
-      const { ok, j } = await api('/api/settings/adjudicator', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model })
-      });
+      const { ok, j } = await post('/api/settings/adjudicator', { model });
       seat.disabled = false;
       if (!ok) {
         seat.insertAdjacentHTML('afterend', `<span class="note bad">${esc(readable(j) ?? 'could not change it')}</span>`);

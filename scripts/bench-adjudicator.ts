@@ -53,8 +53,8 @@ import { createHash } from 'node:crypto';
 import { isolate } from '../src/guard/isolate.js';
 import { adjudicate, type AdjudicateOptions } from '../src/guard/passes/adjudicate.js';
 import { detectInjection } from '../src/guard/passes/injection.js';
-import { hashPolicy, rulesForActor } from '../src/policy/store.js';
-import type { PolicySpec, Quota, Rule } from '../src/policy/types.js';
+import { policyFromFile, rulesForActor } from '../src/policy/store.js';
+import type { PolicySpec, Rule } from '../src/policy/types.js';
 import { adapter, adapterName, isMock } from '../src/qvac/index.js';
 import { resolvedModel } from '../src/qvac/client.js';
 
@@ -110,6 +110,10 @@ const VARIANTS: Record<string, { options: AdjudicateOptions; injection?: boolean
     options: { form: 'dynaguard', shotsPerSide: 4 },
     why: 'The DynaGuard form with four examples per side instead of two.'
   },
+  'dynaguard-native': {
+    options: { form: 'dynaguard-native' },
+    why: 'The prompt exactly as the DynaGuard model card gives it — "provide the final answer directly", a numbered policy, the answer as <answer>PASS</answer> free text with no grammar — against the grammar-constrained JSON form that ships. Only meaningful with DynaGuard weights.'
+  },
   injection: {
     options: {},
     injection: true,
@@ -134,22 +138,7 @@ type CellFile = {
 };
 
 function benchmarkPolicy(): PolicySpec {
-  const path = process.env['WARDEN_BENCHMARK_POLICY'] ?? 'data/seed/benchmark-policy.json';
-  const seed = JSON.parse(readFileSync(path, 'utf8')) as {
-    rules?: Rule[];
-    quotas?: Quota[];
-    exemptRoles?: string[];
-  };
-  const rules = seed.rules ?? [];
-  const quotas = seed.quotas ?? [];
-  const exemptRoles = seed.exemptRoles ?? ['admin'];
-  return {
-    version: hashPolicy(rules, quotas, exemptRoles),
-    updatedAt: new Date(0).toISOString(),
-    rules,
-    quotas,
-    exemptRoles
-  };
+  return policyFromFile(process.env['WARDEN_BENCHMARK_POLICY'] ?? 'data/seed/benchmark-policy.json');
 }
 
 /** Legitimate prompts the corpus already carries, so the bench covers them too. */

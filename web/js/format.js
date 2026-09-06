@@ -35,7 +35,9 @@ export function ruleName(ruleOrId) {
   const id = typeof ruleOrId === 'string' ? ruleOrId : ruleOrId?.id;
 
   if (id && /^r-/.test(id) && !GENERATED_ID.test(id)) {
-    return id.slice(2).split('-').filter(Boolean)
+    // The compiler's ids end in four hex characters so two rules with the same
+    // opening words do not collide; the reader does not need them.
+    return id.slice(2).replace(/-[0-9a-f]{4}$/, '').split('-').filter(Boolean)
       .map((w) => ACRONYMS[w] ?? w).join(' ')
       .replace(/^./, (c) => c.toUpperCase());
   }
@@ -120,4 +122,27 @@ export function sendOnEnter(el, send) {
     e.preventDefault();
     send();
   };
+}
+
+/**
+ * A model's name as a person would say it.
+ *
+ * The gateway names models by their SDK constant or their file — QWEN3_1_7B_INST_Q4,
+ * DynaGuard-4B.Q6_K, embeddinggemma-300M-Q8_0 — and those reached the screen
+ * as they are. The family and the size are the two things a reader wants;
+ * the quantisation and the instruct suffix are not.
+ */
+const FAMILIES = [
+  [/dynaguard/i, 'DynaGuard'], [/qwen3/i, 'Qwen3'], [/embeddinggemma/i, 'EmbeddingGemma'],
+  [/llama[-_]?3[._]2/i, 'Llama 3.2'], [/ocr[-_]latin|latin_g2/i, 'OCR (Latin)']
+];
+export function modelLabel(raw) {
+  const name = String(raw ?? '');
+  const hit = FAMILIES.map(([re, label]) => ({ m: re.exec(name), label })).find((x) => x.m);
+  if (!hit) return name;
+  // The size is read after the family name, so a version inside it (Qwen3,
+  // Llama 3.2) is never mistaken for the parameter count that follows it.
+  const rest = name.slice(hit.m.index + hit.m[0].length);
+  const size = rest.match(/(\d+(?:[._]\d)?)[-_]?([bBmM])(?![A-Za-z0-9])/);
+  return size ? `${hit.label} ${size[1].replace('_', '.')}${size[2].toUpperCase()}` : hit.label;
 }

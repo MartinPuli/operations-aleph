@@ -34,17 +34,28 @@ moment a warning can lower something, it has become a model clearing a request.
 src/guard/       the pipeline: one prompt in, one decision out
   isolate.ts       pass 0 — normalise, fence in a nonce envelope, flag tampering
   passes/          pass 1 injection (off), pass 3 adjudicate — the model calls
+    adjudicate.ts    what happens around one call: windows, votes, deadline, fail-closed
+    forms.ts         the words each prompt form uses, and how the answer reads back
+    shots.ts         which of a rule's examples go into the prompt
   aggregate.ts     pass 4 — the only place a verdict is decided. No inference
   sanitize.ts      pass -1 — mask secrets before anything else sees the text
   quota.ts         pass -2 — per-role daily counters
 src/policy/      rules, roles, people, retrieval, the compiler
+  compile.ts       the compiler's logic; prompts.ts is what it says to the model
+  preview.ts       a draft judged by the real adjudicator before anyone activates it
+  ratify.ts        the only paths that put a rule in force or take one out
 src/qvac/        the only boundary to @qvac/sdk. Everything else uses an adapter
+  offload.ts       the one gate a compiler that leaves the local weights goes through
+  json.ts          the one parser every adapter reads a model's JSON with
 src/server/      HTTP. index.ts only boots; app.ts fixes the middleware order
   routes/          one router per surface: policy, people, guard, solo, system…
   middleware.ts    CORS, headers, rate limit, admin audit, admin gate
   identity.ts      API key -> actor, and running the guard for a request
-web/             the console: app.js is the entry, web/js/ has one module per
-                 screen over core/format/router/data/render. No build step
+web/             the console: index.html is the shell, style.css the styles,
+                 app.js the entry, web/js/ one module per screen over
+                 core/format/router/data/render. No build step. draft.js is the
+                 rule conversation, draft-set.js the list a broad instruction
+                 becomes, answers.js what the compiler says when it is not a rule
 src/redteam/     the corpus and the runner that writes REPORT.md
 scripts/         setup, benchmarks, and the adjudicator bench
 integrations/    the UserPromptSubmit hooks for Claude Code, Codex, opencode
@@ -134,8 +145,9 @@ that makes rules the 1.7B cannot. What goes to either is the administrator's
 own sentence, the role names and the employee roster, and nothing else; there
 is no flag anywhere that routes a prompt under judgement off-machine, and the
 role check is repeated inside the call as the line that would have to be wrong
-for that to happen. If you add a third of these, gate it the same way and say
-in its header exactly what leaves.
+for that to happen. Both are subclasses of [`qvac/offload.ts`](src/qvac/offload.ts),
+which is that gate written once; a third one is a subclass with a `run()` and
+a header saying exactly what leaves.
 
 `src/qvac/` is the only place `@qvac/sdk` is imported, and the adapter interface
 is six methods. That is what makes "is the runtime the problem" answerable
@@ -217,41 +229,30 @@ Warden was built fast and the repo says so rather than pretending otherwise.
 - Six attachment-bearing corpus prompts are skipped in every run, because the
   OCR model resolves only over the P2P registry. `document-borne` has never been
   measured.
-- **The policy splitter does not split.** `compilePolicy` was built to turn one
-  broad instruction into several specific rules. Run against the real
-  `Qwen3-1.7B-Q4_0` on 2026-09-01, it returned **one statement on three of
-  three inputs** — English and Spanish — so what it currently is, is
-  `compileRule` plus a thirty-second model call. Two of those three runs were
-  also actively worse than not splitting: *"nadie puede mandar datos de
-  clientes afuera de la empresa"* came back as *"nadar datos de clientes"*, and
-  *"dejen de filtrar datos de clientes"* compiled into a `warn` rule against
-  **filtering** customer data — the false friend — whose compliant example was
-  *"send customer data to a third-party for analysis"*. A draft that permits
-  the leak it was asked to stop.
-
-  The boundary held: nothing was enacted, and an administrator ratifying that
-  draft would have rejected it. The paraphrase failure is now structurally
-  impossible — a split of one returns the administrator's own sentence, never
-  the model's rewrite of it.
-
-  **It works on a capable compiler, which was the stated precondition.** Same
-  day, same sentences, through `qvac/cli-compiler.ts` on the `claude` CLI
-  (sonnet): *"no quiero que se filtren datos de clientes ni que aprueben pagos
-  grandes sin mi"* split into two statements and compiled into a `block` rule
-  about customer data and an `escalate` rule about payment approval, in 25
-  seconds; *"quiero que dejen de filtrar datos de clientes"* — the false friend
-  the 1.7B inverted — came back as `block`, "Employees must not share or leak
-  customer data outside authorized channels", with Spanish examples on both
-  sides, in 9. So the pass is not wrong; the local 1.7B is too small for it.
-
-  It still ships off the measured path on the default configuration, because
-  the default configuration is that 1.7B: `/api/policy/draft` is untouched,
-  `/api/policy/draft-set` is its own route behind its own button, and no
-  single-rule compile pays for it. What has changed is that there is now a way
-  to turn it on that costs nothing — the coding agent already signed in on the
-  machine. What is still missing is a corpus of broad instructions paired with
-  the rules they ought to become, so "works" here means three sentences and a
-  human reading the output, not a measurement.
+- **The policy splitter splits on a capable compiler, and only there.**
+  `compilePolicy` turns one broad instruction into the specific rules it
+  means. Run against the real `Qwen3-1.7B-Q4_0` on 2026-09-01 it returned
+  **one statement on three of three inputs** and paraphrased two of them
+  wrongly (*"dejen de filtrar datos de clientes"* became a `warn` rule against
+  **filtering**, the false friend), so the console never routes the local
+  model to it, and a split of one returns the administrator's own sentence
+  rather than the model's rewrite of it. Through `qvac/cli-compiler.ts` on the
+  `claude` CLI it works, and on 2026-09-05 it was made to do the job it was
+  built for: the prompt used to say "at most five, fewer is better, and if it
+  is already one prohibition return it alone", and a capable model obeyed —
+  *"hacé que no leakeen datos"* came back as one statement and one rule
+  naming three categories in a sentence. It now asks for what the worry is
+  made of, one concrete thing per statement, up to eight; the same sentence
+  becomes five rules (customer contacts, credentials, unreleased financials,
+  source code, internal documents), a spending target inside the sentence
+  survives as its own statement and comes back as proposed limits beside the
+  rules, and the console shows the whole set with a check under each card and
+  one button to activate all of them, on the owner's decision. See
+  `docs/MEASUREMENTS.md`, "The splitter, asked to enumerate". Still missing: a
+  corpus of broad instructions paired with the rules they ought to become, so
+  "works" means five sentences and a person reading the output, and whether
+  item-shaped rules judge better than category-shaped ones on the real judge
+  is a hypothesis that row sets up and does not test.
 - Quota counters live in memory and reset with the process.
 - API keys are stored in plaintext in the directory file, and so is the compiler
   provider key in `data/settings.json` (written `0600`, gitignored).

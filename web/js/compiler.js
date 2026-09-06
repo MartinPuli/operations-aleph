@@ -1,8 +1,9 @@
 /**
  * Where rule compilation runs, as a page rather than four environment variables and a restart.
  */
-import { $, api, esc, state } from './core.js';
+import { $, esc, post, state } from './core.js';
 import { refreshCompiler } from './data.js';
+import { modelLabel } from './format.js';
 import { render } from './render.js';
 import { go } from './router.js';
 import { rulesTabs } from './rules.js';
@@ -204,11 +205,7 @@ function bindCompiler() {
     state.compilerDraft = readForm();
     test.disabled = true;
     test.textContent = 'Testing…';
-    const { j } = await api('/api/settings/compiler/test', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(state.compilerDraft)
-    }).catch(() => ({ j: { ok: false, error: 'could not reach Warden' } }));
+    const { j } = await post('/api/settings/compiler/test', state.compilerDraft).catch(() => ({ j: { ok: false, error: 'could not reach Warden' } }));
     state.compilerTest = j;
     render();
   };
@@ -218,11 +215,7 @@ function bindCompiler() {
     state.compilerDraft = readForm();
     save.disabled = true;
     save.textContent = 'Saving…';
-    const { ok, j } = await api('/api/settings/compiler', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(state.compilerDraft)
-    }).catch(() => ({ ok: false, j: { error: 'could not reach Warden' } }));
+    const { ok, j } = await post('/api/settings/compiler', state.compilerDraft, { method: 'PUT' }).catch(() => ({ ok: false, j: { error: 'could not reach Warden' } }));
     if (!ok) {
       state.compilerTest = { ok: false, error: j?.error ?? 'could not save' };
       render();
@@ -287,6 +280,6 @@ function cliNote(providerId) {
 export function compilerLine() {
   const d = state.models?.drafting;
   if (!d) return '';
-  return `<div class="note compiler-line">Drafting with ${esc(d.model)} · ${esc(d.where)}
+  return `<div class="note compiler-line">Drafting with ${esc(modelLabel(d.model))} · ${esc(d.where)}
     <button type="button" class="linkish" data-go="compiler">Change</button></div>`;
 }

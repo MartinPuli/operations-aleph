@@ -65,14 +65,6 @@ export function checkQuota(spec: PolicySpec, actor: Actor): QuotaCheck {
   };
 }
 
-/** Current usage without consuming, for the console's quota bars. */
-export function quotaStatus(spec: PolicySpec, actor: Actor): { used: number; limit: number | null } {
-  const quota = spec.quotas.find((q) => q.role === actor.role);
-  const current = counters.get(`${actor.id}:${actor.role}`);
-  const used = current && current.day === today() ? current.requests : 0;
-  return { used, limit: quota?.maxRequestsPerDay ?? null };
-}
-
 /** Reset counters. Used by tests and by the demo reset button. */
 export function resetQuotas(): void {
   counters.clear();

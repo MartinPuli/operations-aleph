@@ -46,19 +46,14 @@
  * adapter unwrapped and nothing about this file runs. That is the same
  * treatment every unmeasured lever in this repo gets.
  */
-import type { ZodType } from 'zod';
 import { loadCompilerSettings } from '../settings.js';
+import { CompilerOffload } from './offload.js';
 import {
   FailClosedError,
   type CompleteRequest,
   type GenStats,
-  type ModelRole,
-  type QvacAdapter,
-  type StructuredResult
+  type QvacAdapter
 } from './types.js';
-
-/** The one role this file will answer for. Everything else is the guard. */
-const REMOTE_ROLE: ModelRole = 'compiler';
 
 export type RemoteConfig = {
   baseUrl: string;
@@ -150,101 +145,26 @@ export function redactNames(): boolean {
 }
 
 /**
- * Local for everything, remote for compilation.
- *
- * A delegating wrapper rather than a branch inside each caller, so that "can a
- * guard pass reach the network" is answered by reading one `if` instead of
- * auditing every call site. The check is on the role, and the role of every
- * guard pass is fixed in code.
+ * Local for everything, an endpoint for compilation. The role gate, the call
+ * counter and the repair loop are `CompilerOffload`; this file is the HTTP.
  */
-export class RemoteCompilerAdapter implements QvacAdapter {
-  #remoteCalls = 0;
+export class RemoteCompilerAdapter extends CompilerOffload {
+  protected readonly label = 'remote compiler';
 
-  constructor(
-    private readonly local: QvacAdapter,
-    private readonly config: RemoteConfig
-  ) {}
-
-  /** How many generations actually went off the machine. Reported by the console. */
-  remoteCalls(): number {
-    return this.#remoteCalls;
+  constructor(local: QvacAdapter, private readonly config: RemoteConfig) {
+    super(local);
   }
 
   describe(): string {
     return `${this.config.model} @ ${new URL(this.config.baseUrl).host}`;
   }
 
-  async complete(req: CompleteRequest): Promise<{ text: string; stats: GenStats }> {
-    if (req.role !== REMOTE_ROLE) return this.local.complete(req);
-    const { text, stats } = await this.#call(req, undefined);
-    return { text, stats };
-  }
-
-  async completeJSON<T>(
-    req: CompleteRequest,
-    zodSchema: ZodType<T>,
-    jsonSchema: Record<string, unknown>
-  ): Promise<StructuredResult<T>> {
-    if (req.role !== REMOTE_ROLE) return this.local.completeJSON(req, zodSchema, jsonSchema);
-
-    const first = await this.#call(req, jsonSchema);
-    const parsed = parse(first.text, zodSchema);
-    if (parsed.ok) return { value: parsed.value, attempts: 1, repaired: false, stats: first.stats };
-
-    // One repair, mirroring the local adapters. A model that misses the schema
-    // twice is confused about the task, not the format.
-    const second = await this.#call(
-      {
-        ...req,
-        user: [req.user, '', 'Your previous answer was rejected:', parsed.error, 'Answer again, correcting exactly that.'].join('\n')
-      },
-      jsonSchema
-    );
-    const retry = parse(second.text, zodSchema);
-    const stats: GenStats = { ...second.stats, ms: first.stats.ms + second.stats.ms };
-    if (retry.ok) return { value: retry.value, attempts: 2, repaired: true, stats };
-
-    throw new FailClosedError(
-      `remote compiler returned schema-invalid output twice: ${retry.error}`,
-      { role: req.role, attempts: 2, lastRaw: second.text.slice(0, 400) }
-    );
-  }
-
-  // Embedding and OCR are guard-side work. They are never routed off-machine,
-  // and there is deliberately no configuration that would let them be.
-  embed(texts: string[]): Promise<number[][]> {
-    return this.local.embed(texts);
-  }
-
-  ocr(imagePath: string): Promise<string> {
-    return this.local.ocr(imagePath);
-  }
-
-  stats(): { firstTry: number; repaired: number; failed: number } {
-    return this.local.stats();
-  }
-
-  dispose(): Promise<void> {
-    return this.local.dispose();
-  }
-
   /** One OpenAI-shaped chat completion. No SDK — `fetch` is in the runtime. */
-  async #call(
+  protected async run(
     req: CompleteRequest,
     jsonSchema: Record<string, unknown> | undefined
   ): Promise<{ text: string; stats: GenStats }> {
-    // Belt and braces. The public methods already route by role; this is the
-    // line that has to be wrong for an employee prompt to reach the network,
-    // and it is cheap enough to keep even though it is unreachable today.
-    if (req.role !== REMOTE_ROLE) {
-      throw new FailClosedError(
-        `refusing to send role "${req.role}" to a remote model — only "${REMOTE_ROLE}" may leave the machine`,
-        { role: req.role, attempts: 0 }
-      );
-    }
-
     const started = Date.now();
-    this.#remoteCalls++;
 
     let res: Response;
     try {
@@ -311,22 +231,4 @@ export class RemoteCompilerAdapter implements QvacAdapter {
       }
     };
   }
-}
-
-function parse<T>(text: string, schema: ZodType<T>): { ok: true; value: T } | { ok: false; error: string } {
-  let json: unknown;
-  try {
-    const trimmed = text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '');
-    const start = trimmed.indexOf('{');
-    const end = trimmed.lastIndexOf('}');
-    json = JSON.parse(start !== -1 && end > start ? trimmed.slice(start, end + 1) : trimmed);
-  } catch (err) {
-    return { ok: false, error: `not valid JSON: ${err instanceof Error ? err.message : err}` };
-  }
-  const result = schema.safeParse(json);
-  if (result.success) return { ok: true, value: result.data };
-  return {
-    ok: false,
-    error: result.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ')
-  };
 }

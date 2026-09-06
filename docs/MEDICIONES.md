@@ -209,7 +209,7 @@ es como se esconde el no-determinismo.
 - commit `f382b70` **+cambios sin commitear** · política `f6c7579468d5`
 - adaptador **qvac** · 1 repetición(es) · 185 prompts
 - Apple M1 Pro (10 núcleos)
-- config: `MODEL_ADJUDICATOR=/Users/martinezequielpulitano/Library/Application Support/Warden/models/Qwen3-8B-Q4_K_M.gguf` · `models=[object Object]`
+- config: `MODEL_ADJUDICATOR=<home>/Library/Application Support/Warden/models/Qwen3-8B-Q4_K_M.gguf` · `models=[object Object]`
 - falsos positivos **10/109 (9%)** · ataques **55/76 (72%)** · veredicto inestable en 0
 - por regla: `r-instruction-override` [object Object] · `r-credentials` [object Object] · `r-unreleased-financials` [object Object]
 - ⚠ el árbol de trabajo estaba sucio: esta corrida no se reproduce sólo con el commit
@@ -221,7 +221,7 @@ es como se esconde el no-determinismo.
 - commit `f382b70` **+cambios sin commitear** · política `f6c7579468d5`
 - adaptador **qvac** · 1 repetición(es) · 185 prompts
 - Apple M1 Pro (10 núcleos)
-- config: `MODEL_ADJUDICATOR=/Users/martinezequielpulitano/Library/Application Support/Warden/models/DynaGuard-1.7B.Q8_0.gguf` · `models=[object Object]`
+- config: `MODEL_ADJUDICATOR=<home>/Library/Application Support/Warden/models/DynaGuard-1.7B.Q8_0.gguf` · `models=[object Object]`
 - falsos positivos **49/109 (45%)** · ataques **71/76 (93%)** · veredicto inestable en 0
 - por regla: `r-instruction-override` [object Object] · `r-payment-approval` [object Object] · `r-customer-pii` [object Object] · `r-payroll` [object Object] · `r-unreleased-financials` [object Object] · `r-credentials` [object Object]
 - ⚠ el árbol de trabajo estaba sucio: esta corrida no se reproduce sólo con el commit
@@ -233,7 +233,7 @@ es como se esconde el no-determinismo.
 - commit `274a79a` **+cambios sin commitear** · política `f6c7579468d5`
 - adaptador **qvac** · 1 repetición(es) · 185 prompts
 - Apple M1 Pro (10 núcleos)
-- config: `MODEL_ADJUDICATOR=/Users/martinezequielpulitano/Library/Application Support/Warden/models/DynaGuard-4B.Q6_K.gguf` · `models=[object Object]`
+- config: `MODEL_ADJUDICATOR=<home>/Library/Application Support/Warden/models/DynaGuard-4B.Q6_K.gguf` · `models=[object Object]`
 - falsos positivos **25/109 (23%)** · ataques **66/76 (87%)** · veredicto inestable en 0
 - por regla: `r-instruction-override` [object Object] · `r-credentials` [object Object] · `r-unreleased-financials` [object Object] · `r-payment-approval` [object Object] · `r-customer-pii` [object Object]
 - ⚠ el árbol de trabajo estaba sucio: esta corrida no se reproduce sólo con el commit
@@ -245,7 +245,7 @@ es como se esconde el no-determinismo.
 - commit `274a79a` **+cambios sin commitear** · política `f400eabd3ae8`
 - adaptador **qvac** · 1 repetición(es) · 185 prompts
 - Apple M1 Pro (10 núcleos)
-- config: `MODEL_ADJUDICATOR=/Users/martinezequielpulitano/Library/Application Support/Warden/models/DynaGuard-1.7B.Q8_0.gguf` · `models=[object Object]`
+- config: `MODEL_ADJUDICATOR=<home>/Library/Application Support/Warden/models/DynaGuard-1.7B.Q8_0.gguf` · `models=[object Object]`
 - falsos positivos **74/109 (68%)** · ataques **75/76 (99%)** · veredicto inestable en 0
 - por regla: `r-instruction-override` [object Object] · `r-payment-approval` [object Object] · `r-credentials` [object Object] · `r-unreleased-financials` [object Object] · `r-customer-pii` [object Object] · `r-payroll` [object Object]
 - ⚠ el árbol de trabajo estaba sucio: esta corrida no se reproduce sólo con el commit

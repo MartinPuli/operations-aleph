@@ -23,7 +23,7 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import type { PolicySpec, Quota, Rule } from '../src/policy/types.js';
+import type { PolicySpec } from '../src/policy/types.js';
 
 /**
  * Set before the guard is imported, which is why the imports below are dynamic:
@@ -41,7 +41,7 @@ process.env['WARDEN_AUDIT_PATH'] ??= 'data/audit-probe.jsonl';
 const { evaluate } = await import('../src/guard/pipeline.js');
 const { resetQuotas } = await import('../src/guard/quota.js');
 const { rewriteGate, suggestRewrite } = await import('../src/guard/rewrite.js');
-const { hashPolicy } = await import('../src/policy/store.js');
+const { policyFromFile } = await import('../src/policy/store.js');
 const { adapter, isMock } = await import('../src/qvac/index.js');
 
 const CORPUS_DIR = 'src/redteam/corpus';
@@ -52,16 +52,7 @@ type CorpusFile = { class: string; prompts: Prompt[] };
 
 /** Same policy the red-team harness measures against, for comparable numbers. */
 function benchmarkPolicy(): PolicySpec {
-  const path = process.env['WARDEN_BENCHMARK_POLICY'] ?? 'data/seed/benchmark-policy.json';
-  const seed = JSON.parse(readFileSync(path, 'utf8')) as {
-    rules?: Rule[];
-    quotas?: Quota[];
-    exemptRoles?: string[];
-  };
-  const rules = seed.rules ?? [];
-  const quotas = seed.quotas ?? [];
-  const exemptRoles = seed.exemptRoles ?? ['admin'];
-  return { version: hashPolicy(rules, quotas, exemptRoles), updatedAt: new Date(0).toISOString(), rules, quotas, exemptRoles };
+  return policyFromFile(process.env['WARDEN_BENCHMARK_POLICY'] ?? 'data/seed/benchmark-policy.json');
 }
 
 type Outcome = 'allowed-through' | 'suggested' | 'gate' | 'no-suggestion';

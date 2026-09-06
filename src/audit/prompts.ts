@@ -81,10 +81,6 @@ function numberFromEnv(name: string, fallback: number): number {
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
-export function retentionDays(): number {
-  return RETENTION_DAYS;
-}
-
 export function promptsEnabled(): boolean {
   return RETENTION_DAYS > 0;
 }

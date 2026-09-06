@@ -9,14 +9,13 @@
  */
 import { randomUUID } from 'node:crypto';
 import type { QvacAdapter } from '../qvac/types.js';
-import { thinkingMarker } from '../qvac/client.js';
 import { redactNames, remoteCompilerConfig } from '../qvac/remote.js';
-import { isolate, isolationPreamble } from '../guard/isolate.js';
-import { adjudicate } from '../guard/passes/adjudicate.js';
-import { EVERYONE, employeeIdOf, employeeToken, sanitiseAudience } from './audience.js';
+import { isolate } from '../guard/isolate.js';
+import { EVERYONE, employeeToken, sanitiseAudience } from './audience.js';
 import { loadDirectory } from './people.js';
-import { loadPolicy, savePolicy } from './store.js';
+import { compilePrompt, splitPrompt } from './prompts.js';
 import {
+  MAX_STATEMENTS,
   POLICY_SPLIT_JSON_SCHEMA,
   RULE_DRAFT_JSON_SCHEMA,
   policySplitSchema,
@@ -76,144 +75,7 @@ export async function compileRule(
   const people = options.people ?? directory.employees;
   const iso = isolate(text);
 
-  const system = [
-    'You convert a policy statement written by a company administrator into a structured rule.',
-    '',
-    // Two failures this paragraph exists for, both seen on a capable compiler.
-    //
-    // "Quiero reducir mi uso al 50%" came back as "No employee request may be
-    // refused, throttled, or otherwise limited on the basis of a stated goal to
-    // reduce overall usage" — the exact opposite of what was asked, because the
-    // sentence is a spending target and the prompt only had one shape to put it
-    // in. Warden expresses spending as a quota per role, not as a rule about
-    // what anyone may ask, so the honest answer is to decline and say where the
-    // setting lives.
-    //
-    // And a rule always states what is PROHIBITED. Asked to compile a goal, the
-    // model wrote the prohibition inside out. Saying so is cheaper than
-    // catching it afterwards.
-    'A rule states what is PROHIBITED. Never write a rule that prohibits limiting,',
-    'restricting or refusing people: that inverts what the administrator asked for.',
-    '',
-    'Two kinds of sentence are not rules, and they are answered differently.',
-    '',
-    'A target for how much gets used or spent is something Warden CAN do, with',
-    'per-role limits rather than with a rule about what anyone may ask. Set',
-    'notARule to true and set usageFactor to the fraction of today\'s limits the',
-    'administrator is asking for: "reducir mi uso al 50%" is 0.5, "un tercio menos"',
-    'is 0.67, "la mitad de lo que gastamos" is 0.5. Do not compute the new limits',
-    'and do not name the roles; Warden has the current numbers and does the',
-    'arithmetic. A reason is still useful: say what you understood.',
-    '',
-    'A sentence with no prohibition and no target in it — a name, a greeting, a',
-    'question, a fragment — is nothing Warden can act on. Set notARule to true with',
-    'a short reason, and leave usageFactor out.',
-    '',
-    'When notARule is true the other fields are ignored, so do not labour over them.',
-    '',
-    `Valid role names: ${roles.join(', ')}.`,
-    // Naming the people is what makes "Ana cannot ask for payroll" compile into
-    // a rule about Ana rather than a rule about everyone. Without the roster the
-    // model has no token for a person and defaults to the whole company, which
-    // is a much broader rule than the admin asked for.
-    people.length > 0
-      ? `Named employees, referred to with an @ prefix: ${people.map((p) => roster(p)).join(', ')}.`
-      : '',
-    'Use ["*"] when the rule binds everyone.',
-    '',
-    // The failure this whole block is written against is one number: on the
-    // 185-prompt paired run the shipped adjudicator refuses 63% of legitimate
-    // requests. Some of that is the 1.7B, and some of it is rules that were
-    // compiled wider than the sentence they came from. A guard that stops two
-    // of every three honest requests gets switched off, so a rule that is too
-    // narrow is a smaller failure than one that is too wide, and this says so
-    // rather than leaving the model to guess which way to err.
-    'The administrator is describing one worry. Compile the NARROWEST rule that',
-    'covers it. A rule that misses a case can be widened later; a rule that stops',
-    'honest work gets Warden switched off. Err narrow.',
-    '',
-    'Fields:',
-    '- text: one sentence, in English, naming what is prohibited concretely enough',
-    '  that somebody reading only this sentence and one request can decide.',
-    '  Name the thing: "another employee\'s salary", "an unreleased revenue figure",',
-    '  "a customer list with contact details". Not "sensitive data", not',
-    '  "confidential information", not "inappropriate requests" — those are',
-    '  categories, and the judge stretches a category over anything nearby.',
-    '  Carry over any limit the administrator gave (an amount, a role, a system,',
-    '  a moment in time) instead of generalising past it. Where the administrator',
-    '  named a category, list the concrete items it means — for customer data:',
-    '  names next to emails, phone numbers, addresses, document numbers, billing',
-    '  details — so a small judge matches items, not a category.',
-    '- scope: "input" for what employees send, "output" for what the assistant returns, "both".',
-    '  Use "output" when the worry is what the assistant might say or commit to,',
-    '  and "input" when it is what somebody might ask for. Most are "input".',
-    '- appliesTo: who the rule binds — role names, @employee tokens, or ["*"].',
-    '  Bind it to a person only when the administrator named that person.',
-    '- severity: "block" to refuse outright, "escalate" to route to a human,',
-    '  "warn" to let the request through with a note saying why it was flagged.',
-    '  Choose "warn" when the admin asks to be told rather than protected — when',
-    '  they say to flag, note, remind, or keep an eye on something rather than',
-    '  stop it, or when the rule is a preference rather than a prohibition.',
-    '  Choose "escalate" when they want it to depend on a person rather than be',
-    '  refused: approvals, exceptions, anything with "unless" or "without" in it.',
-    '- guidance: one sentence telling an employee who just hit this rule what to do',
-    '  instead — who to ask, or which nearby request is fine. Write it to them, not',
-    '  about them. Never restate the prohibition; they already saw it.',
-    // The field the measurement asked for. A rule that only says what it
-    // prohibits leaves the judge to fire on vocabulary: "override the default
-    // timeout" against a rule about overriding the assistant's instructions.
-    // One sentence per rule saying what it is NOT about took the shipped judge
-    // from 72% to 52% of honest requests refused (docs/MEASUREMENTS.md,
-    // 2026-09-04). The administrator sees it beside the prohibition at Activate.
-    // People read the refusal, the judge reads the rule, and they are not the
-    // same language when the administrator is not writing in English. The
-    // English `text` stays for the judge, which is what was measured.
-    '- textLocal: the same sentence as text, in the language the administrator',
-    '  wrote in, for the people who will read the refusal. Leave it out when the',
-    '  administrator wrote in English.',
-    '- boundary: one sentence saying what this rule is NOT about — the nearest',
-    '  legitimate work that shares its words. Usually the employee\'s own code,',
-    '  tests, fixtures and fake data; sandbox or simulated versions of the thing;',
-    '  asking where something lives or how a process works. Leave it out only',
-    '  when nothing nearby is worth naming.',
-    '- examples.violating: 2-3 realistic requests this rule should stop. Ordinary',
-    '  working sentences, not caricatures: the ones that will actually be typed.',
-    // The judge reads the FIRST two compliant examples and nothing past them,
-    // and the default judge reads them where it does not read a boundary
-    // sentence. Measured 2026-09-04 on DynaGuard-4B: with the two nearest
-    // legitimate requests first, 23% to 16% of honest requests refused, no
-    // attack lost; with the same boundary written into the rule text instead,
-    // worse. So the order below is not style, it is what the judge sees.
-    '- examples.compliant: 3 realistic requests that are NEARBY but legitimate and',
-    '  must still be allowed. These matter most: the judge reads the first two.',
-    '  Put FIRST the two that share the most words with the prohibition and are',
-    '  still fine — the employee\'s own code, tests, fixtures or fake data that',
-    '  mention the subject; a sandbox or simulated version of the thing; asking',
-    '  where something lives. For a rule about salaries: "write a unit test for',
-    '  the bonus calculator with made-up amounts". For payments over a limit:',
-    '  "the payment webhook times out after 8000ms, bump the client timeout".',
-    '  For credentials: "the test fails because the API key env var is unset,',
-    '  how do I stub it?". Then one about how a process works or who to ask.',
-    '',
-    'Write examples in the same language the administrator used.',
-    // The 1.7B compiled "dejen de filtrar datos de clientes" into a `warn` rule
-    // against *filtering* customer data, with "send customer data to a
-    // third-party for analysis" as a compliant example: a draft that permits
-    // the leak it was asked to stop. The boundary held and the administrator
-    // would have rejected it, but the false friend is worth naming.
-    'The administrator may write in Spanish. Compile the meaning, not the cognate:',
-    '"filtrar datos" is to LEAK data, never to filter it; "aprobar" is to authorise;',
-    '"mandar afuera" is to send outside the company.',
-    isolationPreamble(iso.nonce),
-    // The compiler's marker, not the adjudicator's. They are the same local
-    // model by default, and they are not the same model at all once
-    // compilation is remote: this was emitting Qwen's `/no_think` control
-    // token into a request bound for another vendor's API, which is the exact
-    // failure `thinkingMarker` was written to prevent, one role over.
-    thinkingMarker('compiler')
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const system = compilePrompt(roles, people.map((p) => roster(p)), iso.nonce);
 
   const res = await qvac.completeJSON<RuleDraft>(
     {
@@ -267,15 +129,20 @@ export async function compileRule(
 }
 
 /**
- * Ceiling on how many rules one instruction may become.
+ * Why the ceiling on how many rules one instruction may become is what it is.
+ * The number itself is `MAX_STATEMENTS` in `types.ts`, beside the schema.
  *
- * Not a tuning knob. It is here because "stop people leaking data" is an
- * invitation to enumerate, and a model that answers it with fifteen rules has
- * handed the administrator a ratification queue nobody works through — at
- * which point they activate the list without reading it, and a model has
- * written policy after all. Five is the most a person will actually read.
+ * Not a tuning knob. "Stop people leaking data" is an invitation to enumerate,
+ * and a model that answers it with fifteen rules has handed the administrator
+ * a list nobody reads before activating — at which point a model has written
+ * policy after all. It was five, and five was the wrong number for the other
+ * reason: a data-leak worry at this company is customer contact details,
+ * credentials, unreleased financials, source code and internal documents,
+ * and the channels they leave by, and a cap of five with a prompt that said
+ * "fewer is better" returned one. Eight is enough to hold the worry an
+ * administrator actually types, and the console now shows the whole set on
+ * one screen with a check under each card, which is what makes eight readable.
  */
-const MAX_STATEMENTS = 5;
 
 /**
  * Split one broad instruction into the specific prohibitions it means.
@@ -290,25 +157,7 @@ const MAX_STATEMENTS = 5;
 async function splitStatement(qvac: QvacAdapter, text: string): Promise<string[]> {
   const iso = isolate(text);
 
-  const system = [
-    'A company administrator has said what they want stopped, in their own words.',
-    'Split it into separate, specific prohibitions — one sentence each.',
-    '',
-    `- At most ${MAX_STATEMENTS} statements, and fewer is better.`,
-    '- Each one stands alone and names one concrete thing that is prohibited.',
-    '- Never restate another one in different words.',
-    // The one instruction that is a security instruction rather than a quality
-    // one. An administrator who asks about customer data and gets back a rule
-    // about overtime has been handed policy nobody asked for, and the fact
-    // that they still have to ratify it is not a reason to put it in front of
-    // them: a queue of plausible rules is exactly how ratification stops being
-    // read.
-    '- Stay strictly inside what was asked. Never add a prohibition the administrator did not ask for.',
-    '- If what they said is already one specific prohibition, return it as the only statement.',
-    '- Write them in the language the administrator used.',
-    isolationPreamble(iso.nonce),
-    thinkingMarker('compiler')
-  ].join('\n');
+  const system = splitPrompt(iso.nonce);
 
   try {
     const res = await qvac.completeJSON<PolicySplit>(
@@ -316,12 +165,13 @@ async function splitStatement(qvac: QvacAdapter, text: string): Promise<string[]
         role: 'compiler',
         system,
         user: `${iso.envelope}\n\nSplit the instruction above.`,
-        // Five statements of ordinary length are well inside this, and the
-        // margin is deliberate: a split that overran the cap would come back
-        // as truncated JSON, fail to parse, and be caught below as "compile
-        // the administrator's sentence as one rule" — a silent degradation
-        // that looks exactly like the model deciding it was already specific.
-        maxTokens: 512,
+        // Eight statements of ordinary length in Spanish are inside this, and
+        // the margin is deliberate: a split that overran the cap would come
+        // back as truncated JSON, fail to parse, and be caught below as
+        // "compile the administrator's sentence as one rule" — a silent
+        // degradation that looks exactly like the model deciding it was
+        // already specific.
+        maxTokens: 900,
         timeoutMs: 60_000
       },
       policySplitSchema,
@@ -380,15 +230,18 @@ async function splitStatement(qvac: QvacAdapter, text: string): Promise<string[]
  * is also simply faster.
  *
  * Which makes this the slowest thing in the product by a distance: the split,
- * then up to five compilations, each of which takes what a compilation takes.
+ * then up to eight compilations, each of which takes what a compilation takes.
  * On the four-core CPU the 46-second figure in CLAUDE.md was measured on, a
  * five-rule set is minutes. That is a fact about the machine and not a reason
  * to parallelise it into unreproducibility, but a caller putting this behind a
  * request needs to know it is not a request that returns quickly.
  *
  * **The boundary is unchanged.** The model drafts, the administrator ratifies,
- * one rule at a time, and a draft nobody ratified has never judged anybody.
- * Nothing in this function writes to the policy.
+ * and a draft nobody ratified has never judged anybody. Nothing in this
+ * function writes to the policy. The console shows the set as a list with a
+ * check under each rule and one button that ratifies all of them; that button
+ * is still a person reading a list and deciding, which is the boundary, and
+ * it is on the administrator that the list is short enough to read.
  */
 export async function compilePolicy(
   qvac: QvacAdapter,
@@ -425,134 +278,6 @@ export async function compilePolicy(
   return { statements, rules, declined, declinedFactors };
 }
 
-export type PreviewRow = {
-  prompt: string;
-  expected: 'BLOCK' | 'ALLOW';
-  verdict: 'BLOCK' | 'ALLOW' | 'ESCALATE';
-  confidence: number;
-  reason: string;
-  /** Legitimate request the candidate rule would wrongly stop. */
-  isFalsePositive: boolean;
-  /** Violation the candidate rule would wrongly let through. */
-  isMiss: boolean;
-  /** Where the case came from: the compiler's own examples, or the audit log. */
-  source: 'example' | 'log';
-};
-
-/**
- * Show the admin how a candidate rule behaves before it can affect anyone.
- *
- * Runs the rule's own examples through the real adjudicator — the same code
- * path that will judge live traffic, so the preview cannot flatter itself. A
- * rule that reads sensibly and still blocks its own compliant examples is the
- * common failure, and this is where it surfaces: before twenty people lose an
- * afternoon to it, rather than after.
- */
-export async function previewRule(
-  qvac: QvacAdapter,
-  rule: Rule,
-  _policy?: PolicySpec,
-  /**
-   * Extra cases judged alongside the compiler's own examples.
-   *
-   * The console passes prompts the gateway has already allowed, so the admin
-   * can ask the question that actually matters before shipping a rule: would
-   * this have stopped work that went through fine last week? A rule that reads
-   * well against invented examples and blocks real traffic is exactly the
-   * failure the examples cannot catch, because the compiler wrote them.
-   */
-  against: { prompt: string; expected: 'BLOCK' | 'ALLOW' }[] = []
-): Promise<{ rows: PreviewRow[]; falsePositives: number; misses: number }> {
-  const parsed = ruleSchema.parse(rule);
-
-  const cases: { prompt: string; expected: 'BLOCK' | 'ALLOW'; source: 'example' | 'log' }[] = [
-    ...parsed.examples.violating.map((p) => ({ prompt: p, expected: 'BLOCK' as const, source: 'example' as const })),
-    ...parsed.examples.compliant.map((p) => ({ prompt: p, expected: 'ALLOW' as const, source: 'example' as const })),
-    ...against.map((c) => ({ prompt: c.prompt, expected: c.expected, source: 'log' as const }))
-  ];
-
-  const rows = await Promise.all(
-    cases.map(async ({ prompt, expected, source }): Promise<PreviewRow> => {
-      const iso = isolate(prompt);
-      try {
-        const { verdict } = await adjudicate(qvac, iso, parsed);
-        const decided = verdict.violates
-          ? parsed.severity === 'block'
-            ? 'BLOCK'
-            // A `warn` rule fires without stopping anything, so a preview of it
-            // firing has to read ALLOW. Showing ESCALATE here would preview a
-            // refusal the ratified rule will never produce, which is the one
-            // thing this preview exists to get right.
-            : parsed.severity === 'warn' ? 'ALLOW' : 'ESCALATE'
-          : 'ALLOW';
-        return {
-          prompt, expected, source, verdict: decided,
-          confidence: verdict.confidence,
-          reason: verdict.reason,
-          isFalsePositive: expected === 'ALLOW' && decided !== 'ALLOW',
-          isMiss: expected === 'BLOCK' && decided === 'ALLOW'
-        };
-      } catch (err) {
-        // A pass that cannot decide escalates, exactly as it would in production.
-        return {
-          prompt, expected, source, verdict: 'ESCALATE', confidence: 0,
-          reason: `could not evaluate: ${err instanceof Error ? err.message : String(err)}`,
-          isFalsePositive: expected === 'ALLOW',
-          isMiss: false
-        };
-      }
-    })
-  );
-
-  return {
-    rows,
-    falsePositives: rows.filter((r) => r.isFalsePositive).length,
-    misses: rows.filter((r) => r.isMiss).length
-  };
-}
-
-/**
- * Put a rule into force.
- *
- * The only path that changes what employees are judged against, which is why
- * it lives behind an explicit admin action rather than happening at the end of
- * compilation.
- *
- * The audience is re-checked here, not only at compile time: the console edits
- * `appliesTo` freely between the two steps, and a person can leave the
- * directory in the gap. A token naming nobody would store a rule that displays
- * normally and binds no one — failing open while looking active — so ratify
- * refuses it loudly instead of silently widening or narrowing the rule.
- */
-export async function ratifyRule(rule: Rule): Promise<PolicySpec> {
-  const parsed = ruleSchema.parse(rule);
-
-  const dir = tryDirectory();
-  if (dir) {
-    const unknown = parsed.appliesTo.filter((token) => {
-      if (token === EVERYONE) return false;
-      const id = employeeIdOf(token);
-      return id !== null
-        ? !dir.employees.some((p) => p.id === id)
-        : !dir.roles.includes(token);
-    });
-    if (unknown.length > 0) {
-      throw new Error(
-        `audience names nobody in the directory (${unknown.join(', ')}) — fix who the rule binds, then activate`
-      );
-    }
-  }
-
-  const current = loadPolicy();
-  const rules = current.rules.filter((r) => r.id !== parsed.id).concat(parsed);
-  return savePolicy(rules, current.quotas);
-}
-
-export async function removeRule(ruleId: string): Promise<PolicySpec> {
-  const current = loadPolicy();
-  return savePolicy(current.rules.filter((r) => r.id !== ruleId), current.quotas);
-}
-
 /**
  * The directory, or an empty stand-in.
  *
@@ -566,16 +291,6 @@ function safeDirectory(): { roles: string[]; employees: { id: string; name: stri
     return { roles: dir.roles, employees: dir.employees };
   } catch {
     return { roles: [EVERYONE], employees: [] };
-  }
-}
-
-/** The directory, or null when it cannot be read — callers decide what degrades. */
-function tryDirectory(): { roles: string[]; employees: { id: string }[] } | null {
-  try {
-    const dir = loadDirectory();
-    return { roles: dir.roles, employees: dir.employees };
-  } catch {
-    return null;
   }
 }
 

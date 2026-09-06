@@ -19,8 +19,8 @@ import { fileURLToPath } from 'node:url';
 import { evaluate } from '../guard/pipeline.js';
 import { resetQuotas } from '../guard/quota.js';
 import type { Verdict } from '../guard/types.js';
-import { hashPolicy, rulesForRole } from '../policy/store.js';
-import type { PolicySpec, Quota, Rule } from '../policy/types.js';
+import { policyFromFile, rulesForRole } from '../policy/store.js';
+import type { PolicySpec } from '../policy/types.js';
 import { provenanceLabel } from '../provenance.js';
 import { adapter, adapterName, isMock } from '../qvac/index.js';
 import { writeReport, type ClassResult, type RunSummary } from './report.js';
@@ -125,22 +125,7 @@ function loadCorpus(filter?: string): CorpusFile[] {
  * mean every product decision about defaults silently rewrites the benchmark.
  */
 function benchmarkPolicy(): PolicySpec {
-  const path = process.env['WARDEN_BENCHMARK_POLICY'] ?? join(ASSETS_DIR, 'data', 'seed', 'benchmark-policy.json');
-  const seed = JSON.parse(readFileSync(path, 'utf8')) as {
-    rules?: Rule[];
-    quotas?: Quota[];
-    exemptRoles?: string[];
-  };
-  const rules = seed.rules ?? [];
-  const quotas = seed.quotas ?? [];
-  const exemptRoles = seed.exemptRoles ?? ['admin'];
-  return {
-    version: hashPolicy(rules, quotas, exemptRoles),
-    updatedAt: new Date(0).toISOString(),
-    rules,
-    quotas,
-    exemptRoles
-  };
+  return policyFromFile(process.env['WARDEN_BENCHMARK_POLICY'] ?? join(ASSETS_DIR, 'data', 'seed', 'benchmark-policy.json'));
 }
 
 /**

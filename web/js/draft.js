@@ -1,13 +1,15 @@
 /**
  * Writing a rule as a conversation: the turns, the draft card, the check, the audience, and Activate.
  */
-import { $, REGRESSION_SAMPLE, api, esc, severityVerb, state } from './core.js';
+import { $, REGRESSION_SAMPLE, del, esc, post, severityVerb, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { audienceLabel, personById, plural, sendOnEnter } from './format.js';
 import { bindLimits } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
-import { bindSweeps, compileFailure, composing, isExempt, notARuleAnswer, readable, rulesTabs } from './rules.js';
+import { compileFailure, limitsPlan, notARuleAnswer, readable } from './answers.js';
+import { bindSweeps, composing, isExempt, rulesTabs } from './rules.js';
+import { bindSet, runSetPreviews, setCards } from './draft-set.js';
 
 // ── the conversation ─────────────────────────────────────────────────────────
 //
@@ -26,6 +28,7 @@ export function ruleChatPane() {
         ${rulesTabs('<button type="button" class="btn quiet" id="cancelDraft">Start over</button>')}
         ${state.ruleChat.map(renderTurn).join('')}
         ${state.draft ? draftCard() : ''}
+        ${state.set ? setCards() : ''}
       </div>
     </div>
     <div class="composer">
@@ -33,7 +36,7 @@ export function ruleChatPane() {
         <div class="hero-box">
           <textarea id="ruleMsg" rows="2" placeholder="${state.draft
             ? 'Tell Warden how to change it…'
-            : 'Describe the rule in your own words…'}"></textarea>
+            : state.set ? 'Or describe another rule…' : 'Describe the rule in your own words…'}"></textarea>
           <button type="button" class="btn primary send" id="ruleSend"${state.ruleBusy ? ' disabled' : ''}>${state.ruleBusy ? 'Working…' : 'Send'}</button>
         </div>
       </div>
@@ -64,36 +67,41 @@ function renderTurn(t) {
  * fold opens itself. It is the only reason not to activate, so it is never
  * something you have to go looking for.
  */
-function draftCard() {
-  const d = state.draft;
-  const locked = Boolean(state.draftFor);
-  const p = state.preview;
-
-  // In demo mode the check ran on the stand-in, which judges nothing, so the
-  // counts underneath it are not findings about this rule and must not be
-  // dressed as them. A person evaluating Warden with no models downloaded was
-  // being told their rule missed two of its own examples — a criticism produced
-  // by a test double, of a rule a test double wrote. The honest line is the one
-  // that says so and points at the download.
-  const verdict = state.mock
-    ? `<div class="verdict-line"><span class="dot"></span>
+/**
+ * One line saying what the check found, for a draft card or a card in a set.
+ *
+ * In demo mode the check ran on the stand-in, which judges nothing, so the
+ * counts underneath it are not findings about this rule and must not be
+ * dressed as them. A person evaluating Warden with no models downloaded was
+ * being told their rule missed two of its own examples — a criticism produced
+ * by a test double, of a rule a test double wrote. The honest line is the one
+ * that says so and points at the download.
+ */
+export function verdictLine(p, checking = false) {
+  if (state.mock) {
+    return `<div class="verdict-line"><span class="dot"></span>
         <b>Not checked.</b>
-        <span>No model is installed, so nothing on this card was judged.</span></div>`
-    : !p
-    ? '<div class="verdict-line"><span class="dot"></span><span>Not checked yet.</span></div>'
-    : p.falsePositives > 0
-      ? `<div class="verdict-line"><span class="dot BLOCK"></span>
+        <span>No model is installed, so nothing on this card was judged.</span></div>`;
+  }
+  if (checking) return '<div class="verdict-line"><span class="dot"></span><span>Checking it against its examples…</span></div>';
+  if (!p) return '<div class="verdict-line"><span class="dot"></span><span>Not checked yet.</span></div>';
+  if (p.falsePositives > 0) {
+    return `<div class="verdict-line"><span class="dot BLOCK"></span>
           <b>${plural(p.falsePositives, 'legitimate request')} would be blocked.</b>
-          <span>Reword it before activating.</span></div>`
-      : p.misses > 0
-        ? `<div class="verdict-line"><span class="dot ESCALATE"></span>
+          <span>Reword it before activating.</span></div>`;
+  }
+  if (p.misses > 0) {
+    return `<div class="verdict-line"><span class="dot ESCALATE"></span>
             <b>${plural(p.misses, 'example')} it should have caught slipped through.</b>
-            <span>Worth being more specific.</span></div>`
-        : `<div class="verdict-line"><span class="dot ALLOW"></span>
+            <span>Worth being more specific.</span></div>`;
+  }
+  return `<div class="verdict-line"><span class="dot ALLOW"></span>
             <b>Checked against ${plural(p.rows.length, 'request')}.</b>
             <span>None of them would be wrongly stopped.</span></div>`;
+}
 
-  const checkRows = p ? p.rows.map((r) => `
+export function checkRowsOf(p) {
+  return p ? p.rows.map((r) => `
     <div class="preview-row${r.isFalsePositive ? ' fp' : ''}">
       <span class="v ${esc(r.verdict)}">${esc(r.verdict)}</span>
       <span class="p">${esc(r.prompt)}</span>
@@ -101,6 +109,21 @@ function draftCard() {
       ${r.isFalsePositive ? '<span class="badge block">wrongly stopped</span>' : ''}
       ${r.isMiss ? '<span class="badge escalate">missed</span>' : ''}
     </div>`).join('') : '';
+}
+
+export function examplesFold(key, d) {
+  return disclosure(key, 'Examples Warden wrote for it', `
+        <div class="label">Would be stopped</div>
+        ${(d.examples?.violating ?? []).map((x) => `<div class="note">· ${esc(x)}</div>`).join('')}
+        <div class="label">Must still go through</div>
+        ${(d.examples?.compliant ?? []).map((x) => `<div class="note">· ${esc(x)}</div>`).join('')}`);
+}
+
+function draftCard() {
+  const d = state.draft;
+  const locked = Boolean(state.draftFor);
+  const p = state.preview;
+  const verdict = verdictLine(p);
 
   return `<div class="artifact">
     <div class="detail-head">
@@ -115,9 +138,6 @@ function draftCard() {
           : ''
       }
       <span class="when">not active yet</span>
-      ${state.drafts.length
-        ? `<span class="when">${plural(state.drafts.length, 'more')} from that instruction</span>`
-        : ''}
     </div>
 
     <p class="summary">${esc(d.text)}</p>
@@ -145,13 +165,9 @@ function draftCard() {
     </div>
 
     <div class="folds">
-      ${p ? disclosure('n:check', `The ${plural(p.rows.length, 'request')} it was checked against`, checkRows) : ''}
+      ${p ? disclosure('n:check', `The ${plural(p.rows.length, 'request')} it was checked against`, checkRowsOf(p)) : ''}
       ${d.guidance ? disclosure('n:told', 'What the employee is told instead', `<div class="banner">${esc(d.guidance)}</div>`) : ''}
-      ${disclosure('n:examples', 'Examples Warden wrote for it', `
-        <div class="label">Would be stopped</div>
-        ${(d.examples?.violating ?? []).map((x) => `<div class="note">· ${esc(x)}</div>`).join('')}
-        <div class="label">Must still go through</div>
-        ${(d.examples?.compliant ?? []).map((x) => `<div class="note">· ${esc(x)}</div>`).join('')}`)}
+      ${examplesFold('n:examples', d)}
     </div>
   </div>`;
 }
@@ -167,6 +183,27 @@ export function say(html, pending = false) {
 
 function dropPending() {
   state.ruleChat = state.ruleChat.filter((t) => !t.pending);
+}
+
+/**
+ * What both compile routes have in common once the answer is back: the
+ * pending turn goes, and a decline or a failure is said and ends the turn.
+ *
+ * A decline is an answer, not an error. "Quiero reducir mi uso al 50%" is a
+ * spending target, and the honest reply is the screen that holds spending
+ * targets, not a prohibition invented to fit the shape; before the compiler
+ * could decline, that sentence became a rule forbidding anyone to be limited
+ * on the basis of a usage goal, which is the request inside out.
+ *
+ * Returns true when there is a draft to go on with.
+ */
+function compiled(ok, j) {
+  dropPending();
+  if (ok && !j?.notARule) return true;
+  state.ruleBusy = false;
+  say(j?.notARule ? notARuleAnswer(j) : compileFailure(j));
+  render();
+  return false;
 }
 
 export async function sendRuleMessage(text) {
@@ -190,30 +227,9 @@ export async function sendRuleMessage(text) {
     : { text: clean };
   if (state.draftFor) body.lockTo = [`@${state.draftFor}`];
 
-  const { ok, j } = await api('/api/policy/draft', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
-  });
+  const { ok, j } = await post('/api/policy/draft', body);
 
-  dropPending();
-
-  // The compiler read the sentence and says it is not a rule. "Quiero reducir
-  // mi uso al 50%" is a spending target, and the honest answer is the screen
-  // that holds spending targets, not a prohibition invented to fit the shape.
-  // Before it had one, that sentence compiled into a rule forbidding anyone to
-  // be limited on the basis of a usage goal, which is the request inside out.
-  if (ok && j.notARule) {
-    state.ruleBusy = false;
-    say(notARuleAnswer(j));
-    render();
-    return;
-  }
-
-  if (!ok) {
-    state.ruleBusy = false;
-    say(compileFailure(j));
-    render();
-    return;
-  }
+  if (!compiled(ok, j)) return;
 
   state.draft = j;
   startDraftAudience();
@@ -242,19 +258,24 @@ export async function sendRuleMessage(text) {
  * broad one is allowed to yield more.
  */
 function writeRule(text) {
-  const capable = (state.compiler?.provider ?? 'local') !== 'local';
+  // `capable` is the gateway saying which compiler is in force, environment
+  // included; `provider` is only what was saved from this page, and a CLI set
+  // by environment variable left it at "local" and skipped the split.
+  const capable = state.compiler?.capable ?? ((state.compiler?.provider ?? 'local') !== 'local');
   return capable ? sendRuleSet(text) : sendRuleMessage(text);
 }
 
 /**
- * One broad instruction, several rules, ratified one at a time.
+ * One broad instruction, several rules, all on screen.
  *
  * The compiler splits what you said into the specific prohibitions it means
- * and compiles each of those; what comes back is a queue, not a policy. The
- * first is put on screen and checked exactly like a single draft, and the rest
- * wait — activating one brings up the next. Nothing is written until you press
- * Activate, once per rule, which is the same boundary as everywhere else and
- * the reason this is a queue rather than a list with a "take all" button.
+ * and compiles each of those; what comes back is a set, not a policy. Every
+ * rule goes on screen as its own card, each is checked in turn against its own
+ * examples, and nothing is written until you press Activate — on a card, or
+ * once for the whole list after a confirm that says what is about to bind
+ * whom. A spending target inside the same sentence comes back beside the rules
+ * as proposed limits, with its own button, rather than being dropped because
+ * a rule also compiled.
  */
 async function sendRuleSet(text) {
   const clean = String(text ?? '').trim();
@@ -270,38 +291,38 @@ async function sendRuleSet(text) {
   const body = { text: clean };
   if (state.draftFor) body.lockTo = [`@${state.draftFor}`];
 
-  const { ok, j } = await api('/api/policy/draft-set', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
-  });
+  const { ok, j } = await post('/api/policy/draft-set', body);
 
-  dropPending();
+  if (!compiled(ok && Array.isArray(j.rules) && j.rules.length > 0, j)) return;
 
-  // Same refusal, same handling. This route is the one that was forgotten.
-  if (ok && j.notARule) {
-    state.ruleBusy = false;
-    say(notARuleAnswer(j));
+  // The part of the sentence that was a spending target, if any, answered in
+  // the same turn as the rules. The limits carry their own Apply button.
+  const limitsNote = typeof j.factor === 'number'
+    ? `<div class="note">Part of that was a spending target, not a rule.</div>${limitsPlan(j)}`
+    : '';
+
+  if (j.rules.length === 1) {
+    state.draft = j.rules[0];
+    startDraftAudience();
+    state.preview = null;
+    say(`That was already one specific thing, so it is one rule.${limitsNote}`);
     render();
+    await runPreview();
     return;
   }
 
-  if (!ok || !Array.isArray(j.rules) || j.rules.length === 0) {
-    state.ruleBusy = false;
-    say(compileFailure(j));
-    render();
-    return;
-  }
-
-  const [first, ...rest] = j.rules;
-  state.draft = first;
-  startDraftAudience();
-  state.drafts = rest;
+  state.draft = null;
   state.preview = null;
-  say(rest.length
-    ? `That means ${plural(j.rules.length, 'separate rule')} to me. Here is the first, and the others are behind it, and you activate them one at a time.`
-    : 'That was already one specific thing, so it is one rule.');
+  state.set = {
+    items: j.rules.map((rule) => ({ rule, preview: null, status: 'pending' })),
+    limits: j.limits ?? null,
+    factor: j.factor
+  };
+  state.ruleBusy = false;
+  say(`That’s ${plural(j.rules.length, 'rule')}. Each has its own check below. Activate one, or all of them once you’ve read the list.${limitsNote}`);
   render();
 
-  await runPreview();
+  await runSetPreviews(state.set);
 }
 
 /**
@@ -318,10 +339,7 @@ async function runPreview(against = []) {
     : 'Checking it…', true);
   render();
 
-  const { ok, j } = await api('/api/policy/preview', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(against.length ? { rule: state.draft, against } : { rule: state.draft })
-  });
+  const { ok, j } = await post('/api/policy/preview', against.length ? { rule: state.draft, against } : { rule: state.draft });
 
   dropPending();
   state.ruleBusy = false;
@@ -338,7 +356,7 @@ async function runPreview(against = []) {
   if (state.mock) {
     // Same reason as the verdict line above: no model ran, so there is nothing
     // to report except that.
-    say('No model is installed, so nothing was actually checked. The rows below came from the demo stand-in. Download the models and the check becomes real.');
+    say('No model installed, so nothing was checked. These rows come from the demo stand-in; download the models and the check becomes real.');
     render();
     return;
   }
@@ -346,11 +364,11 @@ async function runPreview(against = []) {
   if (j.falsePositives > 0) {
     say(`<b>${plural(j.falsePositives, 'legitimate request')} would be blocked by this.</b>
       ${logFps.length ? `${logFps.length} of them actually went through the gateway before. ` : ''}
-      They are marked below. Tell me how to narrow it — “only for sales”, or “not when it is their own data”.`);
+      They’re marked below. Tell me how to narrow it: “only for sales”, or “not when it’s their own data”.`);
   } else if (j.misses > 0) {
-    say(`No false positives, but ${plural(j.misses, 'example')} it should have caught slipped through. Worth being more specific about what you mean.`);
+    say(`Nothing wrongly stopped, but ${plural(j.misses, 'example')} it should have caught got through. Say more precisely what you mean.`);
   } else if (against.length) {
-    say('None of those real requests would have been stopped. This one looks safe to activate.');
+    say('None of those real requests would have been stopped. Safe to activate.');
   } else {
     say(`Clean against its own examples. ${offerRegression()}`);
   }
@@ -359,8 +377,8 @@ async function runPreview(against = []) {
 
 function offerRegression() {
   const n = regressionSample().length;
-  if (!n) return 'Activate it below when you are happy with it.';
-  return `Before you activate it, I can replay the last ${n} requests Warden allowed and see whether this rule would have stopped any of them.
+  if (!n) return 'Activate it below when it reads right.';
+  return `Want me to replay the last ${n} requests Warden allowed and see if this rule would have stopped any?
     <button type="button" class="btn sm" id="regressBtn">Replay ${n} real requests</button>`;
 }
 
@@ -372,7 +390,7 @@ export function bindPolicy() {
   const del = $('delRule');
   if (del) del.onclick = async () => {
     if (!confirm('Remove this rule? It stops binding everyone immediately.')) return;
-    await api(`/api/policy/rules/${encodeURIComponent(del.dataset.id)}`, { method: 'DELETE' });
+    await del(`/api/policy/rules/${encodeURIComponent(del.dataset.id)}`);
     await Promise.all([refreshPolicy(), refreshPeople()]);
     go('policy');
   };
@@ -384,10 +402,7 @@ export function bindPolicy() {
   if (apply) apply.onclick = async () => {
     apply.disabled = true;
     apply.textContent = 'Applying…';
-    const { ok, j } = await api('/api/quotas/apply', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ limits: state.pendingLimits ?? [] })
-    });
+    const { ok, j } = await post('/api/quotas/apply', { limits: state.pendingLimits ?? [] });
     if (!ok) { apply.disabled = false; apply.textContent = 'Apply these limits'; return; }
     state.pendingLimits = null;
     await refreshPolicy();
@@ -441,7 +456,20 @@ export function bindPolicy() {
   renderAudienceChips();
 
   const drop = $('dropBtn');
-  if (drop) drop.onclick = discardDraft;
+  if (drop) drop.onclick = () => {
+    // Discarding a card that was lifted out of a set puts it back on the
+    // list as it was; the set is not what is being discarded.
+    const editing = state.set?.editing;
+    if (editing) {
+      editing.status = editing.preview ? 'checked' : 'pending';
+      state.set.editing = null;
+      state.draft = null;
+      state.preview = null;
+      render();
+      return;
+    }
+    discardDraft();
+  };
 
   const ratify = $('ratifyBtn');
   if (ratify) ratify.onclick = async () => {
@@ -458,30 +486,28 @@ export function bindPolicy() {
 
     ratify.disabled = true;
     const person = state.draftFor;
-    await api('/api/policy/ratify', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ rule: state.draft })
-    });
+    await post('/api/policy/ratify', { rule: state.draft });
     const id = state.draft.id;
-    // The rest of a set is not discarded by activating one of it. The next
-    // rule takes the card, gets its own check, and needs its own Activate —
-    // which is the whole reason a set is a queue.
-    const next = state.drafts.shift();
-    if (next) {
-      state.draft = next;
-      startDraftAudience();
+    // A rule taken out of a set to be edited alone goes back to the set as an
+    // active card, and the rest of the set stays on screen to be decided.
+    if (state.set) {
+      const item = state.set.editing;
+      if (item) { item.rule = state.draft; item.status = 'active'; }
+      state.set.editing = null;
+      state.draft = null;
       state.preview = null;
       state.ruleBusy = false;
       await refreshPolicy();
-      say(`Activated. Next in the set — ${plural(state.drafts.length + 1, 'rule')} left.`);
-      render();
-      void runPreview();
+      say('Activated. The rest of the set is below.');
+      await settleSet();
       return;
     }
     resetDraft();
     await Promise.all([refreshPolicy(), refreshPeople()]);
     if (person) go('people', person); else go('policy', id);
   };
+
+  bindSet();
 
 }
 
@@ -494,14 +520,14 @@ export function bindPolicy() {
  * next rule in a compiled set, starts unconfirmed even though a person is
  * mid-conversation, because the audience is a fresh proposal each time.
  */
-function startDraftAudience() {
+export function startDraftAudience() {
   state.audienceConfirmed = Boolean(state.draftFor);
   state.audienceWarning = false;
 }
 
-function resetDraft() {
+export function resetDraft() {
   state.draft = null;
-  state.drafts = [];
+  state.set = null;
   state.draftFor = null;
   state.preview = null;
   state.ruleChat = [];
@@ -513,7 +539,7 @@ function resetDraft() {
 /** Throws away the conversation and leaves you on a blank one — you came here
  *  to write a rule, so the tab you land on is still the one for writing rules.
  *  Unless you started from someone's page, in which case that is where you were. */
-function discardDraft() {
+export function discardDraft() {
   const person = state.draftFor;
   resetDraft();
   if (person) go('people', person); else go('policy', 'new');

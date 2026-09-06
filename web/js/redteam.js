@@ -1,7 +1,7 @@
 /**
  * The red-team report, off the main path on purpose.
  */
-import { $, api, esc, state } from './core.js';
+import { $, api, esc, post, state } from './core.js';
 import { render } from './render.js';
 import { backToRules } from './simulator.js';
 import { VIEWS } from './views.js';
@@ -79,7 +79,7 @@ VIEWS.redteam = {
     const run = $('runRt');
     if (run) run.onclick = async () => {
       state.rtBusy = true; render();
-      const { ok, j } = await api('/api/redteam/run', { method: 'POST' });
+      const { ok, j } = await post('/api/redteam/run');
       state.rtBusy = false;
       if (ok) state.rtReport = j;
       render();

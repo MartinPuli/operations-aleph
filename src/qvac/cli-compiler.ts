@@ -60,19 +60,17 @@
 import { execFile } from 'node:child_process';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ZodType } from 'zod';
 import { loadCompilerSettings } from '../settings.js';
+import { CompilerOffload } from './offload.js';
 import {
   FailClosedError,
   type CompleteRequest,
   type GenStats,
-  type ModelRole,
-  type QvacAdapter,
-  type StructuredResult
+  type QvacAdapter
 } from './types.js';
 
-/** The one role this file will answer for. Everything else is the guard. */
-const CLI_ROLE: ModelRole = 'compiler';
+/** Claude Code's "no customisations" flag. Dropped on a CLI that predates it. */
+const SAFE_MODE = '--safe-mode';
 
 export type CliTool = 'claude' | 'codex' | 'gemini' | 'opencode' | 'cursor-agent' | 'copilot';
 
@@ -116,14 +114,27 @@ const TOOLS: Record<CliTool, {
     verified: true,
     args: (model) => [
       '-p',
-      // Minimal mode: no hooks, no plugins. The administrator's own machine
+      // Customisations off, authentication on. The administrator's own machine
       // runs Warden's UserPromptSubmit hook inside Claude Code, so without this
       // the compile prompt — a paragraph about prohibitions and overriding
       // instructions — went through the guard, the guard blocked it, and the
       // CLI's stdout was "Operation stopped by hook: Blocked by Warden" where
       // the JSON should have been. Two refusals of the administrator's own
       // sentence, by their own product, reported as "not valid JSON".
-      '--bare',
+      //
+      // 0.1.33 answered that with `--bare`, and it broke the feature outright:
+      // `--bare` reads only ANTHROPIC_API_KEY and never the OAuth login or the
+      // keychain, so on the machine this file exists for — Claude Code signed
+      // in on a subscription, no API key anywhere — every compile came back
+      // "Authentication error". `--safe-mode` is the flag that means what was
+      // wanted: hooks, plugins, CLAUDE.md and MCP servers disabled, auth and
+      // model selection untouched. Measured 2026-09-05 on 2.1.261: a project
+      // hook that refuses everything stops `claude -p` with "operation blocked
+      // by hook", and the same prompt under `--safe-mode` answers. A CLI too
+      // old to know the flag says "unknown option"; `#run` drops it and tries
+      // once more, with `WARDEN_INTERNAL` still telling the hook to stand
+      // aside.
+      SAFE_MODE,
       '--output-format', 'text',
       ...(model ? ['--model', model] : []),
       // A compile is a text transform. Nothing here needs to touch the disk,
@@ -170,10 +181,6 @@ export function cliToolLabel(tool: CliTool): string {
   return TOOLS[tool].label;
 }
 
-export function cliToolVerified(tool: CliTool): boolean {
-  return TOOLS[tool].verified;
-}
-
 /**
  * The configuration, or null when this is off.
  *
@@ -217,11 +224,6 @@ export function cliCompilerConfig(): CliCompilerConfig | null {
   return tool ? { tool, model: saved.model.trim(), timeoutMs: 120_000 } : null;
 }
 
-export function cliCompilerSource(): 'env' | 'settings' | null {
-  if (toolFromEnv()) return 'env';
-  return PROVIDER_TOOL[loadCompilerSettings().provider] ? 'settings' : null;
-}
-
 /**
  * The PATH to look for these CLIs on, which is not the one this process has.
  *
@@ -261,8 +263,9 @@ function searchPath(): string {
 function cliEnv(): NodeJS.ProcessEnv {
   // `WARDEN_INTERNAL` tells Warden's own hook, wherever a CLI runs it, that
   // this invocation is the gateway compiling a rule and not an employee
-  // prompting — the hook exits clean on it. Claude Code also gets `--bare`,
-  // because the hook already installed on a machine may predate the marker.
+  // prompting — the hook exits clean on it. Claude Code also gets
+  // `--safe-mode`, because the hook already installed on a machine may
+  // predate the marker.
   return { ...process.env, PATH: searchPath(), WARDEN_INTERNAL: '1' };
 }
 
@@ -288,24 +291,18 @@ export async function detectCliTools(): Promise<{ tool: CliTool; label: string; 
 }
 
 /**
- * Local for everything, the signed-in CLI for compilation.
- *
- * A delegating wrapper rather than a branch inside each caller, so "can a guard
- * pass reach a subprocess" is answered by reading one `if` instead of auditing
- * every call site — the same shape as `RemoteCompilerAdapter`, for the same
- * reason.
+ * Local for everything, the signed-in CLI for compilation. The role gate, the
+ * call counter and the repair loop are `CompilerOffload`; this file is the
+ * subprocess.
  */
-export class CliCompilerAdapter implements QvacAdapter {
-  #calls = 0;
+export class CliCompilerAdapter extends CompilerOffload {
+  protected readonly label: string;
+  /** Whether this CLI accepts `--safe-mode`. Assumed until it says otherwise. */
+  #safeMode = true;
 
-  constructor(
-    private readonly local: QvacAdapter,
-    private readonly config: CliCompilerConfig
-  ) {}
-
-  /** How many compiles actually went to the CLI. Reported by the console. */
-  cliCalls(): number {
-    return this.#calls;
+  constructor(local: QvacAdapter, private readonly config: CliCompilerConfig) {
+    super(local);
+    this.label = TOOLS[config.tool].label;
   }
 
   describe(): string {
@@ -313,83 +310,21 @@ export class CliCompilerAdapter implements QvacAdapter {
     return `${TOOLS[tool].label}${model ? ` (${model})` : ''} on this machine`;
   }
 
-  async complete(req: CompleteRequest): Promise<{ text: string; stats: GenStats }> {
-    if (req.role !== CLI_ROLE) return this.local.complete(req);
-    return this.#run(req, undefined);
-  }
-
-  async completeJSON<T>(
-    req: CompleteRequest,
-    zodSchema: ZodType<T>,
-    jsonSchema: Record<string, unknown>
-  ): Promise<StructuredResult<T>> {
-    if (req.role !== CLI_ROLE) return this.local.completeJSON(req, zodSchema, jsonSchema);
-
-    const first = await this.#run(req, jsonSchema);
-    const parsed = parseJson(first.text, zodSchema);
-    if (parsed.ok) return { value: parsed.value, attempts: 1, repaired: false, stats: first.stats };
-
-    // One repair, mirroring every other adapter here. A model that misses the
-    // schema twice is confused about the task, not the format.
-    const second = await this.#run(
-      {
-        ...req,
-        user: [
-          req.user,
-          '',
-          'Your previous answer was rejected:',
-          parsed.error,
-          'Answer again, correcting exactly that. Output the JSON object and nothing else.'
-        ].join('\n')
-      },
-      jsonSchema
-    );
-    const retry = parseJson(second.text, zodSchema);
-    const stats: GenStats = { ...second.stats, ms: first.stats.ms + second.stats.ms };
-    if (retry.ok) return { value: retry.value, attempts: 2, repaired: true, stats };
-
-    throw new FailClosedError(
-      `${TOOLS[this.config.tool].label} returned schema-invalid output twice: ${retry.error}`,
-      { role: req.role, attempts: 2, lastRaw: second.text.slice(0, 400) }
-    );
-  }
-
-  // Guard-side work. Never routed to a subprocess, and there is deliberately
-  // no configuration that would let it be.
-  embed(texts: string[]): Promise<number[][]> {
-    return this.local.embed(texts);
-  }
-
-  ocr(imagePath: string): Promise<string> {
-    return this.local.ocr(imagePath);
-  }
-
-  stats(): { firstTry: number; repaired: number; failed: number } {
-    return this.local.stats();
-  }
-
-  dispose(): Promise<void> {
-    return this.local.dispose();
-  }
-
   /** One run of the CLI, prompt on stdin, answer on stdout. */
-  async #run(
+  protected async run(
     req: CompleteRequest,
     jsonSchema: Record<string, unknown> | undefined
   ): Promise<{ text: string; stats: GenStats }> {
-    // Belt and braces. The public methods already route by role; this is the
-    // line that has to be wrong for an employee prompt to reach a subprocess,
-    // and it is cheap enough to keep even though it is unreachable today.
-    if (req.role !== CLI_ROLE) {
-      throw new FailClosedError(
-        `refusing to send role "${req.role}" to a CLI — only "${CLI_ROLE}" may leave the guard`,
-        { role: req.role, attempts: 0 }
-      );
-    }
-
     const spec = TOOLS[this.config.tool];
     const started = Date.now();
-    this.#calls++;
+    // A CLI old enough not to know `--safe-mode` refuses the whole command
+    // line with "unknown option". That is not a failed compile, it is a flag
+    // to drop: the run is repeated once without it, and the answer is
+    // remembered so every later compile in this process skips the wasted
+    // attempt. The hook marker in the environment still covers the case the
+    // flag was for.
+    let args = spec.args(this.config.model);
+    if (!this.#safeMode) args = args.filter((a) => a !== SAFE_MODE);
 
     // System and user in one stream, because a CLI takes a prompt and not a
     // message list. The schema goes in as an instruction rather than as a
@@ -411,10 +346,10 @@ export class CliCompilerAdapter implements QvacAdapter {
       .filter(Boolean)
       .join('\n');
 
-    const text = await new Promise<string>((resolve, reject) => {
+    const run = (argv: string[]): Promise<string> => new Promise<string>((resolve, reject) => {
       const child = execFile(
         this.config.tool,
-        spec.args(this.config.model),
+        argv,
         {
           // No repository underneath it. Combined with the denied tools this
           // is two independent reasons the compile cannot touch a project.
@@ -426,6 +361,9 @@ export class CliCompilerAdapter implements QvacAdapter {
         (err, stdout, stderr) => {
           if (err) {
             const detail = String(stderr || err.message).trim().slice(0, 300);
+            if (this.#safeMode && argv.includes(SAFE_MODE) && UNKNOWN_SAFE_MODE.test(detail)) {
+              return reject(new UnknownSafeModeError());
+            }
             return reject(
               new FailClosedError(
                 `${spec.label} could not compile this rule: ${detail || 'no output'}`,
@@ -437,8 +375,11 @@ export class CliCompilerAdapter implements QvacAdapter {
           // A hook answered instead of the model. The text is not malformed
           // JSON, it is Warden refusing its own compile prompt through a hook
           // this process could not switch off, and the person needs to know
-          // which hook to update rather than to "say it more plainly".
-          if (/^\s*Operation stopped by hook/i.test(out)) {
+          // which hook to update rather than to "say it more plainly". The
+          // wording is the CLI's and has moved: "Operation stopped by hook"
+          // on the version that was first seen, "UserPromptSubmit operation
+          // blocked by hook" on 2.1.261, with exit code 0 either way.
+          if (HOOK_ANSWERED.test(out)) {
             return reject(
               new FailClosedError(
                 `${spec.label} ran a prompt hook that blocked the compile. If it is Warden's own hook, update it: curl -fsSL <gateway>/warden-hook.mjs -o ~/.warden-hook.mjs`,
@@ -449,8 +390,24 @@ export class CliCompilerAdapter implements QvacAdapter {
           resolve(out);
         }
       );
+      // A CLI that refuses its command line exits before it reads a byte of
+      // stdin, and writing the prompt into that closed pipe raises EPIPE on
+      // the stream — as an 'error' event, which with nobody listening is an
+      // uncaught exception that takes the gateway down. The exit callback
+      // above already carries the real reason, so the pipe error is swallowed
+      // here and the rejection comes from the exit, where it belongs.
+      child.stdin?.on('error', () => {});
       child.stdin?.end(prompt);
     });
+
+    let text: string;
+    try {
+      text = await run(args);
+    } catch (err) {
+      if (!(err instanceof UnknownSafeModeError)) throw err;
+      this.#safeMode = false;
+      text = await run(args.filter((a) => a !== SAFE_MODE));
+    }
 
     const ms = Date.now() - started;
     return {
@@ -465,38 +422,10 @@ export class CliCompilerAdapter implements QvacAdapter {
   }
 }
 
-/**
- * Pull one JSON object out of whatever the CLI printed.
- *
- * These are agents talking to a person by default: the verified run came back
- * fenced in ```json, and a stray sentence before or after is well within what
- * they do. So the fence is stripped and, failing that, the outermost balanced
- * braces are taken. Anything still unparseable is a rejection with the reason,
- * which `completeJSON` feeds back for the one repair attempt.
- */
-function parseJson<T>(raw: string, schema: ZodType<T>): { ok: true; value: T } | { ok: false; error: string } {
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidates = [fenced?.[1], braced(raw), raw].filter((c): c is string => Boolean(c && c.trim()));
+/** The CLI refusing the command line because the flag postdates it. */
+const UNKNOWN_SAFE_MODE = /unknown option '--safe-mode'/i;
 
-  let lastError = 'no JSON object found in the output';
-  for (const candidate of candidates) {
-    let value: unknown;
-    try {
-      value = JSON.parse(candidate.trim());
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-      continue;
-    }
-    const parsed = schema.safeParse(value);
-    if (parsed.success) return { ok: true, value: parsed.data };
-    lastError = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-  }
-  return { ok: false, error: lastError };
-}
+/** A prompt hook, not the model, wrote stdout. Both wordings the CLI has used. */
+const HOOK_ANSWERED = /^\s*(?:\w+\s+)?operation (?:stopped|blocked) by hook/i;
 
-/** The outermost {...} span, for output with a sentence wrapped around it. */
-function braced(raw: string): string | null {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  return start !== -1 && end > start ? raw.slice(start, end + 1) : null;
-}
+class UnknownSafeModeError extends Error {}

@@ -1,7 +1,7 @@
 /**
  * Limits by role: the cards, the editor, and the save that goes through the policy like any ratified change.
  */
-import { $, api, esc, state } from './core.js';
+import { $, esc, post, state } from './core.js';
 import { refreshPolicy } from './data.js';
 import { render } from './render.js';
 
@@ -124,15 +124,11 @@ export function bindLimits() {
       return raw ? Number(raw) : null;
     };
     const role = form.dataset.role;
-    const { ok, j } = await api(`/api/quotas/${encodeURIComponent(role)}`, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
+    const { ok, j } = await post(`/api/quotas/${encodeURIComponent(role)}`, {
         maxRequestsPerDay: num('qDay'),
         maxSessionOutputTokens: num('qOut'),
         maxContextTokens: num('qCtx')
-      })
-    });
+      }, { method: 'PUT' });
     if (!ok) {
       state.quotaError = j.error ?? 'could not save that limit';
       return render();
