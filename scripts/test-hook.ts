@@ -218,12 +218,16 @@ async function main(): Promise<void> {
   // because the app draws none of reason, stopReason or systemMessage. The
   // dialog must never delay the block: a hook held open past Claude Code's
   // deadline is cancelled, and a cancelled hook lets the prompt through. So
-  // a stand-in osascript that hangs for 30 s has to leave the hook exiting 2
-  // in well under that, with the refusal handed to it whole.
-  if (process.platform === 'darwin') {
-    const bin = mkdtempSync(join(tmpdir(), 'warden-osascript-'));
+  // a stand-in dialog binary that hangs for 30 s has to leave the hook
+  // exiting 2 in well under that, with the refusal handed to it whole. The
+  // stand-in is whichever binary this platform would use; Windows resolves
+  // powershell.exe through PATHEXT and the same trick does not reach it, so
+  // the win32 branch is only checked for its shape.
+  const standIn = process.platform === 'darwin' ? 'osascript' : process.platform === 'linux' ? 'zenity' : null;
+  if (standIn) {
+    const bin = mkdtempSync(join(tmpdir(), 'warden-dialog-'));
     const seen = join(bin, 'seen.txt');
-    writeFileSync(join(bin, 'osascript'), `#!/bin/sh\nprintf '%s\\n' "$@" > "${seen}"\nsleep 30\n`, { mode: 0o755 });
+    writeFileSync(join(bin, standIn), `#!/bin/sh\nprintf '%s\\n' "$@" > "${seen}"\nsleep 30\n`, { mode: 0o755 });
     await withServer(normal(block), async (url) => {
       const started = Date.now();
       const result = await runHook({ hook_event_name: 'UserPromptSubmit', prompt: 'salary?' }, url, {
@@ -236,9 +240,25 @@ async function main(): Promise<void> {
       // byte; give it a moment, which is the point being tested.
       const until = Date.now() + 5_000;
       while (!existsSync(seen) && Date.now() < until) await new Promise((r) => setTimeout(r, 50));
-      assert.match(readFileSync(seen, 'utf8'), /display dialog[\s\S]*Blocked by Warden[\s\S]*Audit audit-block[\s\S]*Warden/);
+      assert.match(readFileSync(seen, 'utf8'), /Blocked by Warden[\s\S]*Audit audit-block/);
+      assert.match(readFileSync(seen, 'utf8'), /Warden/);
     });
-    console.log('✓ under the desktop app the refusal also opens an OS dialog, without delaying the block');
+    console.log(`✓ under the desktop app the refusal also opens an OS dialog (${standIn}), without delaying the block`);
+  }
+  // Without the entrypoint nothing is opened, whatever the platform: the
+  // terminal already shows the refusal, and a second copy in a window would
+  // be the noise people learn to dismiss without reading.
+  if (standIn) {
+    const bin = mkdtempSync(join(tmpdir(), 'warden-nodialog-'));
+    const seen = join(bin, 'seen.txt');
+    writeFileSync(join(bin, standIn), `#!/bin/sh\ntouch "${seen}"\n`, { mode: 0o755 });
+    await withServer(normal(block), async (url) => {
+      const result = await runHook({ hook_event_name: 'UserPromptSubmit', prompt: 'salary?' }, url, { PATH: `${bin}:${process.env.PATH ?? ''}` });
+      assert.equal(result.code, 2);
+      await new Promise((r) => setTimeout(r, 300));
+      assert.equal(existsSync(seen), false, 'a dialog opened outside the desktop app');
+    });
+    console.log('✓ outside the desktop app no dialog is opened');
   }
 }
 
