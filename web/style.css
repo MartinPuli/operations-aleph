@@ -1099,6 +1099,9 @@ button.quota .quota-row b { margin-left: auto; }
 
 /* the table */
 .tbl { margin: 0 var(--s-3); border: 1px solid var(--line); border-radius: var(--r-lg); }
+/* Under People the add row holds the table off the tabs; a table that comes
+   straight after them gets the same air by itself. */
+.tabs + .tbl { margin-top: var(--s-6); }
 .tbl .thead, .tbl .trow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 150px 70px 200px 32px;
