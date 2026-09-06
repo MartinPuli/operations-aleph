@@ -156,3 +156,26 @@ async function runDownload(
   }
 }
 
+/**
+ * Which of the given specs are not on disk yet.
+ *
+ * Offline-friendly on purpose: a file at least ~90% of its approximate size is
+ * treated as complete without a network round-trip, so the desktop app can
+ * boot with no connectivity. `downloadModel` still verifies against the
+ * server's exact content-length (and resumes) whenever it actually runs, and a
+ * truncated file that slips through simply fails to load — surfaced by
+ * /health as `models: "failed"` rather than hidden.
+ *
+ * Nothing under `src/` calls this. The desktop shell does, by name, through a
+ * dynamic import of the compiled server (`desktop/first-run.ts`, `DownloadLib`),
+ * which is why a scan for unused exports removed it on 2026-09-06 and v0.1.37
+ * opened with "lib.missingModels is not a function". `pnpm run test:desktop`
+ * now checks that contract, and this note is here so the next scan reads it.
+ */
+export function missingModels(dir: string, specs: DownloadSpec[]): DownloadSpec[] {
+  return specs.filter((spec) => {
+    const dest = join(dir, spec.filename);
+    if (!existsSync(dest)) return true;
+    return statSync(dest).size < spec.approxMB * 1e6 * 0.9;
+  });
+}

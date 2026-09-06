@@ -26,11 +26,11 @@ Node 22.17+ and pnpm 11. Read [`CLAUDE.md`](CLAUDE.md) before your first change
 
 ```bash
 pnpm run typecheck
-pnpm run test:hook && pnpm run test:cli && pnpm run test:schema && pnpm run test:vote && pnpm run test:screen
+pnpm run test:hook && pnpm run test:cli && pnpm run test:schema && pnpm run test:vote && pnpm run test:screen && pnpm run test:desktop
 WARDEN_ADAPTER=mock pnpm run redteam -- --no-baseline   # the pipeline still runs
 ```
 
-The five test scripts need no model and take under a minute together; each
+The six test scripts need no model and take under a minute together; each
 one guards a fail-closed path a corpus run cannot see.
 
 If you touched anything the desktop app bundles, `pnpm run build` is the check
