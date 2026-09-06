@@ -183,3 +183,69 @@ that does not care where the HTTP handlers live, the mock is a real test double
 rather than a fallback, and the repo already had a way to run the whole thing
 with no models. A refactor is verifiable exactly to the extent the system can
 be run without its expensive parts. Keep that property.
+
+
+---
+
+# Second pass — 2026-09-05
+
+Asked for three things at once: better prompts for the models, the right
+model for the seat, and fewer lines a person has to read. The first two are
+in `docs/INFERENCE-AND-MODELS.md` ("Which model, decided") and the
+measurement log ("Levers wired, off, and unmeasured"); this section is the
+third, and the check that the architecture underneath still holds.
+
+## What the review found about the architecture
+
+The shape is right and it stayed. Cheap deterministic passes first, one
+narrow model question per rule, one function with no inference deciding, and
+every model error resolving to ESCALATE. Two things were not right and are
+now changed, both without moving a default:
+
+- **The judge's trained form was not the form it was asked in.** The
+  default seat is a model trained to answer `<answer>PASS</answer>` after a
+  numbered policy and "provide the final answer directly"; the pass
+  grammar-forces `{"verdict": "PASS"}` after an unnumbered one. That was a
+  deliberate first cut and it measured well, so it stays the default; the
+  trained form now exists as `dynaguard-native` so the difference can be a
+  number instead of a guess.
+- **Retrieval decides what the judge never sees.** Top-3 plus the pinned
+  rule are judged; a policy that the new splitter grows to eight or more
+  rules leaves most of them unjudged on every prompt, silently. The policy
+  screen (off) is the architectural answer for the fine-tune: one call over
+  every applicable rule, per-rule attribution only when it says FAIL, and an
+  unattributed FAIL held rather than dropped. The aggregator gained one
+  input for it, and that input can only tighten.
+
+Checked and left alone, with the reason: no token log-probabilities in the
+SDK, so no calibrated threshold; no assistant-turn prefill, so the native
+form asks for `<answer>` rather than starting there; the KV cache stays off
+for the measured reason in `adjudicate.ts`.
+
+## What got smaller, and how
+
+| Before | After |
+| --- | --- |
+| `guard/passes/adjudicate.ts`, 757 lines: prompt forms, example selection, windows, votes, the deadline, and every measured note about all of them in one file | `adjudicate.ts` (what happens around one call), `forms.ts` (the words each form uses and how its answer reads back), `shots.ts` (which examples go in) |
+| Three JSON parsers in three adapters, each tolerant of a different subset of fences and prose, and three copies of the parse-repair-fail-closed loop | `qvac/json.ts`, one parser and one repair loop, used by all of them |
+| Two off-machine compilers (`remote.ts`, `cli-compiler.ts`), each carrying its own copy of the role gate, the call counter and the local delegations | `qvac/offload.ts`, one base class that is the gate; each adapter is now its `run()` and its `describe()` |
+| `cosine()` written twice | `policy/similarity.ts` |
+| Both compiler prompts inline in `policy/compile.ts`, which was two prompts and a little logic | `policy/prompts.ts` holds the prompts; `compile.ts` is the logic |
+| `web/js/draft.js` at 835 lines after the set landed | `draft.js` owns the conversation and one card; `draft-set.js` owns the list a set becomes |
+
+The measured notes moved with the code they explain and none were cut:
+the reason a KV cache key caused a 100% false-positive rate is still above
+the call that has no key, and the reason there are two examples per side is
+still above the number two. What was removed is repetition — the same
+schema built three times by hand, the same parser three times, the same
+cosine twice — and files that mixed what a model is told with what happens
+to its answer.
+
+## How it was verified
+
+`pnpm run typecheck`; `test:hook`, `test:cli`, `test:schema`, `test:vote`
+and the new `test:screen`; the guard pipeline under the mock in all three
+forms with the screen on and off; the console in Chromium compiling a set,
+lifting a card out, putting it back, and activating the rest. No model ran:
+the machine has no GPU and a CPU without AVX. Every number in the log is as
+it was.

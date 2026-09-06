@@ -16,6 +16,7 @@
 import { cancel, completion, embed, ocr } from '@qvac/sdk';
 import type { ZodType } from 'zod';
 import { modelFor, shutdown } from './client.js';
+import { completeWithRepair } from './json.js';
 import { withDeadline } from './deadline.js';
 import {
   FailClosedError,
@@ -80,43 +81,14 @@ export class RealQvacAdapter implements QvacAdapter {
     zodSchema: ZodType<T>,
     jsonSchema: Record<string, unknown>
   ): Promise<StructuredResult<T>> {
-    const first = await this.#run(req, jsonSchema);
-    const parsed = this.#parse(first.text, zodSchema);
-
-    if (parsed.ok) {
-      this.#firstTry++;
-      return { value: parsed.value, attempts: 1, repaired: false, stats: first.stats };
+    try {
+      const result = await completeWithRepair((r) => this.#run(r, jsonSchema), req, zodSchema, 'structured output');
+      if (result.repaired) this.#repaired++; else this.#firstTry++;
+      return result;
+    } catch (err) {
+      if (err instanceof FailClosedError) this.#failed++;
+      throw err;
     }
-
-    // One repair attempt, with the validation error fed back as context. More
-    // than one rarely helps: a small model that missed twice is confused about
-    // the task, not about the format, and further retries just burn latency
-    // inside a request a human is waiting on.
-    const repairReq: CompleteRequest = {
-      ...req,
-      user: [
-        req.user,
-        '',
-        'Your previous answer was rejected:',
-        parsed.error,
-        'Answer again, correcting exactly that.'
-      ].join('\n')
-    };
-
-    const second = await this.#run(repairReq, jsonSchema);
-    const retry = this.#parse(second.text, zodSchema);
-    const stats: GenStats = { ...second.stats, ms: first.stats.ms + second.stats.ms };
-
-    if (retry.ok) {
-      this.#repaired++;
-      return { value: retry.value, attempts: 2, repaired: true, stats };
-    }
-
-    this.#failed++;
-    throw new FailClosedError(
-      `structured output failed validation twice for role "${req.role}": ${retry.error}`,
-      { role: req.role, attempts: 2, lastRaw: second.text.slice(0, 400) }
-    );
   }
 
   async embed(texts: string[]): Promise<number[][]> {
@@ -228,42 +200,4 @@ export class RealQvacAdapter implements QvacAdapter {
     }
   }
 
-  #parse<T>(text: string, schema: ZodType<T>): { ok: true; value: T } | { ok: false; error: string } {
-    let json: unknown;
-    try {
-      json = JSON.parse(extractJson(text));
-    } catch (err) {
-      return { ok: false, error: `not valid JSON: ${err instanceof Error ? err.message : err}` };
-    }
-
-    const result = schema.safeParse(json);
-    if (result.success) return { ok: true, value: result.data };
-
-    return {
-      ok: false,
-      error: result.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ')
-    };
-  }
-}
-
-/**
- * Pull the JSON object out of a model response.
- *
- * With grammar constraints on, the text is already bare JSON and this is a
- * trim. Without them — the grammar-off arm of the reliability experiment — a
- * model will happily wrap its answer in prose or a code fence, and the same
- * parser has to cope so both arms are measured on equal footing.
- */
-function extractJson(text: string): string {
-  const trimmed = text.trim();
-  if (trimmed.startsWith('{')) return trimmed;
-
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(trimmed);
-  if (fenced?.[1]) return fenced[1].trim();
-
-  const start = trimmed.indexOf('{');
-  const end = trimmed.lastIndexOf('}');
-  if (start !== -1 && end > start) return trimmed.slice(start, end + 1);
-
-  return trimmed;
 }

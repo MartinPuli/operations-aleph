@@ -91,7 +91,7 @@ async function main(): Promise<void> {
     assert.equal(first.value.severity, 'block');
     assert.ok(!argsSeen().includes('--safe-mode'), 'the retry must drop the flag');
     await old.completeJSON(req, schema, jsonSchema);
-    assert.equal(old.cliCalls(), 2, 'the answer is remembered: one process per compile after the first');
+    assert.equal(old.calls(), 2, 'the answer is remembered: one process per compile after the first');
     console.log('✓ a CLI that does not know --safe-mode is retried without it, once');
 
     for (const mode of ['hook-old', 'hook-new']) {

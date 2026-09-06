@@ -236,3 +236,74 @@ WARDEN_MODEL_ADJUDICATOR=... pnpm run eval -- --attacks --reps 3 --label "..."
 Steps 0, 1 and 3 were run on 2026-09-04 and are recorded in
 `docs/MEASUREMENTS.md`; step 2 was queued behind a download that the Hugging
 Face CDN kept resetting.
+
+
+## Which model, decided — 2026-09-05 review
+
+Asked to look at the architecture, the SDK and the models and say which one
+this should run on. The answer, with the reasoning stated so it can be
+disagreed with, and without running anything: the machine this review was
+done on has no GPU and a CPU without AVX.
+
+**The family is right.** Every prompt-side lever on a base Qwen3 sat inside
+the noise band; the only changes that ever moved both columns were the
+DynaGuard weights, twice (1.7B, then 4B). The judge's remaining error is not
+a misread rule, it is a lean on developer imperatives and on a rule's own
+nouns, and the fine-tune reduced it where nine prompt rewrites did not. A
+guardian model trained on user-written policies is the right shape for a
+pass whose whole job is one user-written rule; the fixed-taxonomy models
+(Llama Guard, Qwen3Guard, ShieldGemma) are not, and the card numbers agree.
+
+**The seat to measure next is DynaGuard-8B.** Same training as the default,
+twice the weights, DynaBench F1 72.5 against the 4B's 68.2 and the 1.7B's
+63.5. It is the one unmeasured candidate with a mechanism behind it — more of
+what worked — and it is now a seat (`dynaguard-8b`, `adjudicator-dynaguard-8b`
+in setup, Q4_K_M, 5 GB, pinned to `95b1f724`). Its cost is known from the
+Qwen3-8B seat: about 11 s a decision on a 16 GB Apple GPU, prefill-bound,
+and not usable on CPU against the hook. The comparison is one command on the
+owner's machine:
+
+```bash
+pnpm run setup -- --model adjudicator-dynaguard-8b
+WARDEN_MODEL_ADJUDICATOR=models/DynaGuard-8B.Q4_K_M.gguf pnpm run eval -- --attacks --reps 3 --label "dynaguard-8b"
+```
+
+**The control that has never been run is Qwen3-4B base.** The default is a
+4B fine-tune and nothing in the log says how much of its gain is the size and
+how much the training. `adjudicator-qwen3-4b` (bartowski, Q6_K, same quant as
+the default) exists for that pairing and for nothing else.
+
+**What the SDK can and cannot do, checked against 0.17.1's own schemas.** No
+token log-probabilities on completions (`logprob_thold` exists only for
+Whisper), so a calibrated PASS-probability threshold is not available and the
+label stays a decoded token. No assistant-turn prefill and no stop sequences
+per call: `completion()` takes a `history` and the chat template closes every
+turn, so DynaGuard's trained `<answer>` prefill cannot be reproduced exactly;
+the native form asks for it instead. Grammar-constrained JSON, `parallel`,
+`reasoning_budget`, and `lora` (an adapter file at load) are there. A prefix
+KV cache of the system block is not, and would be the single largest latency
+lever; worth asking upstream.
+
+**Two architectural variants, wired and off, from the same review.**
+
+- `dynaguard-native` (`WARDEN_ADJUDICATOR_FORM=dynaguard-native`, bench
+  variant of the same name): the prompt exactly as the model card gives it —
+  "Provide the final answer directly", a numbered policy, the answer as
+  `<answer>PASS</answer>` free text — with no grammar. The shipped form
+  grammar-forces `{"verdict": "PASS"}`, which is not what the model was
+  trained to emit; the pass's own note said the trained form was the next
+  thing to measure. `pnpm run bench -- --a dynaguard --b dynaguard-native`.
+- The policy screen (`WARDEN_POLICY_SCREEN=1`, eval only): one call over
+  every rule the actor is bound by, in the numbered-policy shape DynaBench
+  trained on (median three rules). PASS answers every rule at once and the
+  per-rule calls are skipped, so an honest request costs one call instead of
+  four; FAIL runs the per-rule calls as today for attribution, and a FAIL
+  nothing attributes escalates rather than disappears, because the screen
+  read rules retrieval never showed the per-rule calls. It cannot loosen: a
+  PASS is one model saying COMPLIES about the set, the same thing four
+  per-rule COMPLIES say now. The base model measured worse on one broad
+  question than on four narrow ones; whether the fine-tune is the opposite
+  is the hypothesis. `WARDEN_POLICY_SCREEN=1 pnpm run eval -- --attacks --reps 3`.
+
+Nothing above moves a default. The 4B stays until the 8B pairing is run,
+and both variants stay off until the bench and the eval say otherwise.

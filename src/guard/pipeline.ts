@@ -202,7 +202,11 @@ export async function evaluate(
   const toAdjudicate = INJECTION_MODE === 'replace'
     ? selected.rules.filter((r) => !r.pinned)
     : selected.rules;
-  const { verdicts, traces } = await adjudicateAll(qvac, iso, toAdjudicate);
+  // `screenOver` is every rule the actor is bound by. It is read only when
+  // the policy screen is on (`WARDEN_POLICY_SCREEN`, off), and then it is the
+  // point: one call sees the whole policy where retrieval shows the per-rule
+  // calls the top few.
+  const { verdicts, traces, screen } = await adjudicateAll(qvac, iso, toAdjudicate, { screenOver: applicable });
   passes.push(...traces);
 
   // ── pass 4: aggregate ──────────────────────────────────────────────────────
@@ -227,7 +231,8 @@ export async function evaluate(
       INJECTION_MODE === 'replace'
         ? injections.flatMap((i, index) => (i.finding ? [] : [pinned[index]!.id]))
         : [],
-    unreadableAttachments
+    unreadableAttachments,
+    screen
   });
   passes.push({
     pass: 'aggregate',

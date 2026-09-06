@@ -110,6 +110,10 @@ const VARIANTS: Record<string, { options: AdjudicateOptions; injection?: boolean
     options: { form: 'dynaguard', shotsPerSide: 4 },
     why: 'The DynaGuard form with four examples per side instead of two.'
   },
+  'dynaguard-native': {
+    options: { form: 'dynaguard-native' },
+    why: 'The prompt exactly as the DynaGuard model card gives it — "provide the final answer directly", a numbered policy, the answer as <answer>PASS</answer> free text with no grammar — against the grammar-constrained JSON form that ships. Only meaningful with DynaGuard weights.'
+  },
   injection: {
     options: {},
     injection: true,

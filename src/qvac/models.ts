@@ -120,13 +120,10 @@ export const MODEL_SPECS: ModelSpec[] = [
  *   pnpm run setup -- --model adjudicator-large
  *   WARDEN_MODEL_ADJUDICATOR=models/Qwen3-8B-Q4_K_M.gguf pnpm run redteam
  *
- * Qwen3-4B would be the more proportionate step up and the SDK has a constant
- * for it, but its source is `registry://s3/...` rather than HuggingFace, so it
- * cannot be fetched over HTTPS — the same limitation that keeps the OCR model
- * off the setup path. 8B is the next size that can actually be downloaded.
- *
- * Whether it is better here is an open question, not a claim. Nothing in this
- * repo reports a number from it until someone runs the corpus against it.
+ * Whether any of these is better here is an open question, not a claim.
+ * Nothing in this repo reports a number from a seat until someone runs the
+ * corpus against it, and the two added on 2026-09-05 say "not measured" on
+ * their card for exactly that reason.
  */
 export const ALTERNATE_MODELS: Record<string, ModelSpec> = {
   'adjudicator-large': {
@@ -170,6 +167,54 @@ export const ALTERNATE_MODELS: Record<string, ModelSpec> = {
     approxMB: 2170,
     required: false,
     why: 'Qwen3-1.7B fine-tuned on user-written policies; the faster seat, at some accuracy.'
+  },
+  /**
+   * The top of the family, and the one seat that has never been measured.
+   *
+   * Reviewed 2026-09-05 against everything the log records: the judge's
+   * remaining error is a lean on developer imperatives and on a rule's own
+   * nouns, every prompt-side lever on the base model sat inside the noise,
+   * and the only changes that moved both columns were the DynaGuard weights
+   * (1.7B, then 4B). The model card puts the 8B at DynaBench F1 72.5 against
+   * the 4B's 68.2, on the same training and the same prompt. That is the one
+   * candidate with a mechanism behind it — more of what worked — and it costs
+   * what the Qwen3-8B costs: Q4_K_M so it pairs with that seat's quantisation
+   * and fits a 16 GB machine with four slots, about 11 s a decision on Metal
+   * by that seat's measurement, and unusable on CPU against the hook. The
+   * comparison to run is this seat against the 4B on `pnpm run eval --
+   * --attacks --reps 3`; until then the 4B stays the default. Same revision
+   * pinning as the rest: the sha is the repository's main at review time.
+   */
+  'adjudicator-dynaguard-8b': {
+    role: 'adjudicator',
+    entry: {
+      name: 'DynaGuard-8B.Q4_K_M',
+      src: 'registry://hf/mradermacher/DynaGuard-8B-GGUF/resolve/95b1f72477e3f436e80121c5461e303b3459555b/DynaGuard-8B.Q4_K_M.gguf'
+    } as unknown as RegistryEntry,
+    filename: 'DynaGuard-8B.Q4_K_M.gguf',
+    approxMB: 5030,
+    required: false,
+    why: 'Qwen3-8B fine-tuned on user-written policies; the strongest of the family on its own benchmark, unmeasured here.'
+  },
+  /**
+   * The control for the default: the same Qwen3-4B, without the fine-tune.
+   *
+   * The 4B DynaGuard is the default and the 4B base has never been run, so
+   * "is it the size or the training" has no answer in the log. `models.ts`
+   * used to say the 4B could not be fetched because the SDK's constant is
+   * S3-only; `bartowski/Qwen_Qwen3-4B-GGUF` is public and this is it, at the
+   * same Q6_K as the default so the pair differs in exactly one thing.
+   */
+  'adjudicator-qwen3-4b': {
+    role: 'adjudicator',
+    entry: {
+      name: 'Qwen3-4B.Q6_K',
+      src: 'registry://hf/bartowski/Qwen_Qwen3-4B-GGUF/resolve/cb76885dc66d50759b207c5a48c4e78dfa00c638/Qwen_Qwen3-4B-Q6_K.gguf'
+    } as unknown as RegistryEntry,
+    filename: 'Qwen_Qwen3-4B-Q6_K.gguf',
+    approxMB: 3310,
+    required: false,
+    why: 'The default judge\'s base model without its fine-tune: the size control. Bench only.'
   }
 };
 
@@ -216,7 +261,7 @@ export function modelsDir(): string {
  * are in the sentence, because the machine decides which one applies.
  */
 export type AdjudicatorChoice = {
-  id: 'default' | 'dynaguard' | 'base' | 'large';
+  id: 'default' | 'dynaguard' | 'dynaguard-8b' | 'base' | 'large';
   label: string;
   filename: string;
   approxMB: number;
@@ -252,6 +297,17 @@ export const ADJUDICATOR_CHOICES: AdjudicatorChoice[] = [
     perDecision: 'About 2 s a decision on an Apple GPU.',
     trade: 'Faster and stricter than the default: stops a few more attacks and turns away twice as many honest requests.',
     note: 'Measured 2026-09-04 on an M1 Pro, paired against Qwen3 1.7B on the same run: 39 prompts fixed, 11 broken, false positives 72% to 45%, attacks 95% to 93%. Records in docs/MEASUREMENTS.md.'
+  },
+  {
+    id: 'dynaguard-8b',
+    label: 'DynaGuard 8B',
+    filename: 'DynaGuard-8B.Q4_K_M.gguf',
+    approxMB: 5030,
+    attacksCaught: 'not measured',
+    falsePositives: 'not measured',
+    perDecision: 'Expected around 11 s a decision on an Apple GPU with 16 GB, by the Qwen3 8B seat\'s measurement; not for CPU machines.',
+    trade: 'The largest of the family that judges by default. Nothing measured yet; a seat so the measurement can be taken.',
+    note: 'Added 2026-09-05 as the one unmeasured candidate with a mechanism behind it: the same training as the default, on twice the weights, at DynaBench F1 72.5 against 68.2. Choosing it downloads 5 GB. Run pnpm run eval -- --attacks --reps 3 against the default before trusting it with anyone\'s traffic.'
   },
   {
     id: 'base',

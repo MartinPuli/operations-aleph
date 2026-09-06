@@ -34,17 +34,25 @@ moment a warning can lower something, it has become a model clearing a request.
 src/guard/       the pipeline: one prompt in, one decision out
   isolate.ts       pass 0 — normalise, fence in a nonce envelope, flag tampering
   passes/          pass 1 injection (off), pass 3 adjudicate — the model calls
+    adjudicate.ts    what happens around one call: windows, votes, deadline, fail-closed
+    forms.ts         the words each prompt form uses, and how the answer reads back
+    shots.ts         which of a rule's examples go into the prompt
   aggregate.ts     pass 4 — the only place a verdict is decided. No inference
   sanitize.ts      pass -1 — mask secrets before anything else sees the text
   quota.ts         pass -2 — per-role daily counters
 src/policy/      rules, roles, people, retrieval, the compiler
+  compile.ts       the compiler's logic; prompts.ts is what it says to the model
 src/qvac/        the only boundary to @qvac/sdk. Everything else uses an adapter
+  offload.ts       the one gate a compiler that leaves the local weights goes through
+  json.ts          the one parser every adapter reads a model's JSON with
 src/server/      HTTP. index.ts only boots; app.ts fixes the middleware order
   routes/          one router per surface: policy, people, guard, solo, system…
   middleware.ts    CORS, headers, rate limit, admin audit, admin gate
   identity.ts      API key -> actor, and running the guard for a request
 web/             the console: app.js is the entry, web/js/ has one module per
-                 screen over core/format/router/data/render. No build step
+                 screen over core/format/router/data/render. No build step.
+                 draft.js is the rule conversation; draft-set.js the list a
+                 broad instruction becomes
 src/redteam/     the corpus and the runner that writes REPORT.md
 scripts/         setup, benchmarks, and the adjudicator bench
 integrations/    the UserPromptSubmit hooks for Claude Code, Codex, opencode
@@ -134,8 +142,9 @@ that makes rules the 1.7B cannot. What goes to either is the administrator's
 own sentence, the role names and the employee roster, and nothing else; there
 is no flag anywhere that routes a prompt under judgement off-machine, and the
 role check is repeated inside the call as the line that would have to be wrong
-for that to happen. If you add a third of these, gate it the same way and say
-in its header exactly what leaves.
+for that to happen. Both are subclasses of [`qvac/offload.ts`](src/qvac/offload.ts),
+which is that gate written once; a third one is a subclass with a `run()` and
+a header saying exactly what leaves.
 
 `src/qvac/` is the only place `@qvac/sdk` is imported, and the adapter interface
 is six methods. That is what makes "is the runtime the problem" answerable

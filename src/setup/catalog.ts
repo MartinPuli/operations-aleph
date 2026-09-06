@@ -67,6 +67,20 @@ export const MODEL_CATALOG: DownloadSpec[] = [
     required: false
   },
   {
+    role: 'adjudicator-dynaguard-8b',
+    filename: 'DynaGuard-8B.Q4_K_M.gguf',
+    url: 'https://huggingface.co/mradermacher/DynaGuard-8B-GGUF/resolve/95b1f72477e3f436e80121c5461e303b3459555b/DynaGuard-8B.Q4_K_M.gguf',
+    approxMB: 5030,
+    required: false
+  },
+  {
+    role: 'adjudicator-qwen3-4b',
+    filename: 'Qwen_Qwen3-4B-Q6_K.gguf',
+    url: 'https://huggingface.co/bartowski/Qwen_Qwen3-4B-GGUF/resolve/cb76885dc66d50759b207c5a48c4e78dfa00c638/Qwen_Qwen3-4B-Q6_K.gguf',
+    approxMB: 3310,
+    required: false
+  },
+  {
     role: 'ocr',
     filename: 'latin_g2.gguf',
     url: null,

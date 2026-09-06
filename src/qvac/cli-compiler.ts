@@ -60,19 +60,14 @@
 import { execFile } from 'node:child_process';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ZodType } from 'zod';
 import { loadCompilerSettings } from '../settings.js';
+import { CompilerOffload } from './offload.js';
 import {
   FailClosedError,
   type CompleteRequest,
   type GenStats,
-  type ModelRole,
-  type QvacAdapter,
-  type StructuredResult
+  type QvacAdapter
 } from './types.js';
-
-/** The one role this file will answer for. Everything else is the guard. */
-const CLI_ROLE: ModelRole = 'compiler';
 
 /** Claude Code's "no customisations" flag. Dropped on a CLI that predates it. */
 const SAFE_MODE = '--safe-mode';
@@ -305,26 +300,18 @@ export async function detectCliTools(): Promise<{ tool: CliTool; label: string; 
 }
 
 /**
- * Local for everything, the signed-in CLI for compilation.
- *
- * A delegating wrapper rather than a branch inside each caller, so "can a guard
- * pass reach a subprocess" is answered by reading one `if` instead of auditing
- * every call site — the same shape as `RemoteCompilerAdapter`, for the same
- * reason.
+ * Local for everything, the signed-in CLI for compilation. The role gate, the
+ * call counter and the repair loop are `CompilerOffload`; this file is the
+ * subprocess.
  */
-export class CliCompilerAdapter implements QvacAdapter {
-  #calls = 0;
+export class CliCompilerAdapter extends CompilerOffload {
+  protected readonly label: string;
   /** Whether this CLI accepts `--safe-mode`. Assumed until it says otherwise. */
   #safeMode = true;
 
-  constructor(
-    private readonly local: QvacAdapter,
-    private readonly config: CliCompilerConfig
-  ) {}
-
-  /** How many compiles actually went to the CLI. Reported by the console. */
-  cliCalls(): number {
-    return this.#calls;
+  constructor(local: QvacAdapter, private readonly config: CliCompilerConfig) {
+    super(local);
+    this.label = TOOLS[config.tool].label;
   }
 
   describe(): string {
@@ -332,83 +319,13 @@ export class CliCompilerAdapter implements QvacAdapter {
     return `${TOOLS[tool].label}${model ? ` (${model})` : ''} on this machine`;
   }
 
-  async complete(req: CompleteRequest): Promise<{ text: string; stats: GenStats }> {
-    if (req.role !== CLI_ROLE) return this.local.complete(req);
-    return this.#run(req, undefined);
-  }
-
-  async completeJSON<T>(
-    req: CompleteRequest,
-    zodSchema: ZodType<T>,
-    jsonSchema: Record<string, unknown>
-  ): Promise<StructuredResult<T>> {
-    if (req.role !== CLI_ROLE) return this.local.completeJSON(req, zodSchema, jsonSchema);
-
-    const first = await this.#run(req, jsonSchema);
-    const parsed = parseJson(first.text, zodSchema);
-    if (parsed.ok) return { value: parsed.value, attempts: 1, repaired: false, stats: first.stats };
-
-    // One repair, mirroring every other adapter here. A model that misses the
-    // schema twice is confused about the task, not the format.
-    const second = await this.#run(
-      {
-        ...req,
-        user: [
-          req.user,
-          '',
-          'Your previous answer was rejected:',
-          parsed.error,
-          'Answer again, correcting exactly that. Output the JSON object and nothing else.'
-        ].join('\n')
-      },
-      jsonSchema
-    );
-    const retry = parseJson(second.text, zodSchema);
-    const stats: GenStats = { ...second.stats, ms: first.stats.ms + second.stats.ms };
-    if (retry.ok) return { value: retry.value, attempts: 2, repaired: true, stats };
-
-    throw new FailClosedError(
-      `${TOOLS[this.config.tool].label} returned schema-invalid output twice: ${retry.error}`,
-      { role: req.role, attempts: 2, lastRaw: second.text.slice(0, 400) }
-    );
-  }
-
-  // Guard-side work. Never routed to a subprocess, and there is deliberately
-  // no configuration that would let it be.
-  embed(texts: string[]): Promise<number[][]> {
-    return this.local.embed(texts);
-  }
-
-  ocr(imagePath: string): Promise<string> {
-    return this.local.ocr(imagePath);
-  }
-
-  stats(): { firstTry: number; repaired: number; failed: number } {
-    return this.local.stats();
-  }
-
-  dispose(): Promise<void> {
-    return this.local.dispose();
-  }
-
   /** One run of the CLI, prompt on stdin, answer on stdout. */
-  async #run(
+  protected async run(
     req: CompleteRequest,
     jsonSchema: Record<string, unknown> | undefined
   ): Promise<{ text: string; stats: GenStats }> {
-    // Belt and braces. The public methods already route by role; this is the
-    // line that has to be wrong for an employee prompt to reach a subprocess,
-    // and it is cheap enough to keep even though it is unreachable today.
-    if (req.role !== CLI_ROLE) {
-      throw new FailClosedError(
-        `refusing to send role "${req.role}" to a CLI — only "${CLI_ROLE}" may leave the guard`,
-        { role: req.role, attempts: 0 }
-      );
-    }
-
     const spec = TOOLS[this.config.tool];
     const started = Date.now();
-    this.#calls++;
     // A CLI old enough not to know `--safe-mode` refuses the whole command
     // line with "unknown option". That is not a failed compile, it is a flag
     // to drop: the run is repeated once without it, and the answer is
@@ -521,39 +438,3 @@ const UNKNOWN_SAFE_MODE = /unknown option '--safe-mode'/i;
 const HOOK_ANSWERED = /^\s*(?:\w+\s+)?operation (?:stopped|blocked) by hook/i;
 
 class UnknownSafeModeError extends Error {}
-
-/**
- * Pull one JSON object out of whatever the CLI printed.
- *
- * These are agents talking to a person by default: the verified run came back
- * fenced in ```json, and a stray sentence before or after is well within what
- * they do. So the fence is stripped and, failing that, the outermost balanced
- * braces are taken. Anything still unparseable is a rejection with the reason,
- * which `completeJSON` feeds back for the one repair attempt.
- */
-function parseJson<T>(raw: string, schema: ZodType<T>): { ok: true; value: T } | { ok: false; error: string } {
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidates = [fenced?.[1], braced(raw), raw].filter((c): c is string => Boolean(c && c.trim()));
-
-  let lastError = 'no JSON object found in the output';
-  for (const candidate of candidates) {
-    let value: unknown;
-    try {
-      value = JSON.parse(candidate.trim());
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-      continue;
-    }
-    const parsed = schema.safeParse(value);
-    if (parsed.success) return { ok: true, value: parsed.data };
-    lastError = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-  }
-  return { ok: false, error: lastError };
-}
-
-/** The outermost {...} span, for output with a sentence wrapped around it. */
-function braced(raw: string): string | null {
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  return start !== -1 && end > start ? raw.slice(start, end + 1) : null;
-}

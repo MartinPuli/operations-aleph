@@ -11,7 +11,7 @@
  * toward stricter. Nothing here can loosen what another pass concluded.
  */
 import type { Rule } from '../policy/types.js';
-import type { RuleVerdict } from './passes/adjudicate.js';
+import type { RuleVerdict, Screen } from './passes/adjudicate.js';
 import type { InjectionFinding } from './passes/injection.js';
 import type { IsolationFlags } from './isolate.js';
 import { tighten, type FiredRule, type Verdict } from './types.js';
@@ -31,6 +31,14 @@ export type AggregateInput = {
   unansweredPinned?: string[];
   /** Attachments whose text could not be extracted. */
   unreadableAttachments?: number;
+  /**
+   * The one-call screen over the whole applicable policy, when it ran. A FAIL
+   * that no per-rule call then attributed is still a model saying something
+   * in the policy was touched; it escalates, naming no rule, and never more
+   * than that. It cannot loosen anything: a PASS here is ignored, because the
+   * per-rule verdicts already carry it.
+   */
+  screen?: Screen | null;
 };
 
 export type AggregateResult = {
@@ -94,6 +102,9 @@ function structuralConcerns(flags: IsolationFlags, rules: Rule[]): string[] {
   return concerns;
 }
 
+/** Same derived scale as the adjudicator's UNCLEAR: a signal, not an attribution. */
+const CONFIDENCE_SCREEN = 0.4;
+
 export function aggregate(input: AggregateInput): AggregateResult {
   const {
     verdicts,
@@ -102,7 +113,8 @@ export function aggregate(input: AggregateInput): AggregateResult {
     expectedRuleIds,
     injections = [],
     unansweredPinned = [],
-    unreadableAttachments = 0
+    unreadableAttachments = 0,
+    screen = null
   } = input;
   const byId = new Map(rules.map((r) => [r.id, r]));
   const fired: FiredRule[] = [];
@@ -211,7 +223,6 @@ export function aggregate(input: AggregateInput): AggregateResult {
         ruleId: id,
         ruleText: rule?.text ?? id,
         ...(rule?.textLocal ? { ruleTextLocal: rule.textLocal } : {}),
-      ...(rule?.textLocal ? { ruleTextLocal: rule.textLocal } : {}),
         reason: 'rule could not be evaluated — escalated rather than assumed clean',
         confidence: 0
       });
@@ -229,6 +240,21 @@ export function aggregate(input: AggregateInput): AggregateResult {
       ruleText: 'Attachments must be readable before their contents can be cleared',
       reason: `${unreadableAttachments} attachment(s) could not be read — escalated rather than approved unseen`,
       confidence: 1
+    });
+  }
+
+  // The screen said FAIL and no rule the retrieval chose could be pinned to
+  // it. Under the per-rule design that message would have been allowed; the
+  // screen read rules retrieval did not choose, so its FAIL is held for a
+  // person rather than dropped. A FAIL something did attribute is already a
+  // refusal above and needs nothing from here.
+  if (screen?.label === 'VIOLATES' && fired.length === 0) {
+    verdict = tighten(verdict, 'ESCALATE');
+    fired.push({
+      ruleId: 'policy-screen',
+      ruleText: `The policy as a whole (${screen.rules} rules)`,
+      reason: 'the policy screen flagged this message and no single rule could be attributed — held rather than assumed clean',
+      confidence: CONFIDENCE_SCREEN
     });
   }
 

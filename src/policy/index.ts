@@ -8,6 +8,7 @@
  * Pinned rules bypass it entirely — see the note on `Rule.pinned`.
  */
 import { adapter } from '../qvac/index.js';
+import { cosine } from './similarity.js';
 import type { PolicySpec, Rule } from './types.js';
 
 /** Embeddings are computed once per policy version and reused. */
@@ -35,17 +36,6 @@ async function embeddingsFor(spec: PolicySpec): Promise<Map<string, number[]>> {
 
   cache.set(spec.version, map);
   return map;
-}
-
-function cosine(a: number[], b: number[]): number {
-  let dot = 0, na = 0, nb = 0;
-  const len = Math.min(a.length, b.length);
-  for (let i = 0; i < len; i++) {
-    const x = a[i]!, y = b[i]!;
-    dot += x * y; na += x * x; nb += y * y;
-  }
-  const denom = Math.sqrt(na) * Math.sqrt(nb);
-  return denom === 0 ? 0 : dot / denom;
 }
 
 /**
