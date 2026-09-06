@@ -34,6 +34,19 @@ const tabOf = () => (state.sel === 'roles' || state.sel === 'company' ? state.se
 const toolsOf = (e) => (e.connected ?? []).map((c) => TOOL_NAMES[c.tool] ?? c.tool).join(', ');
 const requestsOf = (e) => (e.connected ?? []).reduce((n, c) => n + (c.count ?? 0), 0);
 const isConnected = (e) => Boolean(e.connected?.length);
+const lastActiveAt = (e) => (e.connected ?? []).map((c) => Date.parse(c.at)).filter(Number.isFinite).sort((a, b) => b - a)[0] ?? null;
+
+/** "2h ago" beats a timestamp in a column meant to be swept, not read. */
+function ago(ts) {
+  if (!ts) return '—';
+  const m = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.round(h / 24);
+  return d < 30 ? `${d}d ago` : new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
 
 /** A key, with the middle hidden. The prefix says whose, the tail says which. */
 const maskKey = (key) => {
@@ -48,6 +61,7 @@ VIEWS.people = {
     if (tab === null) return personPage(personById(state.sel));
     return `<div class="sheet">
       ${pageHead()}
+      ${demoBanner()}
       <nav class="tabs" aria-label="Team sections">
         ${TABS.map(([sel, label]) => `<button type="button" class="tab${tab === sel ? ' on' : ''}" data-go="people"${sel ? ` data-sel="${sel}"` : ''}>${label}</button>`).join('')}
       </nav>
@@ -59,7 +73,6 @@ VIEWS.people = {
     bindActions();
     const tab = tabOf();
     if (tab === null) { bindPerson(); return; }
-    bindHead();
     if (tab === '') bindPeople();
     else if (tab === 'roles') bindRoles();
     else bindCompany();
@@ -69,39 +82,43 @@ VIEWS.people = {
 // ── the page head, shared by the three tabs ──────────────────────────────────
 
 /**
- * The title and one line that says where the team stands. The number that
- * asks for something — people who have not connected — is the link; when it
- * is zero the line says how the gateway is reached instead, which is the next
- * thing an administrator wonders.
+ * The title and one line that says where the team stands. One fact, said
+ * once: the number that asks for something — people who have not connected —
+ * is the link; when it is zero the line says so, then how the gateway is
+ * reached, which is the next thing an administrator wonders.
+ *
+ * No button up here. Adding people is the form under the tabs, and a primary
+ * button whose whole job was to focus a field already on the screen was the
+ * heaviest thing on the page doing the least.
  */
 function pageHead() {
   const emps = state.company.employees;
-  const connected = emps.filter(isConnected).length;
-  const unsetup = emps.length - connected;
-  const tail = emps.length && unsetup
-    ? `<button type="button" class="linkbtn strong" data-go="people" data-q="only=unsetup">${unsetup} without setup →</button>`
-    : `<span class="muted">${state.publicUrl ? 'reachable on the internet' : 'reachable from this machine only'}</span>`;
+  const unsetup = emps.filter((e) => !isConnected(e)).length;
+  const reach = `<span class="muted">${state.publicUrl ? 'reachable on the internet' : 'reachable from this machine only'}</span>`;
+  const line = !emps.length
+    ? `<span class="muted">nobody yet</span><i>·</i>${reach}`
+    : unsetup
+      ? `<span>${plural(emps.length, 'person', 'people')}</span><i>·</i>
+         <button type="button" class="linkbtn strong" data-go="people" data-q="only=unsetup">${unsetup} without setup →</button>`
+      : `<span>${plural(emps.length, 'person', 'people')}</span><i>·</i><span>all connected</span><i>·</i>${reach}`;
   return `<header class="page-head">
     <div>
       <h1 class="page-title">Team</h1>
-      <div class="page-status">
-        <span>${plural(emps.length, 'person', 'people')}</span><i>·</i>
-        <span>${connected} connected</span><i>·</i>
-        ${tail}
-      </div>
+      <div class="page-status">${line}</div>
     </div>
-    <button type="button" class="btn primary" id="focusAdd">Add people</button>
   </header>`;
 }
 
-function bindHead() {
-  const add = $('focusAdd');
-  if (!add) return;
-  add.onclick = () => {
-    if (tabOf() === '') { $('newName')?.focus(); return; }
-    state.focusAdd = true;
-    go('people');
-  };
+/**
+ * A seeded directory says so where the seeded people are seen, not only on
+ * the tab with the rename field. Somebody opening Team for the first time is
+ * looking at eight people they never added; the sentence that explains that
+ * has to be above them.
+ */
+function demoBanner() {
+  if (!state.company.demo) return '';
+  return `<div class="banner warn demo"><b>Sample data.</b> ${esc(state.company.name)} and everyone in it are made up.
+    <button type="button" class="linkish" data-go="people" data-sel="company">Make it yours</button></div>`;
 }
 
 // ── People ───────────────────────────────────────────────────────────────────
@@ -140,7 +157,7 @@ function peopleTab() {
         <button type="button" class="linkish" data-go="people">Show everyone</button></div>` : ''}
     ${all.length
       ? `<div class="tbl">
-          <div class="thead"><span>Person</span><span>Role</span><span>Rules</span><span>Connected</span><span></span></div>
+          <div class="thead"><span>Person</span><span>Role</span><span>Connected</span><span>Last active</span><span></span></div>
           ${emps.map(personRow).join('')}
         </div>`
       : '<div class="empty"><b>Nobody yet</b><span>Add somebody above and Warden issues them a key.</span></div>'}`;
@@ -148,16 +165,25 @@ function peopleTab() {
 
 /**
  * One row. The name opens the page; the role edits in place; the menu has
- * what used to need the page open. Rules is a count, because the list of them
- * is the page's job.
+ * what used to need the page open.
+ *
+ * No rule count. It read the same in every row and "0" on the admin with no
+ * hint that exemption was why — a column that is always the same number is
+ * decoration. Exemption is said where it applies, beside the role; the rules
+ * themselves are the page's job. Last active is what an administrator
+ * actually sweeps a list of people for.
  */
 function personRow(e) {
   const on = isConnected(e);
+  const exempt = new Set(state.policy.exemptRoles ?? ['admin']).has(e.role);
   return `<div class="trow">
     <button type="button" class="pname" data-go="people" data-sel="${attr(e.id)}">${avatar(e)}<span class="nm">${esc(e.name)}</span></button>
-    <span><select class="mini" data-role-of="${attr(e.id)}" aria-label="Role of ${esc(e.name)}">${roleOptions(e.role, true)}</select></span>
-    <span>${e.ruleCount}</span>
+    <span class="c-role">
+      <select class="mini" data-role-of="${attr(e.id)}" aria-label="Role of ${esc(e.name)}">${roleOptions(e.role, true)}</select>
+      ${exempt ? '<span class="chip warn" title="Measured against no rules">Exempt</span>' : ''}
+    </span>
     <span class="c-conn${on ? ' on' : ''}"><i class="dot"></i>${on ? `${esc(toolsOf(e))} · ${plural(requestsOf(e), 'request')}` : 'Not connected yet'}</span>
+    <span class="c-when">${ago(lastActiveAt(e))}</span>
     ${menu(e.id, [['open', 'Open'], ['key', 'New key'], ['remove', 'Remove from team', 'danger']])}
   </div>`;
 }
@@ -178,8 +204,6 @@ document.addEventListener('click', (e) => {
 });
 
 function bindPeople() {
-  if (state.focusAdd) { state.focusAdd = false; $('newName')?.focus(); }
-
   /**
    * Adding people, without a round trip per person.
    *
@@ -254,7 +278,7 @@ function rolesTab() {
       <button type="button" class="btn" id="addRole">Add role</button>
     </div>
   </div>
-  <div class="note under" id="roleNote">Limits are edited under Rules.</div>`;
+  <div class="note under" id="roleNote"></div>`;
 }
 
 function bindRoles() {
@@ -421,7 +445,7 @@ function personPage(p) {
       <div class="key-row">
         <span class="mono grow" title="Their identity. A new one revokes the old.">${esc(maskKey(p.apiKey))}</span>
         <button type="button" class="linkbtn" data-copy="${attr(`export WARDEN_API_KEY=${p.apiKey}`)}">Copy key</button>
-        <button type="button" class="linkbtn" data-act="copy-setup" data-id="${attr(p.id)}">Copy setup message</button>
+        ${on || hits.length ? `<button type="button" class="linkbtn" data-act="copy-setup" data-id="${attr(p.id)}">Copy setup message</button>` : ''}
       </div>
       <div class="folds">
         ${disclosure('p:onboarding', 'Setup steps, tool by tool', '<div id="onboarding"><div class="note">loading…</div></div>')}

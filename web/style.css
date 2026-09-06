@@ -1078,6 +1078,9 @@ button.quota .quota-row b { margin-left: auto; }
 .linkbtn.strong { color: var(--ink); font-weight: var(--fw-medium); text-decoration: none; }
 .linkbtn.strong:hover { text-decoration: underline; }
 
+.banner.demo { margin: 0 var(--s-3) var(--s-6); }
+.banner.demo .linkish { color: inherit; margin-left: var(--s-2); }
+
 .tabs { display: flex; gap: var(--s-6); padding: 0 var(--s-3); border-bottom: 1px solid var(--line); }
 .tab {
   border: none; background: none;
@@ -1104,7 +1107,7 @@ button.quota .quota-row b { margin-left: auto; }
 .tabs + .tbl { margin-top: var(--s-6); }
 .tbl .thead, .tbl .trow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px 70px 200px 32px;
+  grid-template-columns: minmax(0, 1fr) 170px 210px 90px 32px;
   align-items: center;
   gap: var(--s-5);
   padding: 0 var(--s-4) 0 var(--s-5);
@@ -1137,14 +1140,25 @@ button.quota .quota-row b { margin-left: auto; }
 .pname:hover .nm { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--line-firm); }
 .strong { color: var(--ink); font-weight: var(--fw-medium); }
 
-/* the role, edited where it is read */
+/* The role, edited where it is read. Eight bordered dropdowns in a column
+   outweighed eight names, so the control looks like text until the pointer
+   is on it — then the border and the chevron come back and it is a select. */
 select.mini {
   width: auto; max-width: 100%;
-  font-size: var(--fs-2); color: var(--ink-2);
-  padding: 3px var(--s-6) 3px var(--s-3);
-  border-color: var(--line); background-color: var(--bg);
+  font-size: var(--fs-3); color: var(--ink-2);
+  padding: 3px var(--s-6) 3px var(--s-3); margin-left: calc(-1 * var(--s-3));
+  border-color: transparent; background-color: transparent; background-image: none;
+  cursor: pointer;
 }
-select.mini:hover { border-color: var(--line-firm); color: var(--ink); }
+.trow:hover select.mini, select.mini:hover, select.mini:focus-visible, .person-meta select.mini {
+  border-color: var(--line);
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2370747c' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  color: var(--ink);
+}
+.person-meta select.mini { margin-left: 0; font-size: var(--fs-2); }
+.c-role { display: inline-flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.c-when { font-size: var(--fs-2); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .c-conn { display: inline-flex; align-items: center; gap: var(--s-2); min-width: 0; font-size: var(--fs-2); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .c-conn.on { color: var(--allow); }
