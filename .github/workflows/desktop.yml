@@ -169,6 +169,26 @@ jobs:
           p12-password: ${{ secrets.MACOS_CERT_PASSWORD }}
       - run: pnpm run build
       - run: pnpm exec electron-forge make --platform=darwin --arch=${{ matrix.arch }}
+      # The same boot the Linux job smokes, on the .app a Mac user downloads.
+      # v0.1.37 built green on every platform and opened on macOS with
+      # "lib.missingModels is not a function"; the packaged app had never
+      # been started by CI on the platforms it ships for. Only the arm64
+      # build, which is this runner's own architecture: the x64 build would
+      # need Rosetta and is best-effort above anyway. The report goes to a
+      # file because that is what the Windows job has to read, and one
+      # mechanism across the three is one fewer to get wrong.
+      - name: Packaged app boots in mock mode
+        if: matrix.arch == 'arm64'
+        run: |
+          APP=out/Warden-darwin-arm64/Warden.app/Contents/MacOS/Warden
+          test -x "$APP" || { echo "not packaged: $APP"; ls out; exit 1; }
+          REPORT="$RUNNER_TEMP/smoke.txt"
+          WARDEN_SMOKE=1 WARDEN_SMOKE_FILE="$REPORT" "$APP" > smoke.log 2>&1 &
+          for i in $(seq 1 75); do test -f "$REPORT" && break; sleep 2; done
+          cat smoke.log
+          test -f "$REPORT" || { echo "no smoke report within 150 s"; exit 1; }
+          cat "$REPORT"
+          grep -q WARDEN_SMOKE_OK "$REPORT"
       - uses: actions/upload-artifact@v4
         with:
           name: warden-darwin-${{ matrix.arch }}
@@ -188,6 +208,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: pnpm exec electron-forge make --platform=win32 --arch=x64
+      # The packaged Warden.exe, started the way a user starts it, has to
+      # reach its own /health in mock mode. A Windows GUI process has no
+      # console to print to, so the shell writes its verdict to the file
+      # named in WARDEN_SMOKE_FILE and this step waits for it. Before this
+      # step the Windows build was only ever built, never run.
+      - name: Packaged app boots in mock mode
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'out\Warden-win32-x64\Warden.exe'
+          if (-not (Test-Path $exe)) { Write-Error "not packaged: $exe"; Get-ChildItem out; exit 1 }
+          $report = Join-Path $env:RUNNER_TEMP 'smoke.txt'
+          $env:WARDEN_SMOKE = '1'
+          $env:WARDEN_SMOKE_FILE = $report
+          $p = Start-Process -FilePath $exe -PassThru
+          $deadline = (Get-Date).AddSeconds(150)
+          while (-not (Test-Path $report) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
+          if (-not (Test-Path $report)) { Write-Error "no smoke report within 150 s (process exited: $($p.HasExited))"; exit 1 }
+          Get-Content $report
+          if (-not (Select-String -Path $report -Pattern 'WARDEN_SMOKE_OK' -Quiet)) { exit 1 }
       - uses: actions/upload-artifact@v4
         with:
           name: warden-win32-x64

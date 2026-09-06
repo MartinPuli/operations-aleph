@@ -106,6 +106,35 @@ export async function modelsPresent(appRoot: string, modelsDir: string): Promise
 }
 
 /**
+ * Everything this file will ask of the compiled server, checked in one place.
+ *
+ * The two `Lib` types above are a promise the server makes to this process
+ * and nothing enforces: v0.1.37 shipped with `missingModels` deleted from
+ * `src/setup/download.ts`, every typecheck green, and opened with
+ * "lib.missingModels is not a function". The smoke run boots in mock mode
+ * and never reaches `ensureModels`, so it never saw it either. This is the
+ * call the smoke makes instead, and it runs the real lookup once over an
+ * empty directory so a member that exists but throws is caught too.
+ */
+export async function setupLibReady(appRoot: string): Promise<void> {
+  const lib = (await import(
+    pathToFileURL(join(appRoot, 'dist', 'setup', 'download.js')).href
+  )) as Partial<DownloadLib>;
+  const { MODEL_CATALOG } = (await import(
+    pathToFileURL(join(appRoot, 'dist', 'setup', 'catalog.js')).href
+  )) as Partial<CatalogLib>;
+  for (const name of ['missingModels', 'downloadModel'] as const) {
+    if (typeof lib[name] !== 'function') throw new Error(`dist/setup/download.js does not export ${name}`);
+  }
+  if (!Array.isArray(MODEL_CATALOG) || MODEL_CATALOG.length === 0) {
+    throw new Error('dist/setup/catalog.js does not export MODEL_CATALOG');
+  }
+  const required = MODEL_CATALOG.filter((spec) => spec.required && spec.url);
+  const missing = lib.missingModels!(join(appRoot, 'no-such-models-dir'), required);
+  if (missing.length !== required.length) throw new Error('missingModels did not report an empty directory as missing everything');
+}
+
+/**
  * The optional weights this installation has asked for on top of the required
  * ones.
  *
