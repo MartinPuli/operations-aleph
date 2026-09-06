@@ -13,7 +13,7 @@ import { redactNames, remoteCompilerConfig } from '../qvac/remote.js';
 import { isolate } from '../guard/isolate.js';
 import { EVERYONE, employeeToken, sanitiseAudience } from './audience.js';
 import { loadDirectory } from './people.js';
-import { compilePrompt, splitPrompt } from './prompts.js';
+import { compilePrompt, splitPrompt, type Conversation } from './prompts.js';
 import {
   MAX_STATEMENTS,
   POLICY_SPLIT_JSON_SCHEMA,
@@ -49,6 +49,8 @@ export type CompileOptions = {
    * re-derive that from prose is a way to get it wrong.
    */
   lockTo?: string[];
+  /** The conversation this message continues, so a follow-up reads as one. */
+  conversation?: Conversation;
 };
 
 /**
@@ -58,7 +60,7 @@ export type CompileOptions = {
  * must not leave here shaped like one. This is the shape it leaves in instead,
  * and `isDeclined` is how every caller tells the two apart without a cast.
  */
-export type Declined = { notARule: true; notARuleReason: string; usageFactor?: number };
+export type Declined = { notARule: true; notARuleReason: string; usageFactor?: number; usageRoles?: string[] };
 
 export function isDeclined(compiled: Rule | Declined): compiled is Declined {
   return 'notARule' in compiled && compiled.notARule === true;
@@ -75,7 +77,7 @@ export async function compileRule(
   const people = options.people ?? directory.employees;
   const iso = isolate(text);
 
-  const system = compilePrompt(roles, people.map((p) => roster(p)), iso.nonce);
+  const system = compilePrompt(roles, people.map((p) => roster(p)), iso.nonce, options.conversation);
 
   const res = await qvac.completeJSON<RuleDraft>(
     {
@@ -110,7 +112,10 @@ export async function compileRule(
     return {
       notARule: true,
       notARuleReason: draft.notARuleReason ?? '',
-      ...(draft.usageFactor !== undefined ? { usageFactor: draft.usageFactor } : {})
+      ...(draft.usageFactor !== undefined ? { usageFactor: draft.usageFactor } : {}),
+      // Only roles that exist. A role the model invented would filter the
+      // proposal down to nobody, which reads as "nothing to cut".
+      ...(draft.usageRoles?.length ? { usageRoles: draft.usageRoles.filter((r) => roles.includes(r)) } : {})
     };
   }
 
@@ -154,10 +159,10 @@ export async function compileRule(
  * here decides anything, and every sentence it returns still has to survive
  * `compileRule` and then be ratified by a person.
  */
-async function splitStatement(qvac: QvacAdapter, text: string): Promise<string[]> {
+async function splitStatement(qvac: QvacAdapter, text: string, conversation?: Conversation): Promise<string[]> {
   const iso = isolate(text);
 
-  const system = splitPrompt(iso.nonce);
+  const system = splitPrompt(iso.nonce, conversation);
 
   try {
     const res = await qvac.completeJSON<PolicySplit>(
@@ -189,7 +194,10 @@ async function splitStatement(qvac: QvacAdapter, text: string): Promise<string[]
     }
     // A split of one is not a split. The pass was asked to break a worry into
     // parts and came back with the administrator's own sentence — so use the
-    // administrator's own sentence, not the model's paraphrase of it.
+    // administrator's own sentence, not the model's paraphrase of it. Except
+    // mid-conversation: a follow-up that leaves one rule on the table is that
+    // rule, reworded on purpose, and the administrator's sentence ("solo para
+    // ventas") is not a rule at all.
     //
     // This is not tidiness. Measured on 2026-09-01 against Qwen3-1.7B-Q4_0,
     // the paraphrase is where the damage was: "nadie puede mandar datos de
@@ -200,7 +208,7 @@ async function splitStatement(qvac: QvacAdapter, text: string): Promise<string[]
     // returns one statement can now only return the one it was given, so the
     // worst failure this pass had is structurally gone rather than prompted
     // against.
-    if (statements.length === 1) return [text];
+    if (statements.length === 1 && !conversation?.current.length) return [text];
     return statements.length > 0 ? statements.slice(0, MAX_STATEMENTS) : [text];
   } catch {
     return [text];
@@ -253,8 +261,9 @@ export async function compilePolicy(
   rules: Rule[];
   declined: string[];
   declinedFactors: (number | undefined)[];
+  declinedRoles: (string[] | undefined)[];
 }> {
-  const statements = await splitStatement(qvac, text);
+  const statements = await splitStatement(qvac, text, options.conversation);
 
   // A refusal from `compileRule` is not a rule and must not be carried as one.
   // It was: `notARule` was handled on the single-rule route and nowhere else, so
@@ -267,15 +276,25 @@ export async function compilePolicy(
   const rules: Rule[] = [];
   const declined: string[] = [];
   const declinedFactors: (number | undefined)[] = [];
+  const declinedRoles: (string[] | undefined)[] = [];
+  // The split already carried the follow-up into each statement, so the
+  // compiler gets the history and not the table: shown the rules on the
+  // table, it answered a statement that changed one thing about a rule with
+  // only that thing — appliesTo and no examples — and the draft failed its
+  // schema twice. It needs the history for a spending target's roles.
+  const perRule: CompileOptions = options.conversation
+    ? { ...options, conversation: { history: options.conversation.history, current: [] } }
+    : options;
   for (const statement of statements) {
-    const compiled = await compileRule(qvac, statement, policy, options);
+    const compiled = await compileRule(qvac, statement, policy, perRule);
     if (isDeclined(compiled)) {
       declined.push(compiled.notARuleReason || 'It contains no prohibition.');
       declinedFactors.push(compiled.usageFactor);
+      declinedRoles.push(compiled.usageRoles);
     } else rules.push(compiled);
   }
 
-  return { statements, rules, declined, declinedFactors };
+  return { statements, rules, declined, declinedFactors, declinedRoles };
 }
 
 /**

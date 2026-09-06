@@ -1333,3 +1333,49 @@ to the right run:
   policy compiled by the new splitter, judged on that machine over a day of
   real prompts with the appeals tab open, is the measurement the report is
   actually about, and it cannot be taken from here.
+
+## Cost as habits, and a conversation with memory
+
+2026-09-06. Compiler only, again: `claude -p --safe-mode --model sonnet`
+through the gateway with the mock judge, no weights. Two reports from the
+owner. "Optimizar" was literal: "optimicen el uso" was declined as a target
+with no number, and "quiero ahorrar 50%" produced a halved request count and
+nothing about *why* the money goes. And the rule conversation had no memory:
+every message compiled as if it were the first, so "hacelo solo para ventas"
+after five rules became a rule about sales.
+
+**Cost is made of habits, and a habit is a `warn` rule.** The splitter is
+told what a usage worry is made of when the administrator names nothing
+(whole files pasted when a few lines would do; deep research, extended
+thinking or the most expensive model for a routine question; a full rewrite
+when a small change was needed; the same long context re-sent), and the
+compiler is told a costly habit compiles at `warn`: the person is told it
+costs money and let through, because a person refused mid-task switches the
+gateway off. The one habit code can measure, prompt length, is a per-role
+ceiling instead (`maxPromptChars`; over it the prompt is held like any
+budget breach, with the same "send the part that matters" sentence).
+
+| Sentence | Now |
+|---|---|
+| *quiero optimizar el uso de la IA, la gente manda prompts larguísimos y usa deep research para cualquier cosa; quiero bajar el gasto a la mitad* | two `warn` rules ("an entire file pasted in full when only a few lines are needed", "deep research mode for routine queries") and the limits at 0.5 beside them |
+| *quiero ahorrar 50% en IA* → *solo para los interns* | factor 0.5 over every role with a limit; then the same factor over `intern` only, `usageRoles` read from the follow-up |
+| a 5,015-character prompt as an intern with `maxPromptChars: 4000` | ESCALATE, "this prompt is 5,015 characters, over the 4,000 allowed for role intern" |
+
+**The conversation reaches the compiler.** The console sends the
+administrator's earlier messages (last six) and the rules on the table (the
+set's un-activated cards, or the single draft); the splitter reads them
+under a standing instruction to return the full updated list when the new
+message is a follow-up, and the per-statement compile gets the history but
+not the table, because shown the table it answered a narrowing with only the
+field that changed and no examples, twice, and the draft failed its schema.
+
+| Turn | Result |
+|---|---|
+| *hacé que no leakeen datos* | 5 `block` rules for everyone: customer contacts, credentials, unreleased financials, source code, internal documents |
+| *hacelo solo para ventas y sumá las credenciales de los sistemas internos* | the same 5, every one bound to `sales`, the credentials rule reworded to name internal systems; nothing invented, nothing dropped |
+
+Not measured: how any of these `warn` rules judge on the real weights. A
+warning cannot refuse, so the cost of a false positive there is a sentence
+nobody wanted, and the benefit of a true one is a habit named at the moment
+it costs; the first is annoying and the second is the point, and only a day
+of real traffic says which dominates.

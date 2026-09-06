@@ -153,6 +153,8 @@ export type BudgetGauge = {
 export type BudgetStatus = {
   output: BudgetGauge;
   context: BudgetGauge;
+  /** The prompt's own length against the role's ceiling. Always measured; needs no report. */
+  prompt: BudgetGauge;
   /** True when the client sent nothing to measure — not the same as being under. */
   unreported: boolean;
 };

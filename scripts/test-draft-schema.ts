@@ -27,6 +27,8 @@ function main(): void {
   assert.ok(ruleDraftSchema.safeParse(declineEmptied).success, 'a decline with emptied placeholders parses');
   const declineOmitted = { notARule: true, notARuleReason: 'un nombre, nada que aplicar' };
   assert.ok(ruleDraftSchema.safeParse(declineOmitted).success, 'a decline with the fields omitted parses');
+  const declineRoles = { notARule: true, notARuleReason: 'solo interns', usageFactor: 0.5, usageRoles: ['intern'] };
+  assert.ok(ruleDraftSchema.safeParse(declineRoles).success, 'a spending target aimed at roles parses');
   console.log('✓ a decline parses whether the model empties the other fields or omits them');
 
   const noExamples = { ...rule, examples: { violating: [], compliant: [] } };

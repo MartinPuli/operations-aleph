@@ -13,8 +13,37 @@ import { thinkingMarker } from '../qvac/client.js';
 import { MAX_STATEMENTS } from './types.js';
 
 /** The system prompt that compiles one administrator's sentence into a rule draft. */
-export function compilePrompt(roles: string[], roster: string[], nonce: string): string {
+/** What the administrator said earlier in this conversation, and what is on the table now. */
+export type Conversation = { history: string[]; current: string[] };
+
+/**
+ * The conversation so far, as a block the compiler reads before the new
+ * message. There was none: every message was compiled as if it were the
+ * first, so "hacelo solo para ventas" after a set of five rules compiled
+ * into a rule about sales, and "solo para los interns" after a spending
+ * target compiled into nothing. A follow-up is the most common second
+ * message in the console and it was the one the compiler could not read.
+ */
+function conversationBlock(c: Conversation | undefined): string[] {
+  if (!c || (c.history.length === 0 && c.current.length === 0)) return [];
   return [
+    'Earlier in this conversation the administrator said, in order:',
+    ...c.history.map((h, i) => `  ${i + 1}. ${h}`),
+    ...(c.current.length
+      ? ['The rules currently on the table, drafted from that and not yet activated:', ...c.current.map((r, i) => `  ${i + 1}. ${r}`)]
+      : []),
+    'The new message may be a follow-up to that: a narrowing ("solo para ventas"),',
+    'an addition ("sumá las credenciales"), a removal, or a change to one thing.',
+    'Read it in that light. If it is a new, unrelated worry, ignore the table.',
+    'Whatever it is, answer with the COMPLETE rule, every field filled, never',
+    'only the field that changed.',
+    ''
+  ];
+}
+
+export function compilePrompt(roles: string[], roster: string[], nonce: string, conversation?: Conversation): string {
+  return [
+    ...conversationBlock(conversation),
     'You convert a policy statement written by a company administrator into a structured rule.',
     '',
     // Two failures this paragraph exists for, both seen on a capable compiler.
@@ -39,15 +68,30 @@ export function compilePrompt(roles: string[], roster: string[], nonce: string):
     'per-role limits rather than with a rule about what anyone may ask. Set',
     'notARule to true and set usageFactor to the fraction of today\'s limits the',
     'administrator is asking for: "reducir mi uso al 50%" is 0.5, "un tercio menos"',
-    'is 0.67, "la mitad de lo que gastamos" is 0.5. Do not compute the new limits',
-    'and do not name the roles; Warden has the current numbers and does the',
-    'arithmetic. A reason is still useful: say what you understood.',
+    'is 0.67, "la mitad de lo que gastamos" is 0.5. Do not compute the new limits;',
+    'Warden has the current numbers and does the arithmetic. If the administrator',
+    'aimed the target at particular roles ("solo para los interns", "para ventas"),',
+    'put those role names in usageRoles; otherwise leave it out and it applies to',
+    'every role with a limit. A reason is still useful: say what you understood.',
     '',
-    'A sentence with no prohibition and no target in it — a name, a greeting, a',
-    'question, a fragment — is nothing Warden can act on. Set notARule to true with',
-    'a short reason, and leave usageFactor out. A target with no number in it',
-    '("optimicen el uso", "se gasta demasiado") is this case too: say in the reason',
-    'that Warden needs a fraction or a percentage to set limits from.',
+    // "Optimicen el uso" used to be declined as "no number to set limits from",
+    // which is true of the limits and false of the sentence: the worry is made
+    // of habits, and a habit is a rule. Measured 2026-09-06 through the CLI
+    // compiler (docs/MEASUREMENTS.md, "Cost as habits"); the severity is fixed
+    // here because a habit that costs money is not a violation, and a person
+    // told "this costs money" mid-task keeps working where a person refused
+    // switches the gateway off.
+    'A sentence about a habit that costs money — pasting whole files or',
+    'repositories when a few lines would do, running deep research or extended',
+    'thinking or the most expensive model for a routine question, asking for a',
+    'full rewrite when a small change was needed, re-sending the same long',
+    'context — IS a rule, at severity "warn": the person is told the habit costs',
+    'money and let through. Use "block" or "escalate" only when the administrator',
+    'said to stop or hold it.',
+    '',
+    'A sentence with no prohibition, no habit and no target in it — a name, a',
+    'greeting, a question, a fragment — is nothing Warden can act on. Set notARule',
+    'to true with a short reason, and leave usageFactor out.',
     '',
     // The reason is read by the administrator, on the console, and it was
     // coming back in English under a Spanish sentence.
@@ -159,7 +203,7 @@ export function compilePrompt(roles: string[], roster: string[], nonce: string):
 }
 
 /** The system prompt that splits one broad instruction into the prohibitions it means. */
-export function splitPrompt(nonce: string): string {
+export function splitPrompt(nonce: string, conversation?: Conversation): string {
   // What this prompt is for, stated against what the last one did. Measured
   // 2026-09-05 through `claude -p --model sonnet` (docs/MEASUREMENTS.md, "The
   // splitter, asked to enumerate"): "hacé que no leakeen datos" came back as
@@ -175,6 +219,16 @@ export function splitPrompt(nonce: string): string {
   // The security instruction survives unchanged: the concrete kinds of the
   // thing they named are inside what they asked; a different subject is not.
   return [
+    ...conversationBlock(conversation),
+    ...(conversation?.current.length
+      ? [
+          'When the new message is a follow-up to the rules on the table, return the',
+          'FULL updated list: every rule that stays, reworded only where the follow-up',
+          'changes it (carry a narrowing such as a role or a person into each one it',
+          'applies to), plus what it adds, minus what it removes.',
+          ''
+        ]
+      : []),
     'A company administrator has said what they want stopped, in their own words.',
     'They have named a worry, not a rule. Write down the specific prohibitions',
     'that worry is made of — one sentence each, one concrete thing per sentence —',
@@ -194,6 +248,14 @@ export function splitPrompt(nonce: string): string {
     '- A target for how much is used or spent — "ahorrar 50%", "gastar la mitad",',
     '  "reducir el uso" — is ONE statement on its own, in the administrator\'s own',
     '  words. Never rewrite it as a prohibition; Warden handles it as a limit.',
+    '- A worry about cost or usage ("gastan de más", "optimicen el uso") is made of',
+    '  the habits that cost money. Each habit the administrator named is one',
+    '  statement, and a worry that names none is made of the usual ones: pasting',
+    '  whole files or repositories when a few lines would do; running deep research,',
+    '  extended thinking or the most expensive model for a routine question; asking',
+    '  for a full rewrite when a small change was needed; re-sending the same long',
+    '  context instead of continuing. Keep each as the administrator said it, with',
+    '  the number, if any, in its own statement as above.',
     '- Never restate another statement in different words.',
     // The one instruction that is a security instruction rather than a quality
     // one. An administrator who asks about customer data and gets back a rule

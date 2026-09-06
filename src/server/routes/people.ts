@@ -222,6 +222,9 @@ peopleRoutes.put('/api/quotas/:role', asyncRoute(async (req, res) => {
       : {}),
     ...(positive(req.body?.maxContextTokens) !== undefined
       ? { maxContextTokens: positive(req.body?.maxContextTokens) }
+      : {}),
+    ...(positive(req.body?.maxPromptChars) !== undefined
+      ? { maxPromptChars: positive(req.body?.maxPromptChars) }
       : {})
   };
 
