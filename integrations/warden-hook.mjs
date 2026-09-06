@@ -33,7 +33,23 @@ import { dirname, join } from 'node:path';
 const WARDEN_URL = process.env.WARDEN_URL ?? 'http://localhost:8080';
 const API_KEY = process.env.WARDEN_API_KEY ?? '';
 
-const DEFAULT_HEALTH_TIMEOUT_MS = 2000;
+/*
+ * How long the hook waits for `/health` before treating the gateway as gone.
+ *
+ * This is a security parameter for the same reason the decision deadline is,
+ * and a sharper one: the health call is where the hook learns the decision
+ * deadline and whether the gateway fails closed, and a health call that times
+ * out never reaches the decision at all. It was 2 s, which is generous for a
+ * gateway on the LAN. Measured on 2026-09-06 against a Cloudflare quick
+ * tunnel, three consecutive `/health` calls took 2.70 s, 2.16 s and 1.95 s,
+ * so a laptop wired exactly as the onboarding sheet says failed open on every
+ * prompt — "Warden unreachable, prompt allowed unchecked" in 2 s, with a
+ * gateway that was up and answering. A hook that looks installed and never
+ * judges is the worst shape SECURITY.md describes. 10 s costs nothing on the
+ * happy path (the call returns when it returns) and is small against the 90 s
+ * decision deadline it sits in front of.
+ */
+const DEFAULT_HEALTH_TIMEOUT_MS = 10_000;
 /*
  * The deadline after which the hook gives up and lets the prompt through
  * unchecked.

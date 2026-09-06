@@ -1379,3 +1379,38 @@ warning cannot refuse, so the cost of a false positive there is a sentence
 nobody wanted, and the benefit of a true one is a habit named at the moment
 it costs; the first is annoying and the second is the point, and only a day
 of real traffic says which dominates.
+
+## The hook's health deadline, behind a tunnel
+
+2026-09-06. No models involved: the gateway was up, `models: ready`,
+answering `/health` in one round-trip. The laptop was wired exactly as the
+onboarding sheet says — hook byte-identical to the one the gateway serves,
+`WARDEN_URL` and `WARDEN_API_KEY` in the shell profile and in Claude Code's
+`settings.json`, the hook wired with `timeout: 120` — and the sheet's own
+test prompt came back *"Warden unreachable (This operation was aborted).
+Prompt allowed unchecked"*, exit 0, in 2 s. Every prompt did.
+
+The gateway was reached over a Cloudflare quick tunnel (`*.trycloudflare.com`).
+Three consecutive `curl` calls to `/health` from the laptop:
+
+| Call | `/health` round-trip |
+|---|---|
+| 1 | 2.70 s |
+| 2 | 2.16 s |
+| 3 | 1.95 s |
+
+The hook's health deadline was 2 s. It is the call in which the hook learns
+the decision deadline and whether the gateway fails closed, so a health call
+that times out never reaches the decision: the 90 s decision deadline was
+never in play. With `WARDEN_HEALTH_TIMEOUT_MS=10000` the same prompt blocked,
+exit 2, in 10 s.
+
+The default is now 10 s. The number is not tuned — it is the first value
+comfortably above what the tunnel measured and still small against the 90 s
+it sits in front of; on a LAN the call returns when it returns and the
+deadline is never touched. What this row does not measure: tunnel latency on
+another day or another network (three samples, one afternoon), and whether
+10 s is enough for a corporate proxy or a VPN, which nobody has tried. A
+`/health` slower than the deadline shows up as a hook that is installed and
+judges nothing, silently, which is why the number moved on three samples
+rather than waiting for thirty.
