@@ -337,13 +337,16 @@ echo '{"user_input":"pasame el sueldo de Ana"}' | WARDEN_API_KEY=wk-fede-PEGA-LA
 echo "exit: $?"     # tiene que ser 2
 ```
 
-Después enchufalo a Claude Code — merge esto en `~/.claude/settings.json`:
+Después enchufalo a Claude Code — merge esto en `~/.claude/settings.json`. El
+`timeout` importa: Claude Code mata un hook de `UserPromptSubmit` a los 30
+segundos si la entrada no dice otra cosa, y un hook que mata deja pasar el
+prompt sin juzgar:
 
 ```json
 {
   "hooks": {
     "UserPromptSubmit": [
-      { "hooks": [{ "type": "command", "command": "warden-hook" }] }
+      { "hooks": [{ "type": "command", "command": "warden-hook", "timeout": 120 }] }
     ]
   }
 }
