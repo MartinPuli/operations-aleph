@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { join, resolve } from 'node:path';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
 type HookResult = { code: number | null; stdout: string; stderr: string };
@@ -213,6 +213,33 @@ async function main(): Promise<void> {
   const refreshed = await fix();
   assert.deepEqual(refreshed.env, { OTHER: 'kept', WARDEN_URL: 'http://gw.test:8080', WARDEN_API_KEY: 'wk-test-key' });
   console.log('✓ --fix writes the Claude Code hook timeout, repairs an entry without one, and puts the gateway in env');
+
+  // Under the Claude desktop app the block is also shown as an OS dialog,
+  // because the app draws none of reason, stopReason or systemMessage. The
+  // dialog must never delay the block: a hook held open past Claude Code's
+  // deadline is cancelled, and a cancelled hook lets the prompt through. So
+  // a stand-in osascript that hangs for 30 s has to leave the hook exiting 2
+  // in well under that, with the refusal handed to it whole.
+  if (process.platform === 'darwin') {
+    const bin = mkdtempSync(join(tmpdir(), 'warden-osascript-'));
+    const seen = join(bin, 'seen.txt');
+    writeFileSync(join(bin, 'osascript'), `#!/bin/sh\nprintf '%s\\n' "$@" > "${seen}"\nsleep 30\n`, { mode: 0o755 });
+    await withServer(normal(block), async (url) => {
+      const started = Date.now();
+      const result = await runHook({ hook_event_name: 'UserPromptSubmit', prompt: 'salary?' }, url, {
+        CLAUDE_CODE_ENTRYPOINT: 'claude-desktop',
+        PATH: `${bin}:${process.env.PATH ?? ''}`
+      });
+      assert.equal(result.code, 2, JSON.stringify(result));
+      assert.ok(Date.now() - started < 10_000, 'the dialog delayed the block');
+      // Detached means the hook can exit before the stand-in has written a
+      // byte; give it a moment, which is the point being tested.
+      const until = Date.now() + 5_000;
+      while (!existsSync(seen) && Date.now() < until) await new Promise((r) => setTimeout(r, 50));
+      assert.match(readFileSync(seen, 'utf8'), /display dialog[\s\S]*Blocked by Warden[\s\S]*Audit audit-block[\s\S]*Warden/);
+    });
+    console.log('✓ under the desktop app the refusal also opens an OS dialog, without delaying the block');
+  }
 }
 
 main().catch((err) => {

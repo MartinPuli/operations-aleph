@@ -26,6 +26,7 @@
  * refused outright, which is also how revoking one works.
  */
 
+import { spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -897,6 +898,46 @@ function detectMode() {
 }
 
 /**
+ * A window with the refusal, for the desktop app.
+ *
+ * Claude Code inside the Claude desktop app runs this hook like the terminal
+ * does and records the block the same way — its transcript carries the whole
+ * refusal as a system warning with `preventContinuation`, beside a user
+ * message marked `isMeta` — and then draws none of it: the person sees their
+ * prompt vanish and a spinner. Observed on 2026-09-06 with `reason`,
+ * `stopReason` and `systemMessage` all set to the refusal; the app rendered
+ * nothing. Until it does, the one surface this hook can reach on that machine
+ * is the operating system, so on macOS under the desktop app it opens a
+ * dialog with the refusal. The app is recognisable by the
+ * `CLAUDE_CODE_ENTRYPOINT` it hands its hooks.
+ *
+ * Detached and never awaited. A dialog that waited for OK would hold this
+ * process past Claude Code's own deadline, and a hook it cancels is a prompt
+ * that goes through — the exact opposite of a block. Failing to open one is
+ * silent: the block already happened and the exit code is the guarantee;
+ * this is only the message.
+ */
+function showDesktopCard(text) {
+  if (process.platform !== 'darwin' || process.env.CLAUDE_CODE_ENTRYPOINT !== 'claude-desktop') return;
+  try {
+    const child = spawn(
+      'osascript',
+      [
+        '-e', 'on run argv',
+        '-e', 'display dialog (item 1 of argv) with title (item 2 of argv) buttons {"OK"} default button 1 with icon stop',
+        '-e', 'end run',
+        text,
+        'Warden'
+      ],
+      { detached: true, stdio: 'ignore' }
+    );
+    child.unref();
+  } catch {
+    /* the block stands without it */
+  }
+}
+
+/**
  * What this machine last learned from the gateway, remembered across runs.
  *
  * `failClosed` is stated by the gateway on `/health`, which is exactly the call
@@ -1088,6 +1129,7 @@ async function main() {
         '   gateway is up; there is no way around this from here.'
       ].join('\n');
       process.stderr.write(`${reason}\n`);
+      showDesktopCard(reason);
       process.stdout.write(
         JSON.stringify({ continue: false, stopReason: reason, decision: 'block', reason, systemMessage: reason })
       );
@@ -1127,6 +1169,7 @@ async function main() {
 
   const message = render(res);
   process.stderr.write(message + '\n');
+  showDesktopCard(message);
 
   /**
    * One object carrying every key a supported tool is documented to read, sent
