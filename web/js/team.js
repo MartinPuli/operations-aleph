@@ -1,85 +1,110 @@
 /**
- * Team: the company, how it is reached, the people, and one person opened in place with their setup.
+ * Team: the people Warden judges.
+ *
+ * One thing per tab and one page per person. People is the list, and it is
+ * where nearly everything happens in place: the role is a select in the row,
+ * and the row's menu carries the rest. Roles and Gateway are their own tabs
+ * rather than sections stacked under the list, because a page that shows four
+ * things at once is a page where nothing is the thing you came for.
+ *
+ * A person is a page, `#/people/<id>`, not a drawer between two rows. It
+ * leads with how they are doing (or with the setup they have not done yet),
+ * then their key, then the rules that judge them. Removing them and issuing a
+ * new key live in the menu, not in a footer that every visit has to scroll
+ * past.
  */
 import { $, api, attr, del, esc, post, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindPolicy, sendRuleMessage } from './draft.js';
-import { TOOL_NAMES, avatar, clip, copyText, personById, plural, ruleName } from './format.js';
-import { bindDisclosures, disclosure, render } from './render.js';
+import { TOOL_NAMES, avatar, copyText, personById, plural, ruleName } from './format.js';
+import { disclosure, render } from './render.js';
 import { go } from './router.js';
 import { VIEWS } from './views.js';
 
 // ═══ TEAM ════════════════════════════════════════════════════════════════════
 
 /**
- * The company's own name, and the way out of the demo.
- *
- * A fresh install ships a seeded directory — another company's name and seven
- * invented people — because an empty console teaches nobody anything. Until
- * this existed there was no way to leave it: the name in the title bar was not
- * editable and the demo staff could only be deleted one at a time. That reads
- * as a product stuck in a demo, and it was.
- *
- * "Start fresh" keeps one administrator and issues them a new key, because a
- * directory with nobody in an exempt role is a console that cannot be opened
- * again once `WARDEN_ADMIN_REQUIRE_KEY` is set — and because the point of
- * starting over is that the demo's keys stop working. It leaves the policy
- * alone: rules and people are separate decisions.
+ * `sel` decides what the view is. `roles` and `gateway` are the tabs; anything
+ * else is a person. A person whose id happens to be one of those two words
+ * cannot exist: ids are derived from names and those are not names.
  */
+const TABS = [['', 'People'], ['roles', 'Roles'], ['gateway', 'Gateway']];
+const tabOf = () => (state.sel === 'roles' || state.sel === 'gateway' ? state.sel : state.sel ? null : '');
+
+const toolsOf = (e) => (e.connected ?? []).map((c) => TOOL_NAMES[c.tool] ?? c.tool).join(', ');
+const requestsOf = (e) => (e.connected ?? []).reduce((n, c) => n + (c.count ?? 0), 0);
+const isConnected = (e) => Boolean(e.connected?.length);
+
+/** A key, with the middle hidden. The prefix says whose, the tail says which. */
+const maskKey = (key) => {
+  const k = String(key ?? '');
+  const cut = k.indexOf('-', 3);
+  return cut > 0 && k.length > cut + 12 ? `${k.slice(0, cut + 1)}${'•'.repeat(16)}${k.slice(-6)}` : k;
+};
+
+VIEWS.people = {
+  body: () => {
+    const tab = tabOf();
+    if (tab === null) return personPage(personById(state.sel));
+    return `<div class="sheet">
+      ${pageHead()}
+      <nav class="tabs" aria-label="Team sections">
+        ${TABS.map(([sel, label]) => `<button type="button" class="tab${tab === sel ? ' on' : ''}" data-go="people"${sel ? ` data-sel="${sel}"` : ''}>${label}</button>`).join('')}
+      </nav>
+      ${tab === '' ? peopleTab() : tab === 'roles' ? rolesTab() : gatewayTab()}
+    </div>`;
+  },
+  bind: () => {
+    bindPolicy();
+    bindActions();
+    const tab = tabOf();
+    if (tab === null) { bindPerson(); return; }
+    bindHead();
+    if (tab === '') bindPeople();
+    else if (tab === 'roles') bindRoles();
+    else bindGateway();
+  }
+};
+
+// ── the page head, shared by the three tabs ──────────────────────────────────
+
 /**
- * How the team reaches this gateway, on the screen where somebody is handing
- * out addresses.
- *
- * The control lived only in the macOS menu bar, which is a place you find if
- * you already know it is there. The person who needs it is the administrator
- * looking at Team wondering what URL to send.
- *
- * Both honest properties of a quick tunnel are on the screen rather than in a
- * dialog somebody dismissed a week ago: the address is public to whoever holds
- * it, and it changes every time the tunnel restarts.
+ * The title and one line that says where the team stands. The number that
+ * asks for something — people who have not connected — is the link; when it
+ * is zero the line says how the gateway is reached instead, which is the next
+ * thing an administrator wonders.
  */
-function reachBlock() {
-  const on = Boolean(state.publicUrl);
-  return `<div class="section">
-    <div class="label">How your team reaches this</div>
-
-    <div class="kv">
-      <div class="r"><span class="k">Address</span>
-        <span class="v">${on
-          ? `<span class="mono">${esc(state.publicUrl)}</span>`
-          : 'This machine only. Teammates elsewhere cannot reach it.'}</span></div>
+function pageHead() {
+  const emps = state.company.employees;
+  const connected = emps.filter(isConnected).length;
+  const unsetup = emps.length - connected;
+  const tail = emps.length && unsetup
+    ? `<button type="button" class="linkbtn strong" data-go="people" data-q="only=unsetup">${unsetup} without setup →</button>`
+    : `<span class="muted">${state.publicUrl ? 'reachable on the internet' : 'reachable from this machine only'}</span>`;
+  return `<header class="page-head">
+    <div>
+      <h1 class="page-title">Team</h1>
+      <div class="page-status">
+        <span>${plural(emps.length, 'person', 'people')}</span><i>·</i>
+        <span>${connected} connected</span><i>·</i>
+        ${tail}
+      </div>
     </div>
-
-    ${on ? `<div class="note">Anyone with this address reaches the gateway. Employees still
-      need their own key, and administration is refused through it. The address changes every
-      time the tunnel restarts, and everyone has to be given the new one.</div>` : ''}
-
-    ${state.canLeaveDemo ? `<div class="row-actions">
-      <button type="button" class="btn${on ? '' : ' primary'}" id="toggleExpose">
-        ${on ? 'Take it off the internet' : 'Put it on the internet'}
-      </button>
-      ${state.mock ? '<span class="note">Not while Warden is in demo mode: nothing here is really judged.</span>' : ''}
-    </div>` : `<div class="note">Open a tunnel from the Warden app, or put your own proxy in front of it.</div>`}
-  </div>`;
+    <button type="button" class="btn primary" id="focusAdd">Add people</button>
+  </header>`;
 }
 
-function companyBlock() {
-  const demo = Boolean(state.company.demo);
-  return `<div class="section company">
-    <div class="label">Company</div>
-    ${demo ? `<div class="banner warn">
-      <b>Sample data.</b> ${esc(state.company.name)} and everyone below are made up.
-    </div>` : ''}
-    <div class="chips">
-      <input type="text" id="orgInput" class="inline" value="${demo ? '' : esc(state.company.name ?? '')}"
-             placeholder="Your company's name">
-      <button type="button" class="btn${demo ? ' primary' : ''}" id="orgSave">${demo ? 'This is us' : 'Rename'}</button>
-      <span class="spacer"></span>
-      <button type="button" class="btn" id="orgReset">${demo ? 'Clear the sample team' : 'Start fresh…'}</button>
-    </div>
-    <div class="note" id="orgNote">${state.orgNote ? esc(state.orgNote) : ''}</div>
-  </div>`;
+function bindHead() {
+  const add = $('focusAdd');
+  if (!add) return;
+  add.onclick = () => {
+    if (tabOf() === '') { $('newName')?.focus(); return; }
+    state.focusAdd = true;
+    go('people');
+  };
 }
+
+// ── People ───────────────────────────────────────────────────────────────────
 
 /**
  * Roles for the add-someone dropdown, with `admin` never first.
@@ -89,84 +114,213 @@ function companyBlock() {
  * on a fresh install — and the very first person anybody added, before they
  * had read anything about exemptions, was silently unjudgeable. A default that
  * hands out a bypass is the wrong default however defensible the sort order.
- *
- * It stays in the list, because somebody does have to be one. It is last, it
- * says what it costs, and it is never what you get by not choosing.
  */
-function roleOptions() {
+function roleOptions(selected, short = false) {
   const exempt = new Set(state.policy.exemptRoles ?? ['admin']);
   const ordinary = state.company.roles.filter((r) => !exempt.has(r));
   const privileged = state.company.roles.filter((r) => exempt.has(r));
-  return [
-    ...ordinary.map((r) => `<option value="${attr(r)}">${esc(r)}</option>`),
-    ...privileged.map((r) => `<option value="${attr(r)}">${esc(r)} — exempt from every rule</option>`)
-  ].join('');
+  const opt = (r, suffix = '') => `<option value="${attr(r)}"${r === selected ? ' selected' : ''}>${esc(r)}${suffix}</option>`;
+  // A select is as wide as its widest option, so the one in a row says
+  // `admin`, not the sentence; the sentence is on the Roles tab.
+  return [...ordinary.map((r) => opt(r)), ...privileged.map((r) => opt(r, short ? '' : ' — exempt from every rule'))].join('');
 }
 
-VIEWS.people = {
-  body: () => `<div class="sheet">
-    ${companyBlock()}
-    ${reachBlock()}
-    ${state.company.employees.length
-      ? state.company.employees.map(personRow).join('')
-      : '<div class="empty"><b>Nobody yet</b><span>Add somebody below and Warden issues them a key.</span></div>'}
-
-    <div class="section">
-      <div class="label">Add someone</div>
-      <div class="chips">
-        <input type="text" id="newName" class="inline wide" placeholder="Federico Tavano, Jeremías Souto, Gastón Foncea" autocomplete="off">
-        <select class="inline" id="newRole">${roleOptions()}</select>
-        <button type="button" class="btn primary" id="addPerson">Add</button>
-      </div>
-      <div class="note">Commas for several. Enter adds them.</div>
-      <div class="note" id="addNote"></div>
+function peopleTab() {
+  const only = state.query.only === 'unsetup';
+  const all = state.company.employees;
+  const emps = only ? all.filter((e) => !isConnected(e)) : all;
+  return `
+    <div class="add-row">
+      <input type="text" id="newName" class="grow" placeholder="Names, comma-separated" autocomplete="off">
+      <select id="newRole">${roleOptions()}</select>
+      <button type="button" class="btn primary" id="addPerson">Add</button>
     </div>
+    <div class="note under" id="addNote"></div>
+    ${only ? `<div class="filter-note">Only ${plural(emps.length, 'person', 'people')} without setup ·
+        <button type="button" class="linkish" data-go="people">Show everyone</button></div>` : ''}
+    ${all.length
+      ? `<div class="tbl">
+          <div class="thead"><span>Person</span><span>Role</span><span>Rules</span><span>Connected</span><span></span></div>
+          ${emps.map(personRow).join('')}
+        </div>`
+      : '<div class="empty"><b>Nobody yet</b><span>Add somebody above and Warden issues them a key.</span></div>'}`;
+}
 
-    <div class="section">
-      <div class="label">Roles</div>
-      <div class="chips" id="roleChips">
-        ${state.company.roles.map((r) => {
-          const held = state.company.employees.filter((e) => e.role === r).length;
-          return `<span class="chip static" title="${held} employee(s)">${esc(r)} <span class="num">${held}</span>${
-            held === 0 ? ` <button type="button" class="linkbtn" data-role="${attr(r)}" aria-label="Remove role ${esc(r)}">✕</button>` : ''}</span>`;
-        }).join('')}
-      </div>
-      <div class="chips">
-        <input type="text" id="newRoleName" class="inline" placeholder="New role">
-        <input type="number" min="1" id="newRoleQuota" class="inline" placeholder="req/day">
-        <button type="button" class="btn" id="addRole">Add role</button>
-      </div>
-      <div class="note" id="roleNote"></div>
-    </div>
-  </div>`,
-  bind: () => {
-    bindPeopleList();
-    bindPolicy();
-    if (state.sel) void renderPerson(state.sel);
-  }
-};
-
+/**
+ * One row. The name opens the page; the role edits in place; the menu has
+ * what used to need the page open. Rules is a count, because the list of them
+ * is the page's job.
+ */
 function personRow(e) {
-  const open = state.sel === e.id;
-  return `<button type="button" class="row roomy${open ? ' on' : ''}" data-toggle="people" data-sel="${attr(e.id)}" aria-expanded="${open}">
-      ${avatar(e)}
-      <span class="col">
-        <span class="t">${esc(e.name)}</span>
-        <span class="m">
-          <span>${esc(e.role)}${e.quota ? ` · ${e.quota}/day` : ''}</span>
-          <span>${plural(e.ruleCount, 'rule')}${e.personalRuleCount ? ` · ${e.personalRuleCount} personal` : ''}</span>
-        </span>
-        <span class="tools">${e.connected?.length
-          ? e.connected.map((c) => `<span class="tool on" title="${c.count} request(s), last ${esc(c.at)}">${esc(TOOL_NAMES[c.tool] ?? c.tool)}</span>`).join('')
-          : '<span class="tool">not connected yet</span>'}</span>
-      </span>
-    </button>
-    ${open ? '<div class="detail" id="personDetail"><div class="note">loading…</div></div>' : ''}`;
+  const on = isConnected(e);
+  return `<div class="trow">
+    <button type="button" class="pname" data-go="people" data-sel="${attr(e.id)}">${avatar(e)}<span class="nm">${esc(e.name)}</span></button>
+    <span><select class="mini" data-role-of="${attr(e.id)}" aria-label="Role of ${esc(e.name)}">${roleOptions(e.role, true)}</select></span>
+    <span>${e.ruleCount}</span>
+    <span class="c-conn${on ? ' on' : ''}"><i class="dot"></i>${on ? `${esc(toolsOf(e))} · ${plural(requestsOf(e), 'request')}` : 'Not connected yet'}</span>
+    ${menu(e.id, [['open', 'Open'], ['key', 'New key'], ['remove', 'Remove from team', 'danger']])}
+  </div>`;
 }
 
-function bindPeopleList() {
-  const orgSave = $('orgSave');
-  if (orgSave) orgSave.onclick = async () => {
+function menu(id, items) {
+  return `<details class="menu">
+    <summary aria-label="More">···</summary>
+    <div class="menu-list">
+      ${items.map(([act, label, cls]) => `<button type="button" class="menu-item${cls ? ` ${cls}` : ''}" data-act="${act}" data-id="${attr(id)}">${label}</button>`).join('')}
+    </div>
+  </details>`;
+}
+
+// A menu closes when you click anywhere else. Once for the document, not per
+// render: menus are rebuilt with every render and the listener is not.
+document.addEventListener('click', (e) => {
+  for (const m of document.querySelectorAll('details.menu[open]')) if (!m.contains(e.target)) m.removeAttribute('open');
+});
+
+function bindPeople() {
+  if (state.focusAdd) { state.focusAdd = false; $('newName')?.focus(); }
+
+  /**
+   * Adding people, without a round trip per person.
+   *
+   * A comma-separated list is added in order and the field is left cleared and
+   * focused, so a whole team is one paste. One person is still one name and
+   * Enter — and for one person, their page (and their key) is what you wanted
+   * next, so that is where it goes.
+   *
+   * Sequential rather than concurrent because ids are derived from names and
+   * two people called Ana must not race for the same one.
+   */
+  const addPeople = async () => {
+    const field = $('newName');
+    const names = field.value.split(',').map((n) => n.trim()).filter(Boolean);
+    if (!names.length) return;
+    const role = $('newRole').value;
+    const added = [];
+    const failed = [];
+    for (const name of names) {
+      const { ok, j } = await post('/api/people', { name, role });
+      if (ok) added.push(j); else failed.push(`${name}: ${j.error ?? 'failed'}`);
+    }
+    await refreshPeople();
+    if (added.length === 1 && !failed.length) { go('people', added[0].id); return; }
+    render();
+    const note = $('addNote');
+    if (note) note.textContent = [added.length ? `Added ${added.length}.` : '', ...failed].filter(Boolean).join(' · ');
+    const next = $('newName');
+    if (next) { next.value = ''; next.focus(); }
+  };
+  $('addPerson').onclick = addPeople;
+  $('newName').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); void addPeople(); } };
+
+  for (const sel of document.querySelectorAll('select[data-role-of]')) {
+    sel.onchange = async (e) => {
+      const p = personById(sel.dataset.roleOf);
+      if (!p) return;
+      const { ok, j } = await post('/api/people', { id: p.id, name: p.name, role: e.target.value });
+      if (!ok) { $('addNote').textContent = j.error ?? 'could not change role'; }
+      await refreshPeople();
+      render();
+    };
+  }
+}
+
+// ── Roles ────────────────────────────────────────────────────────────────────
+
+/**
+ * What a role decides: a daily limit and whether the rules apply at all.
+ * Exemption is the one fact here that is easy to hand out by accident, so it
+ * is the one thing in colour.
+ */
+function rolesTab() {
+  const exempt = new Set(state.policy.exemptRoles ?? ['admin']);
+  const quotas = new Map((state.policy.quotas ?? []).map((q) => [q.role, q]));
+  return `<div class="tbl roles">
+    <div class="thead"><span>Role</span><span>People</span><span>Daily limit</span><span>Judged by</span><span></span></div>
+    ${state.company.roles.map((r) => {
+      const held = state.company.employees.filter((e) => e.role === r).length;
+      const q = quotas.get(r);
+      return `<div class="trow">
+        <span class="strong">${esc(r)}</span>
+        <span>${held}</span>
+        <span>${q?.maxRequestsPerDay ? `${q.maxRequestsPerDay} / day` : 'No limit'}</span>
+        <span>${exempt.has(r) ? '<span class="chip warn">Exempt from every rule</span>' : 'Every rule'}</span>
+        ${held === 0 ? menu(r, [['remove-role', 'Remove role', 'danger']]) : '<span></span>'}
+      </div>`;
+    }).join('')}
+    <div class="tfoot">
+      <input type="text" id="newRoleName" class="grow" placeholder="New role">
+      <input type="number" min="1" id="newRoleQuota" placeholder="Requests / day">
+      <button type="button" class="btn" id="addRole">Add role</button>
+    </div>
+  </div>
+  <div class="note under" id="roleNote">Limits are edited under Rules.</div>`;
+}
+
+function bindRoles() {
+  const addRole = async () => {
+    const role = $('newRoleName').value.trim();
+    if (!role) return;
+    const { ok, j } = await post('/api/roles', { role, maxRequestsPerDay: Number($('newRoleQuota').value || 0) });
+    if (!ok) { $('roleNote').textContent = j.error ?? 'failed'; return; }
+    await Promise.all([refreshPeople(), refreshPolicy()]);
+    render();
+  };
+  $('addRole').onclick = addRole;
+  for (const id of ['newRoleName', 'newRoleQuota']) {
+    $(id).onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); void addRole(); } };
+  }
+}
+
+// ── Gateway ──────────────────────────────────────────────────────────────────
+
+/**
+ * The company's own name, and how the team reaches this machine. Set once,
+ * so it is the last tab, not the first thing on the page.
+ *
+ * "Start fresh" keeps one administrator and issues them a new key, because a
+ * directory with nobody in an exempt role is a console that cannot be opened
+ * again once `WARDEN_ADMIN_REQUIRE_KEY` is set — and because the point of
+ * starting over is that the demo's keys stop working. It leaves the policy
+ * alone: rules and people are separate decisions.
+ *
+ * Both honest properties of a quick tunnel are on the screen rather than in a
+ * dialog somebody dismissed a week ago: the address is public to whoever holds
+ * it, and it changes every time the tunnel restarts.
+ */
+function gatewayTab() {
+  const demo = Boolean(state.company.demo);
+  const on = Boolean(state.publicUrl);
+  return `<div class="cards">
+    <section class="card">
+      <div class="label">Company</div>
+      ${demo ? `<div class="banner warn"><b>Sample data.</b> ${esc(state.company.name)} and everyone in it are made up.</div>` : ''}
+      <div class="inline-row">
+        <input type="text" id="orgInput" class="grow" value="${demo ? '' : esc(state.company.name ?? '')}" placeholder="Your company's name">
+        <button type="button" class="btn${demo ? ' primary' : ''}" id="orgSave">${demo ? 'This is us' : 'Rename'}</button>
+      </div>
+      <div class="note" id="orgNote">${state.orgNote
+        ? esc(state.orgNote)
+        : `<button type="button" class="linkish" id="orgReset">${demo ? 'Clear the sample team' : 'Start fresh…'}</button> removes everyone and issues you a new key. Your rules stay.`}</div>
+    </section>
+
+    <section class="card">
+      <div class="label">Address</div>
+      <div class="v">${on ? `<span class="mono">${esc(state.publicUrl)}</span>` : 'This machine only. Teammates elsewhere cannot reach it.'}</div>
+      ${state.canLeaveDemo
+        ? `<div class="inline-row">
+            <button type="button" class="btn" id="toggleExpose"${state.mock ? ' disabled' : ''}>${on ? 'Take it off the internet' : 'Put it on the internet'}</button>
+           </div>
+           <div class="note" id="exposeNote">${state.mock
+             ? 'Not while Warden is in demo mode: nothing here is really judged.'
+             : 'Anyone with the address reaches the gateway; they still need a key. It changes every time the tunnel restarts.'}</div>`
+        : '<div class="note">Open a tunnel from the Warden app, or put your own proxy in front of it.</div>'}
+    </section>
+  </div>`;
+}
+
+function bindGateway() {
+  $('orgSave').onclick = async () => {
     const name = $('orgInput').value.trim();
     if (!name) return;
     const { ok, j } = await post('/api/company', { name }, { method: 'PUT' });
@@ -175,8 +329,8 @@ function bindPeopleList() {
     render();
   };
 
-  const orgReset = $('orgReset');
-  if (orgReset) orgReset.onclick = async () => {
+  const reset = $('orgReset');
+  if (reset) reset.onclick = async () => {
     const name = $('orgInput').value.trim() || state.company.name;
     // Irreversible and it revokes keys, so it asks. The wording names both
     // consequences rather than asking "are you sure" about nothing in
@@ -187,217 +341,238 @@ function bindPeopleList() {
       'Their keys stop working right away. Your rules stay.'
     )) return;
     const { ok, j } = await post('/api/company/reset', { name });
-    state.orgNote = ok ? 'Started fresh. Add your team below.' : (j?.error ?? 'could not reset');
+    state.orgNote = ok ? 'Started fresh. Add your team under People.' : (j?.error ?? 'could not reset');
     if (ok) await refreshPeople();
     render();
   };
 
-  /**
-   * Adding people, without a round trip per person.
-   *
-   * This used to take one name and then navigate into that person's page,
-   * which is the right screen to end on when you are adding one person and
-   * exactly the wrong one when you are setting up a team: eight people meant
-   * eight trips back to this form. It now takes a comma-separated list, adds
-   * them in order, and stays here with the field cleared and focused — so the
-   * whole team is one paste, and one person is still one name and Enter.
-   *
-   * Sequential rather than concurrent because ids are derived from names and
-   * two people called Ana must not race for the same one.
-   */
-  const addPeople = async () => {
-    const field = $('newName');
-    const names = field.value.split(',').map((n) => n.trim()).filter(Boolean);
-    if (!names.length) return;
-
-    const role = $('newRole').value;
-    const added = [];
-    const failed = [];
-    for (const name of names) {
-      const { ok, j } = await post('/api/people', { name, role });
-      if (ok) added.push(j); else failed.push(`${name}: ${j.error ?? 'failed'}`);
-    }
-
-    await refreshPeople();
-    if (added.length === 1 && !failed.length) {
-      // One person is still the case where their page — and their key — is
-      // what you wanted next.
-      go('people', added[0].id);
+  const expose = $('toggleExpose');
+  if (expose) expose.onclick = async () => {
+    const enabled = !state.publicUrl;
+    expose.disabled = true;
+    expose.textContent = enabled ? 'Opening the tunnel…' : 'Closing the tunnel…';
+    const { ok, j } = await post('/api/gateway/expose', { enabled });
+    const note = $('exposeNote');
+    if (!ok) {
+      expose.disabled = false;
+      expose.textContent = enabled ? 'Put it on the internet' : 'Take it off the internet';
+      if (note) note.textContent = j?.error ?? 'could not change that';
       return;
     }
-    render();
-    const note = $('addNote');
-    if (note) {
-      note.textContent = [
-        added.length ? `Added ${added.length}, each with a key on their row.` : '',
-        ...failed
-      ].filter(Boolean).join(' · ');
-    }
-    const next = $('newName');
-    if (next) { next.value = ''; next.focus(); }
-  };
-
-  const add = $('addPerson');
-  if (add) add.onclick = addPeople;
-  const newName = $('newName');
-  // Reaching for the mouse after typing a name is the friction you feel every
-  // single time; Enter is the whole fix.
-  if (newName) newName.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); void addPeople(); } };
-
-  for (const id of ['newRoleName', 'newRoleQuota']) {
-    const el = $(id);
-    if (el) el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $('addRole')?.click(); } };
-  }
-
-  const addRole = $('addRole');
-  if (addRole) addRole.onclick = async () => {
-    const role = $('newRoleName').value.trim();
-    if (!role) return;
-    const { ok, j } = await post('/api/roles', { role, maxRequestsPerDay: Number($('newRoleQuota').value || 0) });
-    if (!ok) { $('roleNote').textContent = j.error ?? 'failed'; return; }
-    await Promise.all([refreshPeople(), refreshPolicy()]);
-    render();
-  };
-
-  const chips = $('roleChips');
-  if (chips) chips.onclick = async (e) => {
-    const x = e.target.closest('[data-role]');
-    if (!x) return;
-    const role = decodeURIComponent(x.dataset.role);
-    if (!confirm(`Remove the role "${role}"? Its daily limit goes with it.`)) return;
-    const { ok, j } = await del(`/api/roles/${encodeURIComponent(role)}`);
-    if (!ok) { $('roleNote').textContent = j.error ?? 'failed'; return; }
-    await Promise.all([refreshPeople(), refreshPolicy()]);
-    render();
+    // 202: asked, not done. The gateway restarts behind the tunnel and the
+    // console learns the address from /health once it is back.
+    if (note) note.textContent = enabled
+      ? 'Opening. The address appears here when the gateway is back, usually within a few seconds.'
+      : 'Closing. The address stops working as soon as the gateway is back.';
   };
 }
 
-/**
- * One person, opened under their row: who they are, and every rule that will
- * judge them — separated by why it binds them, because "everyone" and "written
- * for you" are very different things to be told when a prompt is refused.
- */
-async function renderPerson(id) {
-  const p = personById(id);
-  const host = $('personDetail');
-  if (!host) return;
-  if (!p) { host.innerHTML = '<div class="note">This person has been removed.</div>'; return; }
+// ── one person ───────────────────────────────────────────────────────────────
 
-  const { j } = await api(`/api/people/${encodeURIComponent(p.id)}/rules`);
-  if (!host.isConnected || state.sel !== id) return;
-  const rules = j?.rules ?? [];
-  const group = (kind) => rules.filter((r) => r.binding === kind);
+/**
+ * The page for one person. It answers, in order: how are they doing (or have
+ * they even connected), what do they put on their machine, and which rules
+ * judge them and why. Nothing here explains itself in a paragraph; the
+ * numbers and the list are the explanation.
+ */
+function personPage(p) {
+  if (!p) {
+    return `<div class="sheet person">
+      <button type="button" class="back linkish" data-go="people">← Team</button>
+      <div class="empty"><b>This person has been removed.</b></div>
+    </div>`;
+  }
+  const first = esc(p.name.split(' ')[0]);
   const hits = state.audit.filter((a) => a.actor?.id === p.id);
   const stopped = hits.filter((h) => h.decision?.verdict !== 'ALLOW').length;
+  const on = isConnected(p);
 
-  const section = (title, list, note) => `
-    <div class="group">
-      <div class="label">${title} · ${list.length}</div>
-      ${list.length
-        ? list.map((r) => `
-          <button type="button" class="ruleref" data-go="policy" data-sel="${attr(r.id)}">
-            <span class="dot ${esc(r.severity)}"></span>
-            <span class="col">
-              <span class="t">${esc(ruleName(r))}</span>
-              <span class="m">${esc(clip(r.text, 110))}</span>
-            </span>
-          </button>`).join('')
-        : `<div class="note">${note}</div>`}
-    </div>`;
+  return `<div class="sheet person">
+    <button type="button" class="back linkish" data-go="people">← Team</button>
 
-  host.innerHTML = `
-    <div class="person-top">
+    <header class="person-head">
       ${avatar(p, true)}
-      <div>
-        <div class="nm">${esc(p.name)}</div>
-        <div class="note">${esc(p.role)}${p.quota ? ` · ${p.quota} requests a day` : ' · no daily limit'}</div>
+      <div class="grow">
+        <h1 class="page-title">${esc(p.name)}</h1>
+        <div class="person-meta">
+          <select id="editRole" class="mini" aria-label="Role">${roleOptions(p.role, true)}</select>
+          <span class="c-conn${on ? ' on' : ''}"><i class="dot"></i>${on ? esc(toolsOf(p)) : 'Not connected yet'}</span>
+          ${p.quota ? `<span>${p.quota} requests a day</span>` : ''}
+        </div>
       </div>
-    </div>
+      ${menu(p.id, [['key', 'New key'], ['decisions', 'See their decisions'], ['remove', 'Remove from team', 'danger']])}
+    </header>
+    <div class="note under" id="personNote"></div>
 
-    <p class="summary">${hits.length
-      ? `Warden has looked at ${plural(hits.length, 'request')} from ${esc(p.name.split(' ')[0])} and stopped ${stopped}.`
-      : `${esc(p.name.split(' ')[0])} has not sent anything through Warden yet.`}
-      ${plural(rules.length, 'rule')} appl${rules.length === 1 ? 'ies' : 'y'} to them.</p>
+    ${on || hits.length
+      ? `<div class="stats">
+          <div class="stat"><b>${hits.length}</b><span>${hits.length === 1 ? 'request seen' : 'requests seen'}</span></div>
+          <div class="stat"><b${stopped ? ' class="block"' : ''}>${stopped}</b><span>stopped</span></div>
+          <div class="stat"><b id="ruleStat">${p.ruleCount}</b><span>${p.ruleCount === 1 ? 'rule judges them' : 'rules judge them'}</span></div>
+          <button type="button" class="stat-link" data-act="decisions" data-id="${attr(p.id)}">See decisions →</button>
+        </div>`
+      : `<div class="setup-card">
+          <div><b>${first} has not connected yet.</b><span class="note">The setup message has their key and the steps for every tool. Send it to them.</span></div>
+          <button type="button" class="btn primary" data-act="copy-setup" data-id="${attr(p.id)}">Copy setup message</button>
+        </div>`}
 
-    ${hits.length ? '<div class="group"><button type="button" class="btn" id="seePerson">See their decisions</button></div>' : ''}
-
-    <div class="field">
-      <label for="editRole">Role</label>
-      <select id="editRole">${state.company.roles.map((r) => `<option${r === p.role ? ' selected' : ''}>${esc(r)}</option>`).join('')}</select>
-    </div>
-
-    <div class="field">
-      <label>What they put on their own machine</label>
-      <div class="codewrap">
-        <pre class="code oneline">export WARDEN_API_KEY=${esc(p.apiKey)}</pre>
-        <button type="button" class="btn sm copy" data-copy="${attr('export WARDEN_API_KEY=' + p.apiKey)}">Copy</button>
+    <section class="block">
+      <div class="label">Key</div>
+      <div class="key-row">
+        <span class="mono grow" title="Their identity. A new one revokes the old.">${esc(maskKey(p.apiKey))}</span>
+        <button type="button" class="linkbtn" data-copy="${attr(`export WARDEN_API_KEY=${p.apiKey}`)}">Copy key</button>
+        <button type="button" class="linkbtn" data-act="copy-setup" data-id="${attr(p.id)}">Copy setup message</button>
       </div>
-      <div class="note">This key is their identity. A new one revokes the old.</div>
-    </div>
+      <div class="folds">
+        ${disclosure('p:onboarding', 'Setup steps, tool by tool', '<div id="onboarding"><div class="note">loading…</div></div>')}
+      </div>
+    </section>
 
-    <div class="chips">
-      <button type="button" class="btn" id="rotateKey">New key</button>
-      <button type="button" class="btn danger" id="removePerson">Remove from team</button>
-    </div>
-    <div class="note" id="personNote"></div>
+    <section class="block">
+      <div class="label">Rules</div>
+      <div class="rule-list" id="personRules"><div class="note">loading…</div></div>
+      <div class="rule-add">
+        ${state.personCompose === p.id
+          ? `<textarea id="personRuleText" rows="2" placeholder="e.g. cannot request data from other teams"></textarea>
+             <div class="inline-row">
+               <button type="button" class="btn primary" id="personCompile">Write this rule</button>
+               <button type="button" class="btn quiet" id="personCancel">Cancel</button>
+             </div>`
+          : `<button type="button" class="linkish" id="personCompose">+ Write a rule for ${first}</button>`}
+      </div>
+    </section>
+  </div>`;
+}
 
-    <div class="group">
-      <div class="label">Write a rule just for ${esc(p.name.split(' ')[0])}</div>
-      <textarea id="personRuleText" rows="2" placeholder="e.g. cannot request data from other teams"></textarea>
-      <button type="button" class="btn primary" id="personCompile">Write this rule</button>
-    </div>
-
-    <div class="folds">
-      ${disclosure('p:onboarding', 'Setup instructions to send them', '<div id="onboarding"><div class="note">loading…</div></div>')}
-    </div>
-
-    ${section('Written for them', group('personal'), 'No personal rules, only the company and role ones below.')}
-    ${section(`Because they are ${esc(p.role)}`, group('role'), 'No rules target this role.')}
-    ${section('Everyone', group('company'), 'No company-wide rules.')}`;
-
-  bindDisclosures();
+function bindPerson() {
+  const p = personById(state.sel);
+  if (!p) return;
 
   $('editRole').onchange = async (e) => {
     const { ok, j } = await post('/api/people', { id: p.id, name: p.name, role: e.target.value });
     $('personNote').textContent = ok ? `Now judged as ${j.role}.` : (j.error ?? 'failed');
-    if (ok) { await refreshPeople(); void renderPerson(p.id); }
+    if (ok) { await refreshPeople(); render(); }
   };
 
-  $('rotateKey').onclick = async () => {
-    if (!confirm('Issue a new key? Their current one stops working immediately.')) return;
-    await post(`/api/people/${encodeURIComponent(p.id)}/key`);
-    await refreshPeople();
-    void renderPerson(p.id);
-  };
-
-  $('removePerson').onclick = async () => {
-    if (!confirm(`Remove ${p.name}? Their key stops working immediately.`)) return;
-    const { ok, j } = await del(`/api/people/${encodeURIComponent(p.id)}`);
-    if (!ok) { $('personNote').textContent = j.error ?? 'failed'; return; }
-    await refreshPeople();
-    go('people');
-    // Rules written only for someone who has left still exist and now bind
-    // nobody. Saying so beats leaving dead policy in the list unremarked.
-    if (j.orphanedRules?.length) {
-      const pane = $('pane').querySelector('.sheet');
-      if (pane) pane.insertAdjacentHTML('afterbegin',
-        `<div class="banner warn">${j.orphanedRules.length} rule(s) were written only for ${esc(j.removed.name)} and now apply to nobody. Retarget or remove them under Rules.</div>`);
-    }
-  };
-
-  const seen = $('seePerson');
-  if (seen) seen.onclick = () => { state.actorFilter = p.id; go('activity'); };
-
-  $('personCompile').onclick = () => {
+  const compose = $('personCompose');
+  if (compose) compose.onclick = () => { state.personCompose = p.id; render(); $('personRuleText')?.focus(); };
+  const cancel = $('personCancel');
+  if (cancel) cancel.onclick = () => { state.personCompose = null; render(); };
+  const compile = $('personCompile');
+  if (compile) compile.onclick = () => {
     const text = $('personRuleText').value.trim();
     if (!text) return;
+    state.personCompose = null;
     state.draftFor = p.id;
     state.ruleChat = [];
     void sendRuleMessage(text);
   };
 
+  void fillRules(p);
   void renderOnboarding(p);
 }
+
+/**
+ * Every rule that will judge this person, personal ones first, with why it
+ * binds them on the right — because "everyone" and "written for you" are very
+ * different things to be told when a prompt is refused.
+ */
+async function fillRules(p) {
+  const host = $('personRules');
+  if (!host) return;
+  const { j } = await api(`/api/people/${encodeURIComponent(p.id)}/rules`);
+  if (!host.isConnected || state.sel !== p.id) return;
+  const order = { personal: 0, role: 1, company: 2 };
+  const rules = [...(j?.rules ?? [])].sort((a, b) => (order[a.binding] ?? 3) - (order[b.binding] ?? 3));
+  const why = { personal: `for ${p.name.split(' ')[0]}`, role: p.role, company: 'everyone' };
+  host.innerHTML = rules.length
+    ? rules.map((r) => `<button type="button" class="rule-line" data-go="policy" data-sel="${attr(r.id)}">
+        <span class="dot ${esc(r.severity)}"></span>
+        <span class="t">${esc(ruleName(r))}</span>
+        <span class="why">${esc(why[r.binding] ?? '')}</span>
+      </button>`).join('')
+    : '<div class="note">No rule applies to them yet.</div>';
+  // The row's count and this list can disagree for an exempt role — the list
+  // says which rules name them, the count says which will fire — so the
+  // number and its label follow the list once it is here.
+  const stat = $('ruleStat');
+  if (stat) {
+    stat.textContent = rules.length;
+    stat.nextElementSibling.textContent = rules.length === 1 ? 'rule judges them' : 'rules judge them';
+  }
+}
+
+// ── actions shared by rows, the page, and their menus ────────────────────────
+
+/**
+ * One handler on the pane for every `data-act`. Menus are rebuilt on each
+ * render, so binding them one by one would be a loop that has to be right in
+ * three places; delegating is right once.
+ */
+function bindActions() {
+  $('pane').onclick = async (e) => {
+    // The pane outlives this view; the handler must not act on another one.
+    if (state.view !== 'people') return;
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    el.closest('details.menu')?.removeAttribute('open');
+    const id = el.dataset.id;
+    const p = personById(id);
+
+    switch (el.dataset.act) {
+      case 'open':
+        go('people', id);
+        return;
+
+      case 'decisions':
+        state.actorFilter = id;
+        go('activity');
+        return;
+
+      case 'copy-setup': {
+        const { ok, j } = await api(`/api/people/${encodeURIComponent(id)}/onboarding`);
+        if (ok) await copyText(j.message, el);
+        else if ($('personNote')) $('personNote').textContent = j?.error ?? 'could not build the setup message';
+        return;
+      }
+
+      case 'key':
+        if (!p || !confirm(`Issue ${p.name} a new key? Their current one stops working immediately.`)) return;
+        await post(`/api/people/${encodeURIComponent(id)}/key`);
+        await refreshPeople();
+        render();
+        if ($('personNote')) $('personNote').textContent = 'New key issued. The old one no longer works.';
+        return;
+
+      case 'remove': {
+        if (!p || !confirm(`Remove ${p.name}? Their key stops working immediately.`)) return;
+        const { ok, j } = await del(`/api/people/${encodeURIComponent(id)}`);
+        if (!ok) { const n = $('personNote') ?? $('addNote'); if (n) n.textContent = j.error ?? 'failed'; return; }
+        await refreshPeople();
+        go('people');
+        // Rules written only for someone who has left still exist and now bind
+        // nobody. Saying so beats leaving dead policy in the list unremarked.
+        if (j.orphanedRules?.length) {
+          const pane = $('pane').querySelector('.sheet');
+          if (pane) pane.insertAdjacentHTML('afterbegin',
+            `<div class="banner warn">${j.orphanedRules.length} rule(s) were written only for ${esc(j.removed.name)} and now apply to nobody. Retarget or remove them under Rules.</div>`);
+        }
+        return;
+      }
+
+      case 'remove-role': {
+        if (!confirm(`Remove the role "${id}"? Its daily limit goes with it.`)) return;
+        const { ok, j } = await del(`/api/roles/${encodeURIComponent(id)}`);
+        if (!ok) { $('roleNote').textContent = j.error ?? 'failed'; return; }
+        await Promise.all([refreshPeople(), refreshPolicy()]);
+        render();
+        return;
+      }
+    }
+  };
+}
+
+// ── onboarding, folded under the key ─────────────────────────────────────────
 
 /**
  * The setup for one person, per tool, with their values already in it.
@@ -425,7 +600,6 @@ async function renderOnboarding(person) {
     </div>`;
 
   host.innerHTML = `
-    <div><button type="button" class="btn" id="copyAll">Copy the whole message</button></div>
     <div class="label">Everyone does this first</div>
     ${j.common.map(step).join('')}
     <div class="label">Then their tool</div>
@@ -455,6 +629,4 @@ async function renderOnboarding(person) {
     [...$('toolTabs').children].forEach((c) => c.classList.toggle('on', c === chip));
     showTool(Number(chip.dataset.tool));
   };
-
-  $('copyAll').onclick = (e) => copyText(j.message, e.target);
 }
