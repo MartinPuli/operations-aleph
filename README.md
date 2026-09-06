@@ -711,6 +711,7 @@ pnpm run test:cli         # the CLI compiler's command line, against a stand-in 
 pnpm run test:schema      # what a compiler's answer may look like, declines included
 pnpm run test:vote        # semantics of the confirmation vote
 pnpm run test:screen      # the policy screen and the native DynaGuard form
+pnpm run test:desktop     # the functions the desktop shell imports from the server by name
 
 pnpm run build            # compile server + desktop shell to dist/ and desktop/dist/
 pnpm start                # run the compiled server (what the desktop app runs)
