@@ -112,12 +112,13 @@ Onboarding.
 
 Después abrí una terminal nueva, o `source ~/.zshrc`.
 
-El hook usa por defecto 2 segundos para comprobar disponibilidad y 30 segundos
-para una decisión completa. Sólo hace falta exportarlos si querés cambiarlos:
+El hook usa por defecto 10 segundos para comprobar disponibilidad y 90 segundos
+para una decisión completa (el gateway puede subir el segundo desde `/health`).
+Sólo hace falta exportarlos si querés cambiarlos:
 
 ```bash
-export WARDEN_HEALTH_TIMEOUT_MS=2000
-export WARDEN_TIMEOUT_MS=30000
+export WARDEN_HEALTH_TIMEOUT_MS=10000
+export WARDEN_TIMEOUT_MS=90000
 ```
 
 > El hook es un archivo, sin dependencias. Lee el prompt, se lo pregunta al
@@ -132,14 +133,17 @@ En Windows PowerShell, para la sesión actual:
 ```powershell
 $env:WARDEN_URL = 'http://192.168.1.42:8080'
 $env:WARDEN_USER = 'fede'
-$env:WARDEN_HEALTH_TIMEOUT_MS = '2000'
-$env:WARDEN_TIMEOUT_MS = '30000'
+$env:WARDEN_HEALTH_TIMEOUT_MS = '10000'
+$env:WARDEN_TIMEOUT_MS = '90000'
 ```
 
-El health check tiene 2 s y la decisión completa 30 s. El segundo timeout
+El health check tiene 10 s y la decisión completa 90 s. El segundo timeout
 incluye headers, lectura y validación del body. Los valores deben ser positivos
-y finitos. Si la decisión supera 30 s, el diseño fail-open deja pasar el prompt
+y finitos. Si la decisión supera 90 s, el diseño fail-open deja pasar el prompt
 con advertencia; por eso una máquina que cruza ese límite no está verificada.
+El health check era de 2 s hasta la 0.1.41: por un túnel de Cloudflare tarda
+entre 2 y 2,7 s, y con eso el hook dejaba pasar todos los prompts sin revisar,
+con el gateway levantado.
 
 ## 3a. Conectar Claude Code
 
