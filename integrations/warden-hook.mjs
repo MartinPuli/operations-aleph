@@ -342,7 +342,7 @@ const STRINGS = {
     rewrite: 'Warden can try to rewrite this so it goes through:',
     pasteAgain: '(paste the same prompt, then Ctrl-D)',
     wrong: 'Think it was wrong? Say so:',
-    queued: ['Queued for an administrator. You have not been refused,', 'when they answer, ask again and it is judged on its merits.'],
+    queued: ['Waiting on an administrator. Not a refusal:', 'when they answer, ask again and it is judged on its own.'],
     masked: (n) => `Note: Warden masked ${n} secret(s) before checking.`,
     audit: (id) => `Audit ${id} · quote this if you think it is wrong`
   },
@@ -356,7 +356,7 @@ const STRINGS = {
     rewrite: 'Warden puede intentar reescribirlo para que pase:',
     pasteAgain: '(pegá el mismo prompt y después Ctrl-D)',
     wrong: '¿Te parece que estuvo mal? Decilo:',
-    queued: ['En la cola de un administrador. No te lo rechazaron:', 'cuando respondan, volvé a pedirlo y se juzga por sí mismo.'],
+    queued: ['Esperando a un administrador. No es un rechazo:', 'cuando respondan, volvé a pedirlo y se juzga por sí mismo.'],
     masked: (n) => `Nota: Warden enmascaró ${n} secreto(s) antes de revisar.`,
     audit: (id) => `Auditoría ${id} · citá esto si te parece que estuvo mal`
   }

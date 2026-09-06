@@ -26,7 +26,7 @@ VIEWS.inbox = {
     if (!state.appeals.length && !state.escalations.length) {
       return `<div class="sheet"><div class="empty">
         <b>Nothing waiting</b>
-        <span>Held requests wait here for your call, next to blocks somebody says were wrong.</span>
+        <span>Requests that need your sign-off land here, next to blocks somebody says were wrong.</span>
       </div></div>`;
     }
     return `<div class="sheet">
@@ -73,7 +73,7 @@ function escalationDetail(e) {
   const entry = state.audit.find((x) => x.auditId === e.auditId);
   const who = esc(e.employeeName ?? e.employeeId);
 
-  const head = `<p class="summary">${who} sent something the <b>${esc(ruleName(e.ruleId ?? ''))}</b> rule says needs a person to sign off. They were not refused, only told to wait, and they are still waiting.</p>
+  const head = `<p class="summary">${who} sent something the <b>${esc(ruleName(e.ruleId ?? ''))}</b> rule says needs sign-off. Not refused, just waiting on you.</p>
     ${e.employeeNote ? `<div class="group">
       <div class="label">They added</div>
       <div class="banner">“${esc(e.employeeNote)}”</div>

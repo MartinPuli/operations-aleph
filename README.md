@@ -498,8 +498,8 @@ gateway rather than stop working, so a budget hold goes to a person:
    500,000 allowed for role "engineer". Start a new session, or ask an
    administrator to raise the ceiling.
 
-   Queued for an administrator. You have not been refused —
-   when they answer, ask again and it is judged on its merits.
+   Waiting on an administrator. Not a refusal:
+   when they answer, ask again and it is judged on its own.
 ```
 
 Held is not the ceiling of the lattice, so the budget can only ever make a

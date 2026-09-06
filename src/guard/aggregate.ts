@@ -326,10 +326,10 @@ function explain(
      * warning nobody can act on is decoration. "Flagged" with no rule attached
      * teaches people to ignore the next one.
      */
-    const lines = warnings.map((w) => `Heads-up — "${w.ruleText}"`);
+    const lines = warnings.map((w) => `Heads-up: "${w.ruleText}"`);
     const top = warnings[0];
     if (top?.guidance) lines.push(`If that applies here: ${top.guidance}`);
-    lines.push('Allowed. This is a note, not a refusal — nothing was blocked.');
+    lines.push('Allowed. A note, not a refusal.');
     return lines.join('\n');
   }
 
@@ -357,8 +357,7 @@ function explain(
     // an empty array and a stub for most of this project's life, which made
     // this the most confident sentence in the product and the least true one.
     lines.push(
-      'Held for an administrator to review — you have not been refused, just queued. ' +
-        'When they answer, ask again: an approved request goes through on its own merits.'
+      'Held for an administrator. Not a refusal: when they answer, ask again and it is judged on its own.'
     );
   }
 

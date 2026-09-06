@@ -117,7 +117,7 @@ export async function runSetPreviews(set) {
   const flagged = set.items.filter((it) => it.preview && (it.preview.falsePositives > 0 || it.preview.misses > 0)).length;
   say(flagged
     ? `Checked all ${set.items.length}. ${plural(flagged, 'rule')} ${flagged === 1 ? 'has' : 'have'} something worth reading in ${flagged === 1 ? 'its' : 'their'} check before you activate everything.`
-    : `Checked all ${set.items.length} against their own examples. Nothing wrongly stopped. Activate them when you are happy with the list.`);
+    : `Checked all ${set.items.length} against their own examples. Nothing wrongly stopped. Activate them when the list reads right.`);
   render();
 }
 
@@ -210,7 +210,7 @@ export function bindSet() {
         state.draft = item.rule;
         state.preview = item.preview;
         startDraftAudience();
-        say('Taken out of the set. Tell me how to change it, or fix who it applies to, then activate it.');
+        say('Out of the set. Tell me how to change it, or fix who it applies to, then activate it.');
         render();
       }
     };

@@ -345,8 +345,7 @@ async function sendRuleSet(text) {
     factor: j.factor
   };
   state.ruleBusy = false;
-  say(`That means ${plural(j.rules.length, 'separate rule')} to me. All of them are below, each with its own check.
-    Activate them one by one, or all at once when you have read the list.${limitsNote}`);
+  say(`That’s ${plural(j.rules.length, 'rule')}. Each has its own check below. Activate one, or all of them once you’ve read the list.${limitsNote}`);
   render();
 
   await runSetPreviews(state.set);
@@ -386,7 +385,7 @@ async function runPreview(against = []) {
   if (state.mock) {
     // Same reason as the verdict line above: no model ran, so there is nothing
     // to report except that.
-    say('No model is installed, so nothing was actually checked. The rows below came from the demo stand-in. Download the models and the check becomes real.');
+    say('No model installed, so nothing was checked. These rows come from the demo stand-in; download the models and the check becomes real.');
     render();
     return;
   }
@@ -394,11 +393,11 @@ async function runPreview(against = []) {
   if (j.falsePositives > 0) {
     say(`<b>${plural(j.falsePositives, 'legitimate request')} would be blocked by this.</b>
       ${logFps.length ? `${logFps.length} of them actually went through the gateway before. ` : ''}
-      They are marked below. Tell me how to narrow it — “only for sales”, or “not when it is their own data”.`);
+      They’re marked below. Tell me how to narrow it: “only for sales”, or “not when it’s their own data”.`);
   } else if (j.misses > 0) {
-    say(`No false positives, but ${plural(j.misses, 'example')} it should have caught slipped through. Worth being more specific about what you mean.`);
+    say(`Nothing wrongly stopped, but ${plural(j.misses, 'example')} it should have caught got through. Say more precisely what you mean.`);
   } else if (against.length) {
-    say('None of those real requests would have been stopped. This one looks safe to activate.');
+    say('None of those real requests would have been stopped. Safe to activate.');
   } else {
     say(`Clean against its own examples. ${offerRegression()}`);
   }
@@ -407,8 +406,8 @@ async function runPreview(against = []) {
 
 function offerRegression() {
   const n = regressionSample().length;
-  if (!n) return 'Activate it below when you are happy with it.';
-  return `Before you activate it, I can replay the last ${n} requests Warden allowed and see whether this rule would have stopped any of them.
+  if (!n) return 'Activate it below when it reads right.';
+  return `Want me to replay the last ${n} requests Warden allowed and see if this rule would have stopped any?
     <button type="button" class="btn sm" id="regressBtn">Replay ${n} real requests</button>`;
 }
 

@@ -247,11 +247,11 @@ function soloSettingsBody() {
   return `<div class="sheet settings">
     <div class="section">
       <div class="label">This installation</div>
-      <p class="note">Right now Warden is protecting one device — yours. Nobody else's prompts are checked, and nothing here is visible to anyone else.</p>
+      <p class="note">Warden is protecting one device: yours. Nobody else's prompts are checked, and nothing here is visible to anyone else.</p>
     </div>
     <div class="section">
       <div class="label">Managing a team too?</div>
-      <p class="note">Add other people, give them their own install link, and write rules that apply to them — the same rules you've already got here keep working exactly as they do now.</p>
+      <p class="note">Add people, send each their install link, and write rules for them. What you've set up here keeps working as it does now.</p>
       <button type="button" class="btn primary" id="soloGoTeam" style="width:fit-content">Add people</button>
     </div>
   </div>`;

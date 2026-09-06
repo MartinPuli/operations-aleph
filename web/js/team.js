@@ -59,8 +59,7 @@ function reachBlock() {
         ${on ? 'Take it off the internet' : 'Put it on the internet'}
       </button>
       ${state.mock ? '<span class="note">Not while Warden is in demo mode: nothing here is really judged.</span>' : ''}
-    </div>` : `<div class="note">Run this inside the Warden app to open a tunnel from here,
-      or put your own proxy in front of it.</div>`}
+    </div>` : `<div class="note">Open a tunnel from the Warden app, or put your own proxy in front of it.</div>`}
   </div>`;
 }
 

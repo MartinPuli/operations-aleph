@@ -165,8 +165,7 @@ function newRulePage() {
 function emptyPolicyBanner() {
   if (state.policy.rules.length) return '';
   return `<div class="banner warn">
-    <b>Your policy is empty, so right now Warden lets everything through.</b>
-    It only stops what you tell it to stop, so write the first rule below or take one from the catalogue.
+    <b>Nothing is being stopped.</b> Warden only stops what you tell it to. Write the first rule below, or take one from the catalogue.
   </div>`;
 }
 
