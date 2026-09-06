@@ -127,7 +127,12 @@ echo "Open a new terminal (or: source $PROFILE)."
 #
 # \`|| true\` covers a machine with no node, which would be a strange place to
 # be installing a node hook but is not a reason for the install to end red.
-node "$HOOK" --fix || true
+#
+# The two values just written to the profile go to --fix on its own line,
+# because this shell never sourced that profile and --fix copies them into
+# Claude Code's settings: a Claude Code opened from the desktop app does not
+# read the profile either, and without them its hook fails open.
+WARDEN_URL="${url}" WARDEN_API_KEY="${person.apiKey}" node "$HOOK" --fix || true
 
 echo "Anything it could not wire: ${url}  ->  People  ->  ${safeName}  ->  Onboarding"
 `;
