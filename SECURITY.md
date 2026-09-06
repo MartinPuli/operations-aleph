@@ -109,6 +109,16 @@ the model with the hook's output discarded. So the hook entry in
 `~/.claude/settings.json` has to carry `"timeout": 120`; `warden-hook --fix`
 writes it, and repairs an entry written before it did.
 
+The same file has to carry the gateway address and the API key in its `env`
+block. Hooks inherit Claude Code's environment, and a Claude Code opened from
+the desktop app or the Dock never sourced a shell profile, so a hook wired
+there with the values only in `~/.zshrc` asks `localhost:8080`, finds nothing
+and fails open, on a laptop that looks wired. `--fix` writes both values into
+`env` from its own environment and the install script hands them to it. That
+is the key in a second file, in the same home directory, readable by the same
+person; the alternative, measured on 2026-09-06, was a desktop app that
+judged nothing.
+
 **Both hook integrations are NOT VERIFIED end to end.** See
 [`docs/HOOK-VERIFICATION.md`](docs/HOOK-VERIFICATION.md).
 

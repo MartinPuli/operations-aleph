@@ -728,11 +728,33 @@ function fixClaudeCode() {
   // deadline moved; this writes the same number, and repairs an entry an
   // earlier --fix wrote without one.
   const ours = list.flatMap((entry) => entry?.hooks ?? []).find((h) => String(h?.command ?? '').includes('warden-hook'));
-  if (ours && ours.timeout >= CLAUDE_CODE_HOOK_TIMEOUT_S) return null;
+  const entryOk = Boolean(ours) && ours.timeout >= CLAUDE_CODE_HOOK_TIMEOUT_S;
+
+  // Hooks inherit Claude Code's environment, and a Claude Code opened from
+  // the desktop app or the Dock never sourced a shell profile. So the URL and
+  // key the install script wrote to ~/.zshrc are invisible to the hook there:
+  // with no URL it asks localhost:8080, finds nothing, and fails open, on a
+  // laptop that looks wired. On 2026-09-06 that was the whole reason a
+  // desktop app judged nothing until the same two values were put in the
+  // `env` block of settings.json by hand, which is where Claude Code
+  // documents that variables for hooks go. So what this process was handed
+  // is written there too. It is the key in a second file, in the same home
+  // directory, read by the same person; the alternative was a guard that
+  // guarded the terminal and not the app.
+  const env = settings.env && typeof settings.env === 'object' && !Array.isArray(settings.env) ? settings.env : {};
+  const wanted = {};
+  for (const name of ['WARDEN_URL', 'WARDEN_API_KEY']) {
+    const value = process.env[name];
+    if (value && env[name] !== value) wanted[name] = value;
+  }
+  if (entryOk && Object.keys(wanted).length === 0) return null;
 
   if (!backup(file)) return 'backup failed, so nothing was written';
-  if (ours) ours.timeout = CLAUDE_CODE_HOOK_TIMEOUT_S;
-  else list.push({ hooks: [{ type: 'command', command: `node ${hookPath()}`, timeout: CLAUDE_CODE_HOOK_TIMEOUT_S }] });
+  if (!entryOk) {
+    if (ours) ours.timeout = CLAUDE_CODE_HOOK_TIMEOUT_S;
+    else list.push({ hooks: [{ type: 'command', command: `node ${hookPath()}`, timeout: CLAUDE_CODE_HOOK_TIMEOUT_S }] });
+  }
+  settings.env = { ...env, ...wanted };
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
   return ours ? REPAIRED : null;
@@ -809,7 +831,7 @@ async function fixMode(agents) {
     }
     const name = agent.name.padEnd(12);
     if (outcome === REPAIRED) {
-      process.stdout.write(`  ✓ ${name} was wired without a timeout; set to ${CLAUDE_CODE_HOOK_TIMEOUT_S} s, restart it to pick this up\n`);
+      process.stdout.write(`  ✓ ${name} was wired but incomplete; timeout set to ${CLAUDE_CODE_HOOK_TIMEOUT_S} s and the gateway address and key put in its env, restart it to pick this up\n`);
     } else if (agent.wired) {
       process.stdout.write(`  · ${name} already wired, left alone\n`);
     } else if (outcome) {

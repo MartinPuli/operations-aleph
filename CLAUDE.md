@@ -258,7 +258,10 @@ Warden was built fast and the repo says so rather than pretending otherwise.
   is a hypothesis that row sets up and does not test.
 - Quota counters live in memory and reset with the process.
 - API keys are stored in plaintext in the directory file, and so is the compiler
-  provider key in `data/settings.json` (written `0600`, gitignored).
+  provider key in `data/settings.json` (written `0600`, gitignored). On every
+  employee laptop the key is also in the shell profile and, since 0.1.43, in
+  the `env` block of `~/.claude/settings.json`, because a Claude Code opened
+  from the desktop app reads the second and not the first.
 
 If you fix one of these, add the row to `docs/MEASUREMENTS.md` with the run
 behind it.

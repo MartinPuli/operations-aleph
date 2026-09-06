@@ -183,20 +183,36 @@ async function main(): Promise<void> {
   const settings = join(home, '.claude', 'settings.json');
   mkdirSync(join(home, '.claude'), { recursive: true });
   const fix = async () => {
-    const child = spawn(process.execPath, [hook, '--fix'], { env: { ...process.env, HOME: home }, stdio: 'ignore' });
+    const child = spawn(process.execPath, [hook, '--fix'], {
+      env: { ...process.env, HOME: home, WARDEN_URL: 'http://gw.test:8080', WARDEN_API_KEY: 'wk-test-key' },
+      stdio: 'ignore'
+    });
     await once(child, 'close');
-    return JSON.parse(readFileSync(settings, 'utf8')) as { hooks: { UserPromptSubmit: { hooks: { command: string; timeout?: number }[] }[] } };
+    return JSON.parse(readFileSync(settings, 'utf8')) as {
+      env?: Record<string, string>;
+      hooks: { UserPromptSubmit: { hooks: { command: string; timeout?: number }[] }[] };
+    };
   };
   writeFileSync(settings, '{}');
   let entries = (await fix()).hooks.UserPromptSubmit.flatMap((e) => e.hooks);
   assert.equal(entries.length, 1);
   assert.equal(entries[0]?.timeout, 120);
   writeFileSync(settings, JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node /old/.warden-hook.mjs' }] }] } }));
-  entries = (await fix()).hooks.UserPromptSubmit.flatMap((e) => e.hooks);
+  const repaired = await fix();
+  entries = repaired.hooks.UserPromptSubmit.flatMap((e) => e.hooks);
   assert.equal(entries.length, 1);
   assert.equal(entries[0]?.command, 'node /old/.warden-hook.mjs');
   assert.equal(entries[0]?.timeout, 120);
-  console.log('✓ --fix writes the Claude Code hook timeout and repairs an entry without one');
+  // A Claude Code opened from the desktop app never reads the shell profile,
+  // so the gateway address and key have to be in settings.json's env block
+  // for its hook to reach anything. Both writes put them there; a value the
+  // person set by hand for some other variable survives.
+  assert.equal(repaired.env?.WARDEN_URL, 'http://gw.test:8080');
+  assert.equal(repaired.env?.WARDEN_API_KEY, 'wk-test-key');
+  writeFileSync(settings, JSON.stringify({ env: { OTHER: 'kept', WARDEN_URL: 'http://stale:1' }, hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node /old/.warden-hook.mjs', timeout: 120 }] }] } }));
+  const refreshed = await fix();
+  assert.deepEqual(refreshed.env, { OTHER: 'kept', WARDEN_URL: 'http://gw.test:8080', WARDEN_API_KEY: 'wk-test-key' });
+  console.log('✓ --fix writes the Claude Code hook timeout, repairs an entry without one, and puts the gateway in env');
 }
 
 main().catch((err) => {
