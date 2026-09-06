@@ -3,7 +3,7 @@
  *
  * One thing per tab and one page per person. People is the list, and it is
  * where nearly everything happens in place: the role is a select in the row,
- * and the row's menu carries the rest. Roles and Gateway are their own tabs
+ * and the row's menu carries the rest. Roles and Company are their own tabs
  * rather than sections stacked under the list, because a page that shows four
  * things at once is a page where nothing is the thing you came for.
  *
@@ -24,12 +24,12 @@ import { VIEWS } from './views.js';
 // ═══ TEAM ════════════════════════════════════════════════════════════════════
 
 /**
- * `sel` decides what the view is. `roles` and `gateway` are the tabs; anything
+ * `sel` decides what the view is. `roles` and `company` are the tabs; anything
  * else is a person. A person whose id happens to be one of those two words
  * cannot exist: ids are derived from names and those are not names.
  */
-const TABS = [['', 'People'], ['roles', 'Roles'], ['gateway', 'Gateway']];
-const tabOf = () => (state.sel === 'roles' || state.sel === 'gateway' ? state.sel : state.sel ? null : '');
+const TABS = [['', 'People'], ['roles', 'Roles'], ['company', 'Company']];
+const tabOf = () => (state.sel === 'roles' || state.sel === 'company' ? state.sel : state.sel ? null : '');
 
 const toolsOf = (e) => (e.connected ?? []).map((c) => TOOL_NAMES[c.tool] ?? c.tool).join(', ');
 const requestsOf = (e) => (e.connected ?? []).reduce((n, c) => n + (c.count ?? 0), 0);
@@ -51,7 +51,7 @@ VIEWS.people = {
       <nav class="tabs" aria-label="Team sections">
         ${TABS.map(([sel, label]) => `<button type="button" class="tab${tab === sel ? ' on' : ''}" data-go="people"${sel ? ` data-sel="${sel}"` : ''}>${label}</button>`).join('')}
       </nav>
-      ${tab === '' ? peopleTab() : tab === 'roles' ? rolesTab() : gatewayTab()}
+      ${tab === '' ? peopleTab() : tab === 'roles' ? rolesTab() : companyTab()}
     </div>`;
   },
   bind: () => {
@@ -62,7 +62,7 @@ VIEWS.people = {
     bindHead();
     if (tab === '') bindPeople();
     else if (tab === 'roles') bindRoles();
-    else bindGateway();
+    else bindCompany();
   }
 };
 
@@ -272,7 +272,7 @@ function bindRoles() {
   }
 }
 
-// ── Gateway ──────────────────────────────────────────────────────────────────
+// ── Company ──────────────────────────────────────────────────────────────────
 
 /**
  * The company's own name, and how the team reaches this machine. Set once,
@@ -288,7 +288,7 @@ function bindRoles() {
  * dialog somebody dismissed a week ago: the address is public to whoever holds
  * it, and it changes every time the tunnel restarts.
  */
-function gatewayTab() {
+function companyTab() {
   const demo = Boolean(state.company.demo);
   const on = Boolean(state.publicUrl);
   return `<div class="cards">
@@ -319,7 +319,7 @@ function gatewayTab() {
   </div>`;
 }
 
-function bindGateway() {
+function bindCompany() {
   $('orgSave').onclick = async () => {
     const name = $('orgInput').value.trim();
     if (!name) return;
