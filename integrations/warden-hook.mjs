@@ -33,7 +33,23 @@ import { dirname, join } from 'node:path';
 const WARDEN_URL = process.env.WARDEN_URL ?? 'http://localhost:8080';
 const API_KEY = process.env.WARDEN_API_KEY ?? '';
 
-const DEFAULT_HEALTH_TIMEOUT_MS = 2000;
+/*
+ * How long the hook waits for `/health` before treating the gateway as gone.
+ *
+ * This is a security parameter for the same reason the decision deadline is,
+ * and a sharper one: the health call is where the hook learns the decision
+ * deadline and whether the gateway fails closed, and a health call that times
+ * out never reaches the decision at all. It was 2 s, which is generous for a
+ * gateway on the LAN. Measured on 2026-09-06 against a Cloudflare quick
+ * tunnel, three consecutive `/health` calls took 2.70 s, 2.16 s and 1.95 s,
+ * so a laptop wired exactly as the onboarding sheet says failed open on every
+ * prompt — "Warden unreachable, prompt allowed unchecked" in 2 s, with a
+ * gateway that was up and answering. A hook that looks installed and never
+ * judges is the worst shape SECURITY.md describes. 10 s costs nothing on the
+ * happy path (the call returns when it returns) and is small against the 90 s
+ * decision deadline it sits in front of.
+ */
+const DEFAULT_HEALTH_TIMEOUT_MS = 10_000;
 /*
  * The deadline after which the hook gives up and lets the prompt through
  * unchecked.
@@ -1051,7 +1067,7 @@ async function main() {
       ].join('\n');
       process.stderr.write(`${reason}\n`);
       process.stdout.write(
-        JSON.stringify({ continue: false, stopReason: reason, decision: 'block', reason })
+        JSON.stringify({ continue: false, stopReason: reason, decision: 'block', reason, systemMessage: reason })
       );
       process.exitCode = 2;
       return;
@@ -1097,9 +1113,23 @@ async function main() {
    * are what that tool actually stops on — while an extra key is inert to a
    * tool that ignores it. The non-zero exit below is still the part that must
    * always happen, because it is the one signal every caller understands.
+   *
+   * `systemMessage` is the refusal one more time, for the surfaces that show
+   * nothing else. In the terminal, Claude Code prints `reason` (or stderr) when
+   * it erases the prompt. The desktop app does not: the prompt vanished and
+   * the person saw no rule, no guidance and no audit id, which is a block with
+   * every reason to appeal it removed. Claude Code documents `systemMessage`
+   * as the one field that reaches the person on every platform, so the same
+   * text goes there too. A tool that does not know the key ignores it.
    */
   process.stdout.write(
-    JSON.stringify({ continue: false, stopReason: message, decision: 'block', reason: message }) + '\n'
+    JSON.stringify({
+      continue: false,
+      stopReason: message,
+      decision: 'block',
+      reason: message,
+      systemMessage: message
+    }) + '\n'
   );
 
   process.exitCode = 2;

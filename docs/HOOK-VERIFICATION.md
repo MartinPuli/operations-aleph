@@ -35,7 +35,13 @@ which supports blocking JSON or exit code 2 with the reason on stderr.
 
 ## Hook hardening
 
-- `WARDEN_HEALTH_TIMEOUT_MS` defaults to 2,000 ms.
+- `WARDEN_HEALTH_TIMEOUT_MS` defaulted to 2,000 ms at the time of this run. Since
+  0.1.41 it is 10,000 ms: through a Cloudflare quick tunnel `/health` measured
+  2.70 s, 2.16 s and 1.95 s, and a hook wired exactly as the onboarding sheet
+  says failed open on every prompt with the gateway up. A hook that is
+  installed and never judges is the failure this document exists to catch, and
+  a verification run must check the health round-trip against this deadline,
+  not only the decision against its own.
 - `WARDEN_TIMEOUT_MS` defaults to 30,000 ms.
 - Both values reject zero, negative, infinite, and non-numeric input.
 - The decision timeout remains active through HTTP body read, JSON parse, and

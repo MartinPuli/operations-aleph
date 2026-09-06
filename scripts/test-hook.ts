@@ -85,9 +85,16 @@ async function main(): Promise<void> {
       assert.match(result.stderr, /What to do instead/);
       assert.match(result.stderr, /Audit audit-block/);
       assert.match(result.stdout, /"decision":"block"|"continue":false/);
+      // The desktop app shows none of stderr, reason or stopReason when it
+      // erases a prompt; systemMessage is the one field Claude Code documents
+      // as reaching the person on every platform, so the refusal must be there
+      // too, whole, down to the audit id they would cite to appeal it.
+      const body = JSON.parse(result.stdout);
+      assert.equal(body.systemMessage, body.reason);
+      assert.match(body.systemMessage, /Blocked by Warden[\s\S]*Audit audit-block/);
     }
   });
-  console.log('✓ BLOCK returns exit 2 and a client-specific refusal');
+  console.log('✓ BLOCK returns exit 2 and a client-specific refusal, with systemMessage for the desktop app');
 
   // A rule the administrator wrote in Spanish arrives in Spanish from top to
   // bottom: their sentence instead of the judge's English one, and the hook's
