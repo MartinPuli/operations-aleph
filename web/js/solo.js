@@ -5,7 +5,7 @@ import { verdictWord } from './activity.js';
 import { $, api, attr, esc, severityMeans, state } from './core.js';
 import { render } from './render.js';
 import { go } from './router.js';
-import { notARuleAnswer, readable } from './rules.js';
+import { notARuleAnswer, readable } from './answers.js';
 import { VIEWS } from './views.js';
 
 // ═══ SOLO ════════════════════════════════════════════════════════════════════

@@ -6,14 +6,9 @@
  * model returns from here is policy until an administrator presses Activate.
  */
 import { Router } from 'express';
-import {
-  compilePolicy,
-  compileRule,
-  isDeclined,
-  previewRule,
-  ratifyRule,
-  removeRule
-} from '../../policy/compile.js';
+import { compilePolicy, compileRule, isDeclined } from '../../policy/compile.js';
+import { previewRule } from '../../policy/preview.js';
+import { ratifyRule, removeRule } from '../../policy/ratify.js';
 import { loadPolicy, savePolicy } from '../../policy/store.js';
 import { resolvedModel } from '../../qvac/client.js';
 import { adapter, isMock, remoteCompiler } from '../../qvac/index.js';
@@ -175,7 +170,7 @@ policyRoutes.post('/api/policy/preview', asyncRoute(async (req, res) => {
         }))
         .filter((c: { prompt: string }) => c.prompt.length > 0)
     : [];
-  res.json(await previewRule(adapter(), req.body?.rule, loadPolicy(), against));
+  res.json(await previewRule(adapter(), req.body?.rule, against));
 }));
 
 policyRoutes.post('/api/policy/ratify', asyncRoute(async (req, res) => {

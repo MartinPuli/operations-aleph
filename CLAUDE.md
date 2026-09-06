@@ -42,6 +42,8 @@ src/guard/       the pipeline: one prompt in, one decision out
   quota.ts         pass -2 — per-role daily counters
 src/policy/      rules, roles, people, retrieval, the compiler
   compile.ts       the compiler's logic; prompts.ts is what it says to the model
+  preview.ts       a draft judged by the real adjudicator before anyone activates it
+  ratify.ts        the only paths that put a rule in force or take one out
 src/qvac/        the only boundary to @qvac/sdk. Everything else uses an adapter
   offload.ts       the one gate a compiler that leaves the local weights goes through
   json.ts          the one parser every adapter reads a model's JSON with
@@ -49,10 +51,11 @@ src/server/      HTTP. index.ts only boots; app.ts fixes the middleware order
   routes/          one router per surface: policy, people, guard, solo, system…
   middleware.ts    CORS, headers, rate limit, admin audit, admin gate
   identity.ts      API key -> actor, and running the guard for a request
-web/             the console: app.js is the entry, web/js/ has one module per
-                 screen over core/format/router/data/render. No build step.
-                 draft.js is the rule conversation; draft-set.js the list a
-                 broad instruction becomes
+web/             the console: index.html is the shell, style.css the styles,
+                 app.js the entry, web/js/ one module per screen over
+                 core/format/router/data/render. No build step. draft.js is the
+                 rule conversation, draft-set.js the list a broad instruction
+                 becomes, answers.js what the compiler says when it is not a rule
 src/redteam/     the corpus and the runner that writes REPORT.md
 scripts/         setup, benchmarks, and the adjudicator bench
 integrations/    the UserPromptSubmit hooks for Claude Code, Codex, opencode

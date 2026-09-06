@@ -3,6 +3,7 @@
  */
 import { $, api, esc, state } from './core.js';
 import { refreshCompiler } from './data.js';
+import { modelLabel } from './format.js';
 import { render } from './render.js';
 import { go } from './router.js';
 import { rulesTabs } from './rules.js';
@@ -287,6 +288,6 @@ function cliNote(providerId) {
 export function compilerLine() {
   const d = state.models?.drafting;
   if (!d) return '';
-  return `<div class="note compiler-line">Drafting with ${esc(d.model)} · ${esc(d.where)}
+  return `<div class="note compiler-line">Drafting with ${esc(modelLabel(d.model))} · ${esc(d.where)}
     <button type="button" class="linkish" data-go="compiler">Change</button></div>`;
 }

@@ -7,7 +7,8 @@ import { audienceLabel, personById, plural, sendOnEnter } from './format.js';
 import { bindLimits } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
-import { bindSweeps, compileFailure, composing, isExempt, limitsPlan, notARuleAnswer, readable, rulesTabs } from './rules.js';
+import { compileFailure, limitsPlan, notARuleAnswer, readable } from './answers.js';
+import { bindSweeps, composing, isExempt, rulesTabs } from './rules.js';
 import { bindSet, runSetPreviews, setCards } from './draft-set.js';
 
 // ── the conversation ─────────────────────────────────────────────────────────
