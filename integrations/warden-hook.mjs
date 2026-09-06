@@ -907,9 +907,10 @@ function detectMode() {
  * prompt vanish and a spinner. Observed on 2026-09-06 with `reason`,
  * `stopReason` and `systemMessage` all set to the refusal; the app rendered
  * nothing. Until it does, the one surface this hook can reach on that machine
- * is the operating system, so on macOS under the desktop app it opens a
- * dialog with the refusal. The app is recognisable by the
- * `CLAUDE_CODE_ENTRYPOINT` it hands its hooks.
+ * is the operating system, so under the desktop app it opens a dialog with
+ * the refusal: osascript on macOS, a WinForms message box through PowerShell
+ * on Windows, zenity, kdialog or notify-send on Linux, whichever is there.
+ * The app is recognisable by the `CLAUDE_CODE_ENTRYPOINT` it hands its hooks.
  *
  * Detached and never awaited. A dialog that waited for OK would hold this
  * process past Claude Code's own deadline, and a hook it cancels is a prompt
@@ -918,23 +919,54 @@ function detectMode() {
  * this is only the message.
  */
 function showDesktopCard(text) {
-  if (process.platform !== 'darwin' || process.env.CLAUDE_CODE_ENTRYPOINT !== 'claude-desktop') return;
+  if (process.env.CLAUDE_CODE_ENTRYPOINT !== 'claude-desktop') return;
+  const cmd = desktopCardCommand(text);
+  if (!cmd) return;
   try {
-    const child = spawn(
-      'osascript',
-      [
+    const child = spawn(cmd.file, cmd.args, { detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, ...cmd.env } });
+    child.unref();
+  } catch {
+    /* the block stands without it */
+  }
+}
+
+/**
+ * The one dialog each platform has without installing anything. macOS has
+ * osascript; Windows has PowerShell and the WinForms message box; a Linux
+ * desktop has zenity or kdialog depending on which one it grew up with, and
+ * notify-send everywhere a notification daemon runs. The refusal is passed
+ * as an argument or through the environment, never spliced into a script
+ * string: it contains quotes, newlines and whatever the administrator wrote
+ * in a rule, and this hook is running on the employee's own account.
+ */
+function desktopCardCommand(text) {
+  if (process.platform === 'darwin') {
+    return {
+      file: 'osascript',
+      args: [
         '-e', 'on run argv',
         '-e', 'display dialog (item 1 of argv) with title (item 2 of argv) buttons {"OK"} default button 1 with icon stop',
         '-e', 'end run',
         text,
         'Warden'
-      ],
-      { detached: true, stdio: 'ignore' }
-    );
-    child.unref();
-  } catch {
-    /* the block stands without it */
+      ]
+    };
   }
+  if (process.platform === 'win32') {
+    return {
+      file: 'powershell.exe',
+      args: [
+        '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command',
+        'Add-Type -AssemblyName System.Windows.Forms; [void][System.Windows.Forms.MessageBox]::Show($env:WARDEN_CARD_TEXT, "Warden", "OK", "Stop")'
+      ],
+      env: { WARDEN_CARD_TEXT: text }
+    };
+  }
+  const found = (name) => (process.env.PATH ?? '').split(':').some((dir) => dir && existsSync(join(dir, name)));
+  if (found('zenity')) return { file: 'zenity', args: ['--error', '--no-wrap', '--title=Warden', `--text=${text}`] };
+  if (found('kdialog')) return { file: 'kdialog', args: ['--title', 'Warden', '--error', text] };
+  if (found('notify-send')) return { file: 'notify-send', args: ['-u', 'critical', 'Warden', text] };
+  return null;
 }
 
 /**

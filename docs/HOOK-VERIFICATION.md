@@ -70,11 +70,16 @@ no guidance and no audit id. That was with `reason`, `stopReason` and
 Two consequences. The block itself is real on the desktop app and can be
 verified from the transcript, so a verification run there should read the
 session's `.jsonl` under `~/.claude/projects/` rather than the screen. And
-since 0.1.45 the hook, when it sees that entrypoint on macOS, also opens an
-OS dialog with the refusal, spawned detached so it cannot hold the hook past
-Claude Code's deadline. Whether the app will one day render the warning
-itself is not something this repo controls; the dialog is the message until
-then. Not done: the same on Windows under the desktop app.
+since 0.1.45 the hook, when it sees that entrypoint, also opens an OS dialog
+with the refusal, spawned detached so it cannot hold the hook past Claude
+Code's deadline: osascript on macOS, a WinForms message box through
+PowerShell on Windows (0.1.46), zenity, kdialog or notify-send on Linux
+(0.1.46), whichever is installed. Whether the app will one day render the
+warning itself is not something this repo controls; the dialog is the
+message until then. Verified on macOS against a live gateway. The Linux
+branch is covered by the test with a stand-in zenity; the Windows branch is
+not executed by any test and has not been watched on a Windows machine,
+which is the next thing a verification run there should do.
 
 ## Real QVAC observations
 
