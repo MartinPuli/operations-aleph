@@ -135,6 +135,3 @@ export async function selectRules(
   }
 }
 
-export function invalidateIndex(): void {
-  cache.clear();
-}

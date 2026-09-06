@@ -24,10 +24,6 @@ export function tighten(...verdicts: Verdict[]): Verdict {
   );
 }
 
-export function isAtLeastAsStrict(a: Verdict, b: Verdict): boolean {
-  return STRICTNESS[a] >= STRICTNESS[b];
-}
-
 /** One step of the pipeline, recorded for the live trace and the audit log. */
 export type PassTrace = {
   /** Stable identifier, e.g. `quota`, `sanitize`, `isolate`, `injection`, `adjudicate:r-03`. */

@@ -286,8 +286,3 @@ export function verifyChain(): {
   return { ok: true, entries: lines.length };
 }
 
-/** Drop the cached tail hash and count. Tests write the file directly. */
-export function invalidateAudit(): void {
-  lastHash = null;
-  entryCount = null;
-}

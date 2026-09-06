@@ -136,7 +136,3 @@ export async function escalationQueue(): Promise<Escalation[]> {
     });
 }
 
-/** How many are still waiting on a person. The number the console badges. */
-export async function pendingCount(): Promise<number> {
-  return (await escalationQueue()).filter((e) => e.review === null).length;
-}

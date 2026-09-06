@@ -262,7 +262,6 @@ nav { display: flex; align-items: center; gap: var(--s-1); min-width: 0; }
 .pill.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .pill.wrap { white-space: normal; text-align: left; max-width: 100%; }
 
-.hero-foot { font-size: var(--fs-2); color: var(--faint); max-width: 52ch; line-height: var(--lh-snug); }
 
 /* ═══ controls ═══════════════════════════════════════════════════════════ */
 
@@ -335,7 +334,6 @@ button, input, select, textarea { font: inherit; font-size: var(--fs-3); color: 
 .seat .have { font-size: var(--fs-1); font-family: var(--mono); color: var(--allow); white-space: nowrap; }
 .seat .want { font-size: var(--fs-1); font-family: var(--mono); color: var(--escalate); white-space: nowrap; }
 .seat .trade { font-size: var(--fs-3); color: var(--ink-2); line-height: var(--lh-snug); }
-.seat .speed { font-size: var(--fs-2); color: var(--muted); border-top: 1px solid var(--line-soft); padding-top: var(--s-4); }
 
 .model.off .state { color: var(--faint); }
 .model.off .role { color: var(--muted); }

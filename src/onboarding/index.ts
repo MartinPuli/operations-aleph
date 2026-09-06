@@ -67,21 +67,6 @@ export type OnboardingPack = {
 
 const HOOK_PATH = '~/.warden-hook.mjs';
 
-/**
- * The public copy of the hook.
- *
- * No longer used by the generated setup — the gateway serves its own copy at
- * `/warden-hook.mjs`, so an employee never needs to reach the public internet
- * to be onboarded. Kept for the docs, which describe installing from a clone
- * that has no gateway running yet.
- */
-export function publicHookUrl(): string {
-  return (
-    process.env['WARDEN_HOOK_URL'] ??
-    'https://raw.githubusercontent.com/Wardenlabs/warden/main/integrations/warden-hook.mjs'
-  );
-}
-
 function commonSteps(employee: Employee, gatewayUrl: string): SetupStep[] {
   return [
     {

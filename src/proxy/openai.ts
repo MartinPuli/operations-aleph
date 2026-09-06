@@ -304,6 +304,3 @@ async function forward(res: Response, payload: unknown): Promise<void> {
   }
 }
 
-export function proxyMode(): 'warden' | 'baseline' {
-  return MODE;
-}

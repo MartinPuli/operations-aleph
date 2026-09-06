@@ -51,7 +51,3 @@ export function connectedCount(): number {
   return seen.size;
 }
 
-/** Used by tests and the demo reset. */
-export function resetActivity(): void {
-  seen.clear();
-}

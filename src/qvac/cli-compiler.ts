@@ -181,10 +181,6 @@ export function cliToolLabel(tool: CliTool): string {
   return TOOLS[tool].label;
 }
 
-export function cliToolVerified(tool: CliTool): boolean {
-  return TOOLS[tool].verified;
-}
-
 /**
  * The configuration, or null when this is off.
  *
@@ -226,11 +222,6 @@ export function cliCompilerConfig(): CliCompilerConfig | null {
   const saved = loadCompilerSettings();
   const tool = PROVIDER_TOOL[saved.provider];
   return tool ? { tool, model: saved.model.trim(), timeoutMs: 120_000 } : null;
-}
-
-export function cliCompilerSource(): 'env' | 'settings' | null {
-  if (toolFromEnv()) return 'env';
-  return PROVIDER_TOOL[loadCompilerSettings().provider] ? 'settings' : null;
 }
 
 /**
