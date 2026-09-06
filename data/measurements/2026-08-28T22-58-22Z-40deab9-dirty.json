@@ -4,7 +4,7 @@
   "commit": "40deab9",
   "dirty": true,
   "policyVersion": "55ad729d337f9b116eac29af5d5d5a26925491a0bc6ee23a072f07339c4b7048",
-  "policyPath": "/private/tmp/claude-501/-Users-gastonfoncea-Desktop-026-developer-Hackatons-Aleph/f6ec635b-7993-4811-80be-22dadc87da02/scratchpad/policy-sin-io.json",
+  "policyPath": "<scratch>/policy-sin-io.json",
   "adapter": "real",
   "reps": 1,
   "machine": {

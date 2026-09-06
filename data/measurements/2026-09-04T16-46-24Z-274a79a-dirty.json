@@ -23,7 +23,7 @@
     "WINDOW_CHARS": "(default)",
     "WINDOW_OVERLAP": "(default)",
     "ADJUDICATOR_FORM": "(default)",
-    "MODEL_ADJUDICATOR": "/Users/martinezequielpulitano/Library/Application Support/Warden/models/DynaGuard-1.7B.Q8_0.gguf",
+    "MODEL_ADJUDICATOR": "<home>/Library/Application Support/Warden/models/DynaGuard-1.7B.Q8_0.gguf",
     "models": {
       "adjudicator": "DynaGuard-1.7B.Q8_0.gguf",
       "detector": "Qwen3-0.6B-Q4_0.gguf",
