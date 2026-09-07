@@ -1276,6 +1276,30 @@ select.mini {
 .menu-item.danger { color: var(--block); }
 .menu-item.danger:hover { background: var(--block-bg); }
 
+/* The model picker: bottom-left of the composer, opposite the send button.
+   A named button with a menu, because the grey "Drafting with … Change" line
+   that used to sit under the box was read as a caption and nobody clicked it. */
+.hero-box .model-pick { position: absolute; left: var(--s-4); bottom: var(--s-4); justify-self: start; }
+.model-pick > summary {
+  width: auto; height: 28px; padding: 0 var(--s-3);
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  font-size: var(--fs-2); letter-spacing: 0; color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--bg);
+}
+.model-pick > summary:hover, .model-pick[open] > summary { background: var(--hover); border-color: var(--line-firm); color: var(--ink); }
+.model-pick > summary .dot { background: var(--allow); }
+.model-pick > summary .caret { color: var(--faint); font-size: var(--fs-2); line-height: 0; margin-top: -3px; }
+.model-pick .menu-list { left: 0; right: auto; top: calc(100% + 6px); min-width: 280px; }
+/* Docked at the bottom of a conversation the menu has nowhere to go but up. */
+.composer .model-pick .menu-list { top: auto; bottom: calc(100% + 6px); }
+.menu-head { padding: var(--s-2) var(--s-3) var(--s-1); font-size: var(--fs-1); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--faint); }
+.model-pick .menu-item { display: grid; gap: 1px; white-space: normal; }
+.model-pick .menu-item.on { background: var(--selected); color: var(--ink); }
+.model-pick .menu-item:disabled { color: var(--faint); cursor: default; }
+.model-pick .menu-item:disabled:hover { background: none; }
+.menu-sub { font-size: var(--fs-1); color: var(--muted); }
+.model-pick .menu-item:disabled .menu-sub { color: var(--faint); }
+
 /* Company: two cards, set once */
 .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); padding: var(--s-6) var(--s-3) 0; }
 .card { display: grid; gap: var(--s-4); align-content: start; padding: var(--s-6); border: 1px solid var(--line); border-radius: var(--r-lg); }
