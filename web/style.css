@@ -829,6 +829,71 @@ input.inline.wide { min-width: 320px; flex: 1 1 320px; }
   background: var(--bg);
 }
 
+/* A type tag in the corner, so the card reads as one object being created —
+   not a stack of separate-looking notices divided by rules. */
+.artifact .card-header { display: flex; align-items: flex-start; gap: var(--s-4); }
+.artifact .card-header .title-block { flex: 1; min-width: 0; }
+.artifact .card-header .summary { margin: 0; }
+.artifact .card-header .note { margin-top: var(--s-1); }
+.tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--r-sm);
+  padding: 3px var(--s-2);
+  font-size: 10px;
+  font-weight: var(--fw-semi);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+.tag.rule { background: var(--accent); color: var(--accent-ink); }
+.tag.issue { background: var(--escalate-bg); color: var(--escalate); }
+
+/* Severity and audience as fields you can see are live controls — a light
+   fill and a chevron, not a sentence describing a default nobody looked at. */
+.artifact .properties { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.artifact .field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  border: none;
+  border-radius: var(--r-sm);
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-2);
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+  background: var(--sunken);
+  cursor: pointer;
+}
+.artifact .field:hover { background: var(--hover); }
+.artifact .field .chev { color: var(--faint); font-size: var(--fs-1); }
+
+/* The severity/audience pickers are a full re-render inserting a new row —
+   with no transition that reads as the card lurching, not opening. Scoped to
+   the two picker ids rather than `.chips` itself, which the always-present
+   Activate/Discard and issue-action rows also use and must not replay this
+   on every unrelated re-render. */
+#severityChips, #audienceChips {
+  animation: chips-in .14s ease-out;
+}
+@keyframes chips-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* The one part of the card that is genuinely uncertain — shown with a divider
+   above it and the actual failing prompts, never just a count. */
+.artifact .issue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+}
+.artifact .issue-head { display: flex; align-items: center; gap: var(--s-3); }
+.artifact .issue-head b { font-weight: var(--fw-medium); color: var(--ink); }
+.artifact .issue-examples { display: grid; gap: 2px; font-size: var(--fs-2); color: var(--muted); }
+
 /* The same composer geometry as the hero, docked to the bottom. */
 .composer { flex: none; border-top: 1px solid var(--line); background: var(--bg); }
 .composer .sheet { padding: var(--s-5) var(--s-6) var(--s-6); }
@@ -962,13 +1027,6 @@ button.quota .quota-row b { margin-left: auto; }
    this reads as a promise being kept. */
 .nokeep { font-style: normal; color: var(--muted); opacity: 0.65; }
 
-.person-top { display: flex; align-items: center; gap: var(--s-4); }
-.person-top .nm { font-size: var(--fs-4); font-weight: var(--fw-semi); letter-spacing: var(--ls-tight); line-height: var(--lh-tight); }
-
-.tools { display: flex; flex-wrap: wrap; gap: var(--s-1); }
-.tool { font-size: var(--fs-1); padding: 1px var(--s-2); border-radius: var(--r-sm); background: var(--sunken); color: var(--faint); }
-.tool.on { background: var(--allow-bg); color: var(--allow); }
-
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--line-firm); border-radius: 5px; border: 3px solid var(--bg); }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -1052,6 +1110,23 @@ button.quota .quota-row b { margin-left: auto; }
 }
 .settings .actions { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin-top: var(--s-5); }
 
+/* This device: one bordered list standing in for what used to be four
+   sections. `.row` already gives a tight, single-line, ellipsis-safe flex
+   row — the same one the activity log sweeps a hundred at a time — so
+   nothing new was needed for the shape, only for what a bare `.row .txt`
+   does not say on its own: which rows are the ones actually judging you. */
+.settings .tbl.solo-rules { overflow: hidden; }
+.settings .tbl.solo-rules > .row:last-child { border-bottom: none; }
+.settings .tbl.solo-rules .txt.on { color: var(--ink); font-weight: var(--fw-medium); }
+.settings .row.solo-add { cursor: default; margin: 0 var(--s-3); }
+.settings .row.solo-add:hover { background: none; }
+.settings .row.solo-add input[type="text"] {
+  border: none; background: none; padding: 0; color: var(--ink);
+}
+.settings .row.solo-add input[type="text"]:focus { outline: none; }
+.settings .row.solo-add input[type="text"]::placeholder { color: var(--faint); }
+.settings .label.under { margin: var(--s-6) var(--s-3) var(--s-2); }
+
 .note.good { color: var(--allow); }
 .note.bad { color: var(--block); }
 .compiler-line { display: flex; align-items: center; justify-content: center; gap: var(--s-2); margin-top: var(--s-3); }
@@ -1069,3 +1144,189 @@ button.quota .quota-row b { margin-left: auto; }
    or the last row of one category reads as the first of the next. */
 .group + .group { margin-top: var(--s-4); }
 
+
+/* ═══ team ═══════════════════════════════════════════════════════════════
+   One thing per tab, one page per person. The list edits in place (the role
+   is a select in its row, the rest is in the row's menu); the page leads with
+   three numbers, then the key, then the rules. Same tokens as everything
+   else — what is new is a page head with a real title, tabs under it, and a
+   table that reads as one. */
+
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-6); padding: var(--s-4) var(--s-3) var(--s-6); }
+.page-title { margin: 0; font-size: var(--fs-5); font-weight: var(--fw-semi); letter-spacing: -.024em; line-height: var(--lh-tight); color: var(--ink); }
+.page-status { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-2); font-size: var(--fs-3); color: var(--ink-2); }
+.page-status i { font-style: normal; color: var(--faint); }
+.page-status .muted { color: var(--muted); }
+.linkbtn.strong { color: var(--ink); font-weight: var(--fw-medium); text-decoration: none; }
+.linkbtn.strong:hover { text-decoration: underline; }
+
+.banner.demo { margin: 0 var(--s-3) var(--s-6); }
+.banner.demo .linkish { color: inherit; margin-left: var(--s-2); }
+
+.tabs { display: flex; gap: var(--s-6); padding: 0 var(--s-3); border-bottom: 1px solid var(--line); }
+.tab {
+  border: none; background: none;
+  padding: var(--s-3) 2px var(--s-4); margin-bottom: -1px;
+  font: inherit; font-size: var(--fs-3); color: var(--muted);
+  border-bottom: 2px solid transparent; cursor: pointer;
+}
+.tab:hover { color: var(--ink); }
+.tab.on { color: var(--ink); font-weight: var(--fw-medium); border-bottom-color: var(--ink); }
+
+.add-row, .inline-row { display: flex; align-items: center; gap: var(--s-3); }
+.add-row { padding: var(--s-6) var(--s-3) var(--s-4); }
+.add-row select { width: 180px; flex: none; }
+.add-row .btn, .inline-row .btn { flex: none; }
+.grow { flex: 1; min-width: 0; }
+.note.under { padding: 0 var(--s-3) var(--s-4); }
+.note.under:empty { display: none; }
+.filter-note { padding: 0 var(--s-3) var(--s-4); font-size: var(--fs-2); color: var(--muted); }
+
+/* the table */
+.tbl { margin: 0 var(--s-3); border: 1px solid var(--line); border-radius: var(--r-lg); }
+/* Under People the add row holds the table off the tabs; a table that comes
+   straight after them gets the same air by itself. */
+.tabs + .tbl { margin-top: var(--s-6); }
+.tbl .thead, .tbl .trow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px 210px 90px 32px;
+  align-items: center;
+  gap: var(--s-5);
+  padding: 0 var(--s-4) 0 var(--s-5);
+}
+.tbl.roles .thead, .tbl.roles .trow { grid-template-columns: minmax(0, 1fr) 90px 140px 220px 32px; }
+.tbl .thead {
+  height: 36px;
+  background: var(--sunken);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  font-size: var(--fs-1); font-weight: var(--fw-medium); letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--muted);
+}
+.tbl .trow { min-height: 52px; border-bottom: 1px solid var(--line); font-size: var(--fs-3); color: var(--ink-2); }
+.tbl .trow:hover { background: var(--hover); }
+.tbl > .trow:last-child { border-bottom: none; border-radius: 0 0 var(--r-lg) var(--r-lg); }
+.tbl .tfoot {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-3) var(--s-4) var(--s-3) var(--s-5);
+  background: var(--sunken); border-radius: 0 0 var(--r-lg) var(--r-lg);
+}
+.tbl .tfoot input[type="number"] { width: 150px; }
+.tbl .tfoot .btn { flex: none; }
+
+.pname {
+  display: flex; align-items: center; gap: var(--s-4); min-width: 0;
+  border: none; background: none; padding: var(--s-3) 0;
+  font: inherit; text-align: left; color: var(--ink); cursor: pointer;
+}
+.pname .nm { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pname:hover .nm { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--line-firm); }
+.strong { color: var(--ink); font-weight: var(--fw-medium); }
+
+/* The role, edited where it is read. Eight bordered dropdowns in a column
+   outweighed eight names, so the control looks like text until the pointer
+   is on it — then the border and the chevron come back and it is a select. */
+select.mini {
+  width: auto; max-width: 100%;
+  font-size: var(--fs-3); color: var(--ink-2);
+  padding: 3px var(--s-6) 3px var(--s-3); margin-left: calc(-1 * var(--s-3));
+  border-color: transparent; background-color: transparent; background-image: none;
+  cursor: pointer;
+}
+.trow:hover select.mini, select.mini:hover, select.mini:focus-visible, .person-meta select.mini {
+  border-color: var(--line);
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2370747c' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  color: var(--ink);
+}
+.person-meta select.mini { margin-left: 0; font-size: var(--fs-2); }
+.c-role { display: inline-flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.c-when { font-size: var(--fs-2); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.c-conn { display: inline-flex; align-items: center; gap: var(--s-2); min-width: 0; font-size: var(--fs-2); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-conn.on { color: var(--allow); }
+.c-conn.on .dot { background: var(--allow); }
+
+.chip.warn { background: var(--escalate-bg); border-color: transparent; color: var(--escalate); font-size: var(--fs-1); font-weight: var(--fw-medium); cursor: default; }
+
+/* the "···" menu: the actions a row used to need its page open for */
+.menu { position: relative; justify-self: end; }
+.menu > summary {
+  list-style: none;
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border-radius: var(--r-sm);
+  color: var(--muted); font-size: var(--fs-3); letter-spacing: .04em; line-height: 1;
+  cursor: pointer; user-select: none;
+}
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary:hover, .menu[open] > summary { background: var(--hover); color: var(--ink); }
+.menu-list {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 5;
+  min-width: 180px; display: grid; padding: var(--s-1);
+  background: var(--bg); border: 1px solid var(--line-firm); border-radius: var(--r-md);
+  box-shadow: 0 8px 24px rgba(23, 24, 28, .08);
+}
+.menu-item {
+  border: none; background: none;
+  padding: var(--s-2) var(--s-3); border-radius: var(--r-sm);
+  font: inherit; font-size: var(--fs-3); color: var(--ink-2);
+  text-align: left; white-space: nowrap; cursor: pointer;
+}
+.menu-item:hover { background: var(--hover); color: var(--ink); }
+.menu-item.danger { color: var(--block); }
+.menu-item.danger:hover { background: var(--block-bg); }
+
+/* Company: two cards, set once */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); padding: var(--s-6) var(--s-3) 0; }
+.card { display: grid; gap: var(--s-4); align-content: start; padding: var(--s-6); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.card .v { font-size: var(--fs-3); color: var(--ink); line-height: var(--lh-snug); }
+
+/* one person */
+.sheet.person { display: grid; gap: var(--s-8); }
+.sheet.person .back { justify-self: start; text-decoration: none; font-weight: var(--fw-medium); }
+.sheet.person .back:hover { text-decoration: underline; }
+.person-head { display: flex; align-items: center; gap: var(--s-5); margin-top: calc(-1 * var(--s-5)); }
+.person-head .avatar.lg { width: 48px; height: 48px; font-size: var(--fs-4); }
+.person-meta { display: flex; align-items: center; gap: var(--s-4); margin-top: var(--s-2); font-size: var(--fs-3); color: var(--muted); }
+.person-head + .note.under { margin-top: calc(-1 * var(--s-6)); padding: 0; }
+
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr auto; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.stat { display: grid; gap: var(--s-1); padding: var(--s-6); border-left: 1px solid var(--line); }
+.stat:first-child { border-left: none; }
+.stat b { font-size: var(--fs-6); font-weight: var(--fw-semi); letter-spacing: -.024em; line-height: 1; color: var(--ink); }
+.stat b.block { color: var(--block); }
+.stat span { font-size: var(--fs-3); color: var(--muted); }
+.stat-link {
+  border: none; border-left: 1px solid var(--line); background: none;
+  padding: 0 var(--s-6);
+  font: inherit; font-size: var(--fs-3); font-weight: var(--fw-medium); color: var(--ink);
+  white-space: nowrap; cursor: pointer;
+}
+.stat-link:hover { background: var(--hover); }
+
+/* Not connected: the one thing to do, instead of numbers there are none of */
+.setup-card {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-6);
+  padding: var(--s-6); border-radius: var(--r-lg); background: var(--sunken);
+}
+.setup-card b { display: block; font-size: var(--fs-4); font-weight: var(--fw-semi); letter-spacing: var(--ls-tight); margin-bottom: var(--s-1); color: var(--ink); }
+.setup-card .btn { flex: none; }
+
+.block { display: grid; gap: var(--s-3); }
+.key-row { display: flex; align-items: center; gap: var(--s-5); font-size: var(--fs-3); }
+.key-row .mono { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.key-row .linkbtn { text-decoration: none; font-weight: var(--fw-medium); white-space: nowrap; }
+.key-row .linkbtn:hover { text-decoration: underline; }
+
+.rule-list { display: grid; }
+.rule-line {
+  display: flex; align-items: center; gap: var(--s-4); width: 100%;
+  padding: var(--s-4) 0; border: none; border-bottom: 1px solid var(--line-soft);
+  background: none; font: inherit; font-size: var(--fs-3); color: var(--ink); text-align: left; cursor: pointer;
+}
+.rule-line .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rule-line:hover .t { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--line-firm); }
+.rule-line .why { font-size: var(--fs-2); color: var(--faint); }
+.rule-add { padding-top: var(--s-4); display: grid; gap: var(--s-3); }
+.rule-add .linkish { justify-self: start; text-decoration: none; font-weight: var(--fw-medium); }
+.rule-add .linkish:hover { text-decoration: underline; }

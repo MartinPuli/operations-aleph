@@ -119,55 +119,109 @@ export function examplesFold(key, d) {
         ${(d.examples?.compliant ?? []).map((x) => `<div class="note">· ${esc(x)}</div>`).join('')}`);
 }
 
+/** `warn` has no colour of its own — like `.badge.warn`, it borrows the
+ *  held-for-review palette, because nothing was refused. */
+function severityDotClass(sev) { return sev === 'warn' ? 'escalate' : sev; }
+
+/**
+ * What the check found, when it found something — the one part of the card
+ * that is genuinely uncertain (severity and audience already carry a
+ * reasonable default; this doesn't). Shown as the actual prompts that failed,
+ * never just a count: a count is not something you can act on, the sentences
+ * are. Silent once `state.issueDismissed` — set by "Keep as is" — until the
+ * next check runs and clears it (`runPreview`), so a dismissal never hides a
+ * *different* problem than the one it was said about.
+ *
+ * `verdictLine` still owns the mock/checking/not-checked/clean lines — this
+ * only replaces its two issue branches, and only inside this card. The set
+ * cards in `draft-set.js` call `verdictLine` directly and are untouched.
+ */
+function issueBlock(p) {
+  if (state.mock || !p || state.issueDismissed) return '';
+  const kind = p.falsePositives > 0 ? 'fp' : p.misses > 0 ? 'miss' : null;
+  if (!kind) return '';
+
+  const rows = p.rows.filter((r) => (kind === 'fp' ? r.isFalsePositive : r.isMiss));
+  const headline = kind === 'fp'
+    ? `${plural(p.falsePositives, 'legitimate request')} would be wrongly blocked`
+    : `Missed ${plural(p.misses, 'request')} it should have caught`;
+  // What "Make it more specific" actually sends — the same free-text refine
+  // path as typing it yourself, just with the sentence already written.
+  const refineText = kind === 'fp'
+    ? "It's too broad — narrow it so it stops blocking legitimate requests."
+    : 'Make it more specific — some things it should catch are getting through.';
+
+  return `<div class="issue">
+    <div class="issue-head"><span class="tag issue">Issue</span><b>${esc(headline)}</b></div>
+    <div class="issue-examples">${rows.map((r) => `<div>"${esc(r.prompt)}"</div>`).join('')}</div>
+    <div class="chips">
+      <button type="button" class="btn" id="refineBtn" data-refine="${esc(refineText)}">${kind === 'fp' ? 'Narrow it' : 'Make it more specific'}</button>
+      <button type="button" class="btn quiet" id="keepIssueBtn">Keep as is</button>
+    </div>
+  </div>`;
+}
+
+/**
+ * The draft, as one object inside the conversation rather than a stack of
+ * separate-looking notices — a "Rule" tag on the card says so, an "Issue" tag
+ * says so about the one part of it that's still undecided. Severity and
+ * audience are fields you click to change, not sentences describing a
+ * default nobody looked at.
+ */
 function draftCard() {
   const d = state.draft;
   const locked = Boolean(state.draftFor);
   const p = state.preview;
-  const verdict = verdictLine(p);
+  const hasIssue = Boolean(p) && !state.mock && !state.issueDismissed && (p.falsePositives > 0 || p.misses > 0);
+  const verdict = hasIssue ? '' : verdictLine(p);
 
-  return `<div class="artifact">
-    <div class="detail-head">
-      <span class="badge ${esc(d.severity)}">${esc(d.severity)}</span>
-      ${
-        // Who wrote this, at the moment it is about to bind people. The
-        // composer says it before you type, but by the time the Activate button
-        // is on screen the composer is gone — and this is the point where it
-        // matters whether the sentence came off this machine.
-        d.draftedBy
-          ? `<span class="when">written by ${esc(d.draftedBy)}</span>`
-          : ''
-      }
-      <span class="when">not active yet</span>
-    </div>
-
-    <p class="summary">${esc(d.text)}</p>
-    ${d.textLocal ? `<p class="note"><b>Employees will read:</b> ${esc(d.textLocal)}</p>` : ''}
-    ${d.boundary ? `<p class="note"><b>Not about:</b> ${esc(d.boundary)}</p>` : ''}
-
-    ${verdict}
-
-    <div class="kv">
-      <div class="r">
-        <span class="k">Applies to</span>
-        <span class="v">${esc(audienceLabel(d.appliesTo))}${locked
-          ? ' · locked, you started this from their page'
-          : `<button type="button" class="btn sm" id="editAudience">${state.audienceOpen ? 'Done' : 'Change'}</button>`}</span>
+  return `<div class="msg">
+    <div class="who">Warden</div>
+    <div class="artifact">
+      <div class="card-header">
+        <div class="title-block">
+          <p class="summary">${esc(d.text)}</p>
+          <div class="note">${
+            // Same reasoning as before: this is the point Activate is on
+            // screen, which is when it matters whether the sentence came off
+            // this machine.
+            d.draftedBy ? `written by ${esc(d.draftedBy)} · ` : ''
+          }not active yet</div>
+        </div>
+        <span class="tag rule">Rule</span>
       </div>
-    </div>
-    ${!locked && state.audienceOpen ? '<div class="chips" id="audienceChips"></div>' : ''}
-    ${state.audienceWarning && !state.audienceConfirmed
-      ? '<div class="note" id="audienceWarnNote">Choose who this rule applies to before activating it.</div>'
-      : ''}
 
-    <div class="chips">
-      <button type="button" class="btn primary" id="ratifyBtn"${state.ruleBusy ? ' disabled' : ''}>Activate</button>
-      <button type="button" class="btn quiet" id="dropBtn">Discard</button>
-    </div>
+      ${d.textLocal ? `<p class="note"><b>Employees will read:</b> ${esc(d.textLocal)}</p>` : ''}
+      ${d.boundary ? `<p class="note"><b>Not about:</b> ${esc(d.boundary)}</p>` : ''}
 
-    <div class="folds">
-      ${p ? disclosure('n:check', `The ${plural(p.rows.length, 'request')} it was checked against`, checkRowsOf(p)) : ''}
-      ${d.guidance ? disclosure('n:told', 'What the employee is told instead', `<div class="banner">${esc(d.guidance)}</div>`) : ''}
-      ${examplesFold('n:examples', d)}
+      <div class="properties">
+        <button type="button" class="field" id="severityToggle">
+          <span class="dot ${esc(severityDotClass(d.severity))}"></span>${esc(d.severity)}<span class="chev">⌄</span>
+        </button>
+        ${locked
+          ? `<span class="field" style="cursor:default">${esc(audienceLabel(d.appliesTo))} · locked, you started this from their page</span>`
+          : `<button type="button" class="field" id="editAudience">
+               <span class="dot"></span>${esc(audienceLabel(d.appliesTo))}<span class="chev">⌄</span>
+             </button>`}
+      </div>
+      ${state.severityOpen ? '<div class="chips" id="severityChips"></div>' : ''}
+      ${!locked && state.audienceOpen ? '<div class="chips" id="audienceChips"></div>' : ''}
+      ${state.audienceWarning && !state.audienceConfirmed
+        ? '<div class="note" id="audienceWarnNote">Choose who this rule applies to before activating it.</div>'
+        : ''}
+
+      ${verdict}
+      ${issueBlock(p)}
+
+      <div class="chips">
+        <button type="button" class="btn primary" id="ratifyBtn"${state.ruleBusy ? ' disabled' : ''}>Activate</button>
+        <button type="button" class="btn quiet" id="dropBtn">Discard</button>
+      </div>
+
+      <div class="folds">
+        ${d.guidance ? disclosure('n:told', 'What the employee sees when this blocks them', `<div class="banner">${esc(d.guidance)}</div>`) : ''}
+        ${examplesFold('n:examples', d)}
+      </div>
     </div>
   </div>`;
 }
@@ -356,6 +410,10 @@ async function sendRuleSet(text) {
  */
 async function runPreview(against = []) {
   state.ruleBusy = true;
+  // A fresh check can find a different problem than the one just dismissed —
+  // "Keep as is" answers the issue on screen, not every issue this draft will
+  // ever have.
+  state.issueDismissed = false;
   say(against.length
     ? `Replaying ${plural(against.length, 'request')} Warden already allowed, to see if this rule would have stopped them…`
     : 'Checking it…', true);
@@ -473,9 +531,24 @@ export function bindPolicy() {
   );
 
   const editAud = $('editAudience');
-  if (editAud) editAud.onclick = () => { state.audienceOpen = !state.audienceOpen; render(); };
+  if (editAud) editAud.onclick = () => { state.audienceOpen = !state.audienceOpen; state.keepScroll = true; render(); };
 
   renderAudienceChips();
+
+  const sevToggle = $('severityToggle');
+  if (sevToggle) sevToggle.onclick = () => { state.severityOpen = !state.severityOpen; state.keepScroll = true; render(); };
+
+  renderSeverityChips();
+
+  // The two answers to "Issue" on the card: let Warden reword it (the same
+  // free-text refine path as typing it yourself), or say the gap is fine and
+  // move on. Neither one is a server call — refining re-enters the
+  // conversation, keeping just closes the notice.
+  const refine = $('refineBtn');
+  if (refine) refine.onclick = () => sendRuleMessage(refine.dataset.refine);
+
+  const keepIssue = $('keepIssueBtn');
+  if (keepIssue) keepIssue.onclick = () => { state.issueDismissed = true; state.keepScroll = true; render(); };
 
   const drop = $('dropBtn');
   if (drop) drop.onclick = () => {
@@ -545,6 +618,8 @@ export function bindPolicy() {
 export function startDraftAudience() {
   state.audienceConfirmed = Boolean(state.draftFor);
   state.audienceWarning = false;
+  state.severityOpen = false;
+  state.issueDismissed = false;
 }
 
 export function resetDraft() {
@@ -556,6 +631,8 @@ export function resetDraft() {
   state.ruleBusy = false;
   state.audienceConfirmed = false;
   state.audienceWarning = false;
+  state.severityOpen = false;
+  state.issueDismissed = false;
 }
 
 /** Throws away the conversation and leaves you on a blank one — you came here
@@ -565,6 +642,31 @@ export function discardDraft() {
   const person = state.draftFor;
   resetDraft();
   if (person) go('people', person); else go('policy', 'new');
+}
+
+/**
+ * The severity editor.
+ *
+ * No confirm step, unlike audience: an unconfirmed `['*']` audience fails
+ * open onto everyone if it reaches Activate unseen, which is worth stopping
+ * for. A severity nobody touched is just the compiler's own guess, already a
+ * reasonable default either way — so this is a plain click-and-set.
+ */
+function renderSeverityChips() {
+  const host = $('severityChips');
+  if (!host || !state.draft) return;
+  const options = [['block', 'Block'], ['escalate', 'Escalate'], ['warn', 'Warn']];
+  host.innerHTML = options
+    .map(([value, label]) => `<button type="button" class="chip${state.draft.severity === value ? ' on' : ''}" data-severity="${value}">${label}</button>`)
+    .join('');
+  host.onclick = (e) => {
+    const chip = e.target.closest('[data-severity]');
+    if (!chip) return;
+    state.draft.severity = chip.dataset.severity;
+    state.severityOpen = false;
+    state.keepScroll = true;
+    render();
+  };
 }
 
 /**

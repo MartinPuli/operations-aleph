@@ -59,12 +59,20 @@ function restoreFields({ saved, focus, scroll, chat }) {
  * Runs after bind, not with the other restores: bind is where the audience
  * editor writes its chips, and measuring the height before that leaves the
  * last card cut off by exactly the height of those two rows.
+ *
+ * "Stick" is meant for a new turn arriving — that is worth following down to.
+ * Opening the severity or audience picker on the current card is not a new
+ * turn, it is the same card getting taller, and re-running the same smooth
+ * scroll-to-bottom for it read as the whole conversation lurching for a click
+ * that added nothing to it. `state.keepScroll`, set by those two toggles
+ * right before `render()`, asks for the plain "hold where you were" branch
+ * even though the scroll position still counts as sticky.
  */
 function restoreChat(chat) {
   const el = $('pane').querySelector('.chat');
   if (!el) return;
   if (!chat) { el.scrollTop = el.scrollHeight; return; }   // just opened
-  if (!chat.stick) { el.scrollTop = chat.top; return; }
+  if (!chat.stick || state.keepScroll) { el.scrollTop = chat.top; state.keepScroll = false; return; }
   requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: SMOOTH() }));
 }
 
