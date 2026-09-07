@@ -291,7 +291,7 @@ export function modelPicker() {
   // on the settings page, where there is room to say what is missing.
   const quick = (c.providers ?? []).filter((p) => p.id === 'local' || (p.id.endsWith('-cli') && cliFor(p.id)?.found));
   return `<details class="menu model-pick" id="modelPick">
-    <summary title="Which model writes your rules"><span class="dot"></span>${esc(modelLabel(d.model))} · ${esc(d.where)}<span class="caret">⌄</span></summary>
+    <summary title="Which model writes your rules"><span class="dot"></span><span class="k">Model</span>${esc(modelLabel(d.model))} · ${esc(d.where)}<span class="caret">⌄</span></summary>
     <div class="menu-list">
       <div class="menu-head">${env ? 'Set by the environment (WARDEN_COMPILER_*)' : 'Which model writes your rules'}</div>
       ${quick.map((p) => {

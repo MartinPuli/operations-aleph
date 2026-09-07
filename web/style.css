@@ -1296,6 +1296,7 @@ select.mini {
 }
 .model-pick > summary:hover, .model-pick[open] > summary { background: var(--hover); border-color: var(--line-firm); color: var(--ink); }
 .model-pick > summary .dot { background: var(--allow); }
+.model-pick > summary .k { color: var(--muted); }
 .model-pick > summary .caret { color: var(--faint); font-size: var(--fs-2); line-height: 0; margin-top: -3px; }
 .model-pick .menu-list { left: 0; right: auto; top: calc(100% + 6px); min-width: 280px; }
 /* Docked at the bottom of a conversation the menu has nowhere to go but up. */
