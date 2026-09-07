@@ -58,6 +58,21 @@ function engineStatus(m) {
   };
 }
 
+/**
+ * The seat's latency as a figure, out of the sentence the server sends.
+ *
+ * `perDecision` is a sentence because the console used to print it as one,
+ * under the card. In a row there is room for "4.5 s a decision" and not for
+ * the clause about which machine measured it; the sentence stays as the title
+ * so a hover still has it. A seat that was never run says so instead of
+ * dressing an expectation up as a measurement.
+ */
+function perDecision(sentence) {
+  const m = /(\d+(?:\.\d+)?)\s*s\b/.exec(sentence ?? '');
+  if (!m) return 'not measured';
+  return `${/^expected/i.test(sentence) ? '~' : ''}${m[1]} s a decision`;
+}
+
 function enginePage() {
   const m = state.models;
   const a = state.adjudicator;
@@ -98,27 +113,35 @@ ${esc(m.runtime.detail)}</pre>
       <div class="label">The model that judges</div>
       <div class="note">Every prompt your team sends goes through this model before it reaches anything else.</div>
 
-      ${a ? `<div class="seats">
-        ${a.choices.map((c) => `<button type="button" class="seat${c.id === chosen ? ' on' : ''}" data-seat="${esc(c.id)}">
-          <span class="top">
-            <span class="name">${esc(c.label)}</span>
-            <span class="${c.onDisk ? 'have' : 'want'}">${c.onDisk ? 'on disk' : 'not downloaded'} · ${(c.approxMB / 1000).toFixed(1)} GB</span>
-          </span>
-          <span class="trade">${esc(c.trade)}</span>
-        </button>`).join('')}
+      ${a ? `<div class="seatlist" role="radiogroup" aria-label="The model that judges">
+        ${a.choices.map((c) => {
+          const on = c.id === chosen;
+          const gb = (c.approxMB / 1000).toFixed(1);
+          const status = on
+            ? (a.overriddenByEnv ? 'chosen here, but the environment wins' : waiting ? 'chosen · not on this disk yet' : 'judging now')
+            : (c.id === 'default' ? 'the default' : '');
+          return `<div class="seatrow${on ? ' on' : ''}">
+            <span class="radio" aria-hidden="true"></span>
+            <div class="seatbody">
+              <div class="seathead"><span class="name">${esc(c.label)}</span>${status ? `<span class="badge${on ? '' : ' quiet'}">${esc(status)}</span>` : ''}</div>
+              <div class="trade">${esc(c.trade)}</div>
+              <div class="meta">
+                <span>${esc(perDecision(c.perDecision))}</span>
+                <span>${gb} GB</span>
+                <span class="${c.onDisk ? 'have' : 'want'}">${c.onDisk ? 'on disk' : 'not downloaded'}</span>
+              </div>
+            </div>
+            <div class="seatact">${on
+              ? (waiting ? `<button type="button" class="btn primary js-get-models">Download · ${gb} GB</button>` : '')
+              : `<button type="button" class="btn" data-seat="${esc(c.id)}">${c.onDisk ? 'Use this' : 'Use this'}</button>`}</div>
+          </div>`;
+        }).join('')}
       </div>` : '<div class="note">Could not read which model is in the seat.</div>'}
 
       ${a?.overriddenByEnv ? `<div class="banner warn">
         <b>The environment is setting this.</b> <code>WARDEN_MODEL_ADJUDICATOR</code> wins over what you pick here,
         and <b>${esc(modelLabel(a.inForce))}</b> is what answers.
-      </div>` : waiting ? `<div class="banner warn">
-        <b>These weights are not on this disk yet.</b>
-        ${esc(fallback?.label ?? 'The smaller model')} keeps judging until the download finishes.
-        <div class="banner-act">
-          <button type="button" class="btn primary js-get-models">Download it · ${(picked.approxMB / 1000).toFixed(1)} GB</button>
-          <span class="note">Warden restarts on its own when it finishes.</span>
-        </div>
-      </div>` : ''}
+      </div>` : waiting ? `<div class="note">${esc(fallback?.label ?? 'The smaller model')} keeps judging until the download lands. Warden restarts on its own when it does.</div>` : ''}
     </div>
 
     <div class="section">
