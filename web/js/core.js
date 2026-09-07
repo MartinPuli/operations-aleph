@@ -210,6 +210,13 @@ export const state = {
    *  activate anyway — "Keep as is" on the card. Reset on every fresh check
    *  so a *new* problem is never hidden behind a dismissal of the old one. */
   issueDismissed: false,
+  /** Set right before `render()` by a toggle that makes the current card
+   *  taller without adding a turn to the conversation — the severity and
+   *  audience pickers, dismissing an issue. Tells `restoreChat` to hold the
+   *  scroll position instead of running its normal "new turn arrived, follow
+   *  it down" smooth-scroll, which otherwise fired for a click that said
+   *  nothing. Consumed (reset to `false`) the moment `restoreChat` reads it. */
+  keepScroll: false,
 
   filter: 'all',
   actorFilter: '',

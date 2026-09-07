@@ -868,6 +868,19 @@ input.inline.wide { min-width: 320px; flex: 1 1 320px; }
 .artifact .field:hover { background: var(--hover); }
 .artifact .field .chev { color: var(--faint); font-size: var(--fs-1); }
 
+/* The severity/audience pickers are a full re-render inserting a new row —
+   with no transition that reads as the card lurching, not opening. Scoped to
+   the two picker ids rather than `.chips` itself, which the always-present
+   Activate/Discard and issue-action rows also use and must not replay this
+   on every unrelated re-render. */
+#severityChips, #audienceChips {
+  animation: chips-in .14s ease-out;
+}
+@keyframes chips-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* The one part of the card that is genuinely uncertain — shown with a divider
    above it and the actual failing prompts, never just a count. */
 .artifact .issue {

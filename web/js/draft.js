@@ -531,12 +531,12 @@ export function bindPolicy() {
   );
 
   const editAud = $('editAudience');
-  if (editAud) editAud.onclick = () => { state.audienceOpen = !state.audienceOpen; render(); };
+  if (editAud) editAud.onclick = () => { state.audienceOpen = !state.audienceOpen; state.keepScroll = true; render(); };
 
   renderAudienceChips();
 
   const sevToggle = $('severityToggle');
-  if (sevToggle) sevToggle.onclick = () => { state.severityOpen = !state.severityOpen; render(); };
+  if (sevToggle) sevToggle.onclick = () => { state.severityOpen = !state.severityOpen; state.keepScroll = true; render(); };
 
   renderSeverityChips();
 
@@ -548,7 +548,7 @@ export function bindPolicy() {
   if (refine) refine.onclick = () => sendRuleMessage(refine.dataset.refine);
 
   const keepIssue = $('keepIssueBtn');
-  if (keepIssue) keepIssue.onclick = () => { state.issueDismissed = true; render(); };
+  if (keepIssue) keepIssue.onclick = () => { state.issueDismissed = true; state.keepScroll = true; render(); };
 
   const drop = $('dropBtn');
   if (drop) drop.onclick = () => {
@@ -664,6 +664,7 @@ function renderSeverityChips() {
     if (!chip) return;
     state.draft.severity = chip.dataset.severity;
     state.severityOpen = false;
+    state.keepScroll = true;
     render();
   };
 }
