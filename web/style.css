@@ -1045,6 +1045,23 @@ button.quota .quota-row b { margin-left: auto; }
 }
 .settings .actions { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin-top: var(--s-5); }
 
+/* This device: one bordered list standing in for what used to be four
+   sections. `.row` already gives a tight, single-line, ellipsis-safe flex
+   row — the same one the activity log sweeps a hundred at a time — so
+   nothing new was needed for the shape, only for what a bare `.row .txt`
+   does not say on its own: which rows are the ones actually judging you. */
+.settings .tbl.solo-rules { overflow: hidden; }
+.settings .tbl.solo-rules > .row:last-child { border-bottom: none; }
+.settings .tbl.solo-rules .txt.on { color: var(--ink); font-weight: var(--fw-medium); }
+.settings .row.solo-add { cursor: default; margin: 0 var(--s-3); }
+.settings .row.solo-add:hover { background: none; }
+.settings .row.solo-add input[type="text"] {
+  border: none; background: none; padding: 0; color: var(--ink);
+}
+.settings .row.solo-add input[type="text"]:focus { outline: none; }
+.settings .row.solo-add input[type="text"]::placeholder { color: var(--faint); }
+.settings .label.under { margin: var(--s-6) var(--s-3) var(--s-2); }
+
 .note.good { color: var(--allow); }
 .note.bad { color: var(--block); }
 .compiler-line { display: flex; align-items: center; justify-content: center; gap: var(--s-2); margin-top: var(--s-3); }

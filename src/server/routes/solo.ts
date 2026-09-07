@@ -9,6 +9,7 @@ import { execFile } from 'node:child_process';
 import { Router } from 'express';
 import { readAudit } from '../../audit/log.js';
 import { evaluate } from '../../guard/pipeline.js';
+import { activityFor } from '../../policy/activity.js';
 import { compileRule, isDeclined } from '../../policy/compile.js';
 import { ratifyRule, removeRule } from '../../policy/ratify.js';
 import { addRole, loadDirectory, upsertEmployee, type Employee } from '../../policy/people.js';
@@ -73,9 +74,38 @@ function resolveSoloIdentity(): Employee {
   return upsertEmployee({ name: 'You', role: 'solo' });
 }
 
+/**
+ * The identity, plus which tools have actually been seen using it.
+ *
+ * "Protected" on this screen means one thing: a real request from a real tool
+ * reached the gateway and was judged. `activityFor` is that evidence — it is
+ * built from `/api/guard/check` calls that already succeeded, never from a
+ * one-off test the console ran on itself — so this is the same signal Team's
+ * "connected" badge reads for everyone else, not a second, weaker one invented
+ * for solo installs.
+ */
+function withActivity(identity: Employee): Employee & { connected: ReturnType<typeof activityFor> } {
+  return { ...identity, connected: activityFor(identity.id) };
+}
+
 soloRoutes.post('/api/solo/setup', (_req, res) => {
-  res.json(resolveSoloIdentity());
+  res.json(withActivity(resolveSoloIdentity()));
 });
+
+/**
+ * The catalogue is company policy first — half its categories name a CEO, a
+ * vendor bank account, an NDA. Fine on Team, where an administrator is
+ * choosing what binds *other* people; nonsensical here, where the only
+ * person a preset can bind is whoever is sitting at this keyboard. Employee
+ * data, Finance, Customer data and Legal are all rules a company writes about
+ * its people, not ones a person writes about themselves, so this screen
+ * offers only the two categories that are: Security and Code and
+ * infrastructure. `catalogue()` itself stays whole — the toggle route below
+ * still resolves any id against the full list, so a preset activated before
+ * this filter existed (or from Team) remains toggleable, it just is not
+ * suggested again from here.
+ */
+const SOLO_CATEGORIES = new Set(['security', 'code']);
 
 soloRoutes.get('/api/solo/presets', (_req, res) => {
   const identity = resolveSoloIdentity();
@@ -84,21 +114,23 @@ soloRoutes.get('/api/solo/presets', (_req, res) => {
       .rules.filter((r) => r.appliesTo.includes(`@${identity.id}`))
       .map((r) => r.id)
   );
-  const presets = catalogue().map(({ id, category, label, rule }) => ({
-    id,
-    category,
-    label,
-    text: rule.text,
-    severity: rule.severity,
-    active: active.has(id)
-  }));
+  const presets = catalogue()
+    .filter((p) => SOLO_CATEGORIES.has(p.category))
+    .map(({ id, category, label, rule }) => ({
+      id,
+      category,
+      label,
+      text: rule.text,
+      severity: rule.severity,
+      active: active.has(id)
+    }));
   // Grouped for the screen and flat for anything older that reads `presets`.
   const groups = [...new Map(presets.map((p) => [p.category, p.label])).entries()].map(([category, label]) => ({
     category,
     label,
     presets: presets.filter((p) => p.category === category)
   }));
-  res.json({ identity, presets, groups });
+  res.json({ identity: withActivity(identity), presets, groups });
 });
 
 soloRoutes.post('/api/solo/presets/:id/toggle', asyncRoute(async (req, res) => {
@@ -117,7 +149,26 @@ soloRoutes.post('/api/solo/presets/:id/toggle', asyncRoute(async (req, res) => {
 
 soloRoutes.get('/api/solo/rules', asyncRoute(async (_req, res) => {
   const identity = resolveSoloIdentity();
-  const rules = rulesForActor(loadPolicy(), { id: identity.id, role: identity.role }, 'any');
+  const policy = loadPolicy();
+  const bound = rulesForActor(policy, { id: identity.id, role: identity.role }, 'any');
+
+  // A wildcard rule that does not bind this actor is invisible to
+  // `rulesForActor` on purpose — the guard must not judge an exempt admin
+  // against it, and that function is shared with the pipeline that decides
+  // real prompts. But invisible is also how an admin ends up believing a
+  // company rule protects their own machine when it never could: this
+  // screen is the one place that would tell them otherwise, so it adds those
+  // rules back in, marked `applies: false`, for display only — nothing here
+  // feeds a decision.
+  const boundIds = new Set(bound.map((r) => r.id));
+  const notApplied = isExempt(policy, identity.role)
+    ? policy.rules.filter((r) => r.appliesTo.includes('*') && !boundIds.has(r.id))
+    : [];
+
+  const rules = [
+    ...bound.map((r) => ({ ...r, applies: true })),
+    ...notApplied.map((r) => ({ ...r, applies: false }))
+  ];
 
   // "Qué bloqueó y cuándo" (PRD §3.5) — the audit chain already has this per
   // actor, so this reads it rather than keeping a second history nobody else
@@ -135,7 +186,29 @@ soloRoutes.get('/api/solo/rules', asyncRoute(async (_req, res) => {
     .slice(0, 10)
     .map((e) => ({ ts: e.ts, verdict: e.decision.verdict, firedRules: e.decision.firedRules }));
 
-  res.json({ identity, rules, recentBlocks });
+  res.json({ identity: withActivity(identity), rules, recentBlocks });
+}));
+
+/**
+ * Remove one of your own rules — preset-sourced or hand-written, same call.
+ *
+ * Scoped to rules that name this identity specifically (`@you`), never a
+ * role or company-wide rule: those are somebody else's policy decision, and
+ * this identity being exempt from them does not make them this identity's to
+ * delete. `removeRule` is the same function the preset toggle already calls
+ * when it turns one off — a preset that used to sit here simply reappears
+ * under Suggested, since its definition still lives in the catalogue; a
+ * hand-written rule has no such backup, which is why the console gates this
+ * one behind a confirmation and the preset toggle does not.
+ */
+soloRoutes.delete('/api/solo/rules/:id', asyncRoute(async (req, res) => {
+  const identity = resolveSoloIdentity();
+  const id = String(req.params['id']);
+  const rule = loadPolicy().rules.find((r) => r.id === id);
+  if (!rule || !rule.appliesTo.includes(`@${identity.id}`)) {
+    return res.status(404).json({ error: 'no such rule of yours' });
+  }
+  res.json(await removeRule(id));
 }));
 
 soloRoutes.post('/api/solo/rules', asyncRoute(async (req, res) => {
