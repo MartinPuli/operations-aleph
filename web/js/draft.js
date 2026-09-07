@@ -469,10 +469,20 @@ function regressionSample() { return state.audit
   .slice(0, REGRESSION_SAMPLE); }
 
 export function bindPolicy() {
-  const del = $('delRule');
-  if (del) del.onclick = async () => {
+  // Not named `del`: that is the DELETE helper imported at the top of this
+  // file, and a local const by the same name shadowed it, so the click called
+  // the button element as a function and threw. The rule stayed exactly where
+  // it was and the console said nothing, because the throw happened inside an
+  // async handler nobody awaits.
+  const remove = $('delRule');
+  if (remove) remove.onclick = async () => {
     if (!confirm('Remove this rule? It stops binding everyone immediately.')) return;
-    await del(`/api/policy/rules/${encodeURIComponent(del.dataset.id)}`);
+    const { ok, j } = await del(`/api/policy/rules/${encodeURIComponent(remove.dataset.id)}`)
+      .catch(() => ({ ok: false, j: { error: 'could not reach Warden' } }));
+    if (!ok) {
+      remove.insertAdjacentHTML('afterend', `<span class="note bad">${esc(readable(j) ?? 'could not remove it')}</span>`);
+      return;
+    }
     await Promise.all([refreshPolicy(), refreshPeople()]);
     go('policy');
   };
