@@ -265,21 +265,69 @@ function cliNote(providerId) {
 }
 
 /**
- * Which model is drafting, read from the one place that actually knows.
+ * The model picker, inside the composer.
  *
- * This used to derive it from `activeSource`, which the gateway computes from
- * `remoteCompilerSource()` alone: that function knows about a configured
- * endpoint and knows nothing about a signed-in CLI. So somebody who picked
- * Claude Code, saved it, and watched the panel above say "opus · Claude Code"
- * still read "Drafting and judging both run here, on Qwen3-1.7B" underneath it.
- * Two lines on one screen disagreeing about the same fact.
+ * This used to be a grey line under the box, "Drafting with opus · Claude Code
+ * Change", and nobody found it: the line read as a caption and the verb at the
+ * end of it was the whole control. So the choice now sits where the chat tools
+ * people already use put theirs, a button in the bottom-left corner of the box
+ * with the model's name on it, and a menu that switches in one click for the
+ * options that need nothing typed. An endpoint still needs a URL and a key, so
+ * that option goes to the settings page rather than pretending it fits a menu.
  *
- * `/api/models` resolves the CLI, the endpoint and the local weights together,
- * so both lines come from it now.
+ * The name on the button comes from `/api/models`, which resolves the CLI,
+ * the endpoint and the local weights together. It used to be derived from
+ * `activeSource`, which knows about an endpoint and nothing about a signed-in
+ * CLI, and two lines on one screen disagreed about the same fact.
  */
-export function compilerLine() {
+export function modelPicker() {
   const d = state.models?.drafting;
-  if (!d) return '';
-  return `<div class="note compiler-line">Drafting with ${esc(modelLabel(d.model))} · ${esc(d.where)}
-    <button type="button" class="linkish" data-go="compiler">Change</button></div>`;
+  const c = state.compiler;
+  if (!d || !c) return '';
+  const env = Boolean(c.overriddenByEnv);
+  const current = c.provider ?? 'local';
+  // Only what switches in one click: the local weights and the CLIs that are
+  // actually on this machine. The ones that are not, and the endpoints, live
+  // on the settings page, where there is room to say what is missing.
+  const quick = (c.providers ?? []).filter((p) => p.id === 'local' || (p.id.endsWith('-cli') && cliFor(p.id)?.found));
+  return `<details class="menu model-pick" id="modelPick">
+    <summary title="Which model writes your rules"><span class="dot"></span>${esc(modelLabel(d.model))} · ${esc(d.where)}<span class="caret">⌄</span></summary>
+    <div class="menu-list">
+      <div class="menu-head">${env ? 'Set by the environment (WARDEN_COMPILER_*)' : 'Which model writes your rules'}</div>
+      ${quick.map((p) => {
+        const on = !env && p.id === current;
+        const sub = p.id === 'local' ? 'nothing leaves the machine'
+          : `your signed-in session${p.models?.[0] ? ` · ${p.models[0]}` : ''}`;
+        return `<button type="button" class="menu-item${on ? ' on' : ''}" data-pick="${esc(p.id)}"${env ? ' disabled' : ''}>
+          <span>${esc(p.label.replace(' on this machine', ''))}</span><span class="menu-sub">${esc(sub)}</span></button>`;
+      }).join('')}
+      <button type="button" class="menu-item" data-go="compiler"><span>Another model, or an endpoint…</span><span class="menu-sub">pick a model by name, or point at an API</span></button>
+    </div>
+  </details>`;
+}
+
+/** One click in the menu saves the provider and its first model, then re-reads who is drafting. */
+export function bindModelPicker() {
+  const c = state.compiler;
+  for (const b of document.querySelectorAll('[data-pick]')) {
+    b.onclick = async () => {
+      b.closest('details')?.removeAttribute('open');
+      const next = (c?.providers ?? []).find((p) => p.id === b.dataset.pick);
+      if (!next || next.id === c?.provider) return;
+      b.disabled = true;
+      // An empty key keeps whatever is saved; neither the local model nor a CLI
+      // needs one, and the endpoint providers are not offered here.
+      const body = { provider: next.id, baseUrl: '', model: next.models?.[0] ?? '', apiKey: '', redactNames: Boolean(c?.redactNames) };
+      const { ok, j } = await post('/api/settings/compiler', body, { method: 'PUT' }).catch(() => ({ ok: false, j: { error: 'could not reach Warden' } }));
+      state.compilerDraft = null;
+      if (!ok) {
+        // The settings page has the room to say what went wrong; the menu does not.
+        state.compilerTest = { ok: false, error: j?.error ?? 'could not save' };
+        go('compiler');
+        return;
+      }
+      await refreshCompiler();
+      render();
+    };
+  }
 }

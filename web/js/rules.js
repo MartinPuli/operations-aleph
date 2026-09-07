@@ -2,7 +2,7 @@
  * Rules: the policy as a list, the composer, the banners, and the sentences the console says when a compile does not yield a rule.
  */
 import { bindLogPeek } from './answers.js';
-import { compilerLine } from './compiler.js';
+import { modelPicker } from './compiler.js';
 import { $, attr, del, esc, post, severityMeans, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindPolicy, ruleChatPane } from './draft.js';
@@ -238,10 +238,9 @@ function heroComposer() {
 
     <div class="hero-box">
       <textarea id="ruleMsg" rows="2" placeholder="Describe it the way you would to a colleague…"></textarea>
+      ${modelPicker()}
       <button type="button" class="btn primary send" id="ruleSend">Write it</button>
     </div>
-
-    ${compilerLine()}
 
     <div class="hero-sugg" id="cats">
       ${state.presets.map((c, i) => `

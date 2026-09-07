@@ -4,6 +4,7 @@
 import { $, REGRESSION_SAMPLE, del, esc, post, severityVerb, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { audienceLabel, personById, plural, sendOnEnter } from './format.js';
+import { bindModelPicker, modelPicker } from './compiler.js';
 import { bindLimits } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
@@ -37,6 +38,7 @@ export function ruleChatPane() {
           <textarea id="ruleMsg" rows="2" placeholder="${state.draft
             ? 'Tell Warden how to change it…'
             : state.set ? 'Refine the set (“solo para ventas”, “sumá…”), or describe another rule…' : 'Describe the rule in your own words…'}"></textarea>
+          ${modelPicker()}
           <button type="button" class="btn primary send" id="ruleSend"${state.ruleBusy ? ' disabled' : ''}>${state.ruleBusy ? 'Working…' : 'Send'}</button>
         </div>
       </div>
@@ -477,6 +479,7 @@ export function bindPolicy() {
 
   bindLimits();
   bindSweeps();
+  bindModelPicker();
 
   const apply = $('applyLimits');
   if (apply) apply.onclick = async () => {
