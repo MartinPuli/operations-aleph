@@ -829,6 +829,58 @@ input.inline.wide { min-width: 320px; flex: 1 1 320px; }
   background: var(--bg);
 }
 
+/* A type tag in the corner, so the card reads as one object being created —
+   not a stack of separate-looking notices divided by rules. */
+.artifact .card-header { display: flex; align-items: flex-start; gap: var(--s-4); }
+.artifact .card-header .title-block { flex: 1; min-width: 0; }
+.artifact .card-header .summary { margin: 0; }
+.artifact .card-header .note { margin-top: var(--s-1); }
+.tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--r-sm);
+  padding: 3px var(--s-2);
+  font-size: 10px;
+  font-weight: var(--fw-semi);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+}
+.tag.rule { background: var(--accent); color: var(--accent-ink); }
+.tag.issue { background: var(--escalate-bg); color: var(--escalate); }
+
+/* Severity and audience as fields you can see are live controls — a light
+   fill and a chevron, not a sentence describing a default nobody looked at. */
+.artifact .properties { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.artifact .field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  border: none;
+  border-radius: var(--r-sm);
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-2);
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+  background: var(--sunken);
+  cursor: pointer;
+}
+.artifact .field:hover { background: var(--hover); }
+.artifact .field .chev { color: var(--faint); font-size: var(--fs-1); }
+
+/* The one part of the card that is genuinely uncertain — shown with a divider
+   above it and the actual failing prompts, never just a count. */
+.artifact .issue {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-3);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+}
+.artifact .issue-head { display: flex; align-items: center; gap: var(--s-3); }
+.artifact .issue-head b { font-weight: var(--fw-medium); color: var(--ink); }
+.artifact .issue-examples { display: grid; gap: 2px; font-size: var(--fs-2); color: var(--muted); }
+
 /* The same composer geometry as the hero, docked to the bottom. */
 .composer { flex: none; border-top: 1px solid var(--line); background: var(--bg); }
 .composer .sheet { padding: var(--s-5) var(--s-6) var(--s-6); }

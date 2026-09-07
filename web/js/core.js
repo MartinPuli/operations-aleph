@@ -201,6 +201,15 @@ export const state = {
    *  draft card shows why it opened the editor instead of ratifying. Cleared
    *  the moment a chip is touched. */
   audienceWarning: false,
+  /** Same shape as `audienceOpen`, for severity: shut until you say you want
+   *  to change it. Editing it needs no confirm step like audience does — a
+   *  wrong severity does not fail open the way an unconfirmed `['*']` audience
+   *  does, the compiler's guess is a reasonable default either way. */
+  severityOpen: false,
+  /** The check found something and the admin looked at it and chose to
+   *  activate anyway — "Keep as is" on the card. Reset on every fresh check
+   *  so a *new* problem is never hidden behind a dismissal of the old one. */
+  issueDismissed: false,
 
   filter: 'all',
   actorFilter: '',
