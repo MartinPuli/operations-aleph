@@ -337,8 +337,10 @@ function soloSettingsBody() {
 }
 
 function bindSoloSettings() {
-  const go = $('soloGoTeam');
-  if (go) go.onclick = () => { location.hash = '#people'; };
+  // Not named `go`: the router's `go` is imported here, and shadowing it is
+  // the bug that broke rule removal in draft.js for a release.
+  const toTeam = $('soloGoTeam');
+  if (toTeam) toTeam.onclick = () => { location.hash = '#people'; };
 }
 
 VIEWS.soloSettings = {
