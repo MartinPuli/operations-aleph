@@ -1,3 +1,4 @@
+import { withModelRole } from '../../qvac/coordination.js';
 /**
  * Pass 3 — does this message violate one specific rule?
  *
@@ -290,6 +291,7 @@ export async function adjudicate(
   rule: Rule,
   options?: AdjudicateOptions
 ): Promise<{ verdict: RuleVerdict; trace: PassTrace }> {
+  return withModelRole('adjudicator', async () => {
   const started = Date.now();
   const opts = resolve(options);
 
@@ -328,6 +330,7 @@ export async function adjudicate(
       }
     }
   };
+  });
 }
 
 /**
@@ -389,6 +392,7 @@ export async function adjudicateAll(
   rules: Rule[],
   options?: AdjudicateOptions & { screenOver?: Rule[] }
 ): Promise<{ verdicts: RuleVerdict[]; traces: PassTrace[]; screen: Screen | null }> {
+  return withModelRole('adjudicator', async () => {
   const opts = resolve(options);
   const traces: PassTrace[] = [];
   let screen: Screen | null = null;
@@ -434,5 +438,6 @@ export async function adjudicateAll(
     traces: [...traces, ...settled.map((s) => s.trace)],
     screen
   };
+  });
 }
 

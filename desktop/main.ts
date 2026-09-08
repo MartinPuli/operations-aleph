@@ -16,7 +16,7 @@ import { app, BrowserWindow, clipboard, dialog, Menu, shell } from 'electron';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { askMode, ensureModels, modelsPresent, sendState, setupLibReady } from './first-run.js';
 import {
   fetchHealth,
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
     setTimeout(() => {
       smokeReport('WARDEN_SMOKE_TIMEOUT');
       app.exit(1);
-    }, 120_000).unref();
+    }, 140_000).unref();
     // The part of first-run the smoke otherwise skips: mock mode never asks
     // for models, so the modules that download them are never loaded, and a
     // server export the shell needs can vanish with every check green.
@@ -376,12 +376,19 @@ function openConsole(port: number, hash?: string): void {
 }
 
 async function smokeVerify(): Promise<void> {
-  const health = await fetchHealth(activePort);
-  if (health?.ok) {
+  try {
+    const health = await fetchHealth(activePort);
+    if (!health?.ok) throw new Error('/health did not answer');
+    // Exercise the *packaged* native canvas, PDF reader, forked Electron Node
+    // process, OCR worker/core and installed language assets. Mock guard mode
+    // cannot stand in for any of these dependencies after Forge pruning.
+    const reader = await import(pathToFileURL(join(APP_ROOT, 'dist', 'documents', 'smoke.js')).href) as { smokeDocumentReading(): Promise<void> };
+    await reader.smokeDocumentReading();
+    smokeReport('WARDEN_DOCUMENT_SMOKE_OK');
     smokeReport('WARDEN_SMOKE_OK');
     await shutdownAndExit(0);
-  } else {
-    smokeReport('WARDEN_SMOKE_FAIL: /health did not answer');
+  } catch (error) {
+    smokeReport(`WARDEN_SMOKE_FAIL: ${error instanceof Error ? error.message : 'document reader failed'}`);
     await shutdownAndExit(1);
   }
 }

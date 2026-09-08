@@ -7,8 +7,8 @@
 
 # Warden — the local AI gateway
 
-**Your admin writes the rules. Every prompt is judged against them before a model
-sees it. Nothing leaves the machine.**
+**Your admin writes the rules. Warden checks requests and documents locally
+before forwarding allowed content to the configured model.**
 
 Companies are handing employees AI assistants and coding agents. The only control
 most of them have is a system prompt asking the model to behave — which is a
@@ -16,9 +16,11 @@ request, not a control. Anyone can rephrase around it, and an attachment can
 carry instructions the employee never typed.
 
 Warden is the gate. An administrator writes policy in plain language; every
-employee prompt is judged against it before it reaches any model. All inference
-runs on-device through [QVAC](https://docs.qvac.tether.io/), so the company's
-rules, its documents and its conversations never leave the building.
+employee prompt is judged against it before it reaches its assistant. Policy
+analysis runs on the gateway through [QVAC](https://docs.qvac.tether.io/), and
+documents are read with local parsers and offline OCR. The administrator can
+choose a local or external compiler and a permitted upstream assistant; those
+choices do not move employee policy analysis off the gateway.
 
 ---
 
@@ -124,6 +126,10 @@ pnpm install
 pnpm run setup
 pnpm run dev
 ```
+
+The runtime requires Node 22.17+. CI uses Node 22; Node 24 is the verified
+local desktop-packaging choice. See [contributor setup](CONTRIBUTING.md) for the
+observed Node 26 packaging-tool issue.
 
 The package manager is pnpm, pinned in `package.json` (`packageManager`);
 `corepack enable` gets you the right version if you don't have it.
@@ -282,10 +288,88 @@ the aggregator.
 
 ## The admin console
 
-Two working views. **Console** is three panes matching the three people who care
-about any given decision — the admin writing rules, the employee hitting them,
-and whoever has to explain the outcome afterwards. **People** is the directory
-the rules land on.
+**Rules** is where policy is drafted and activated. **Activity** explains past
+decisions, **Inbox** holds requests needing review, **Team** manages identities,
+and **Models** shows and changes the compiler and analyzer. Solo installations
+also expose Models alongside **This device** and **Settings**.
+
+### Read documents before deciding
+
+The Simulator accepts a prompt, files, or both. Use **Models → Try a document**,
+choose the identity to check as, then attach or drop files. Warden supports text
+PDFs, `.docx`, UTF-8 or BOM-marked UTF-16 text/Markdown/CSV, scanned PDFs, and PNG/JPEG/WebP/BMP images.
+Scans use bundled English and Spanish OCR without a runtime download.
+
+The default limits are five files, 8 MiB per file, 16 MiB total, 20 pages, and
+120,000 extracted characters per request. Parsing and OCR have bounded worker,
+image, archive and time limits. An unreadable document is held for review;
+partial extraction never counts as a clean check. The verdict and Activity show
+what was read, the extraction method, and each complete file's SHA-256.
+
+The authenticated guard API accepts complete base64 bytes, including a
+file-only request with an empty `prompt`:
+
+```bash
+curl http://127.0.0.1:8080/api/guard/check \
+  -H "Authorization: Bearer $WARDEN_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data '{"prompt":"Summarize this document.","attachments":[{"name":"note.txt","mimeType":"text/plain","data":"SGVsbG8u"}]}'
+```
+
+The OpenAI-compatible proxy also accepts inline `file`/`input_file` parts and
+image data URLs. It checks the conversation's readable content and forwards only
+sanitized text reconstructed from the inspected extraction. It rejects remote
+file/image URLs, stored file IDs and unknown content parts instead of forwarding
+uninspected bytes. Original layouts, images and binary files are not passed to
+the upstream assistant.
+
+Native hooks can attach files **only when the host supplies attachment bytes or
+explicit file paths in its event**. A filename mentioned in ordinary prose does
+not grant file access, and Warden does not search the filesystem to guess what a
+user meant. Hook transport tests establish that exposed attachments are carried
+and malformed or incomplete inspection is refused; they do not establish that
+every native client exposes every attachment. Gateway-outage behavior retains
+the configured hook fail-open/fail-closed policy. Claude Code, Codex and OpenCode
+still need their documented end-to-end client verification. See
+[document support](docs/DOCUMENTS.md) and
+[console behavior](docs/UI-MODELS-AND-DOCUMENTS.md).
+
+### Choose the compiler and analyzer
+
+Open **Models** in either a solo or team installation. The compiler writes rule
+drafts; the analyzer checks employee requests and extracted documents. The page
+separates the saved preference from the runtime model, labels missing downloads
+and environment overrides, and links to runtime diagnostics.
+
+**Apply compiler** changes new compiler calls without restarting the gateway.
+Built-in analyzers can be selected there too. Existing requests finish before a
+role changes, and a local activation must load successfully before it succeeds.
+Analysis always remains local; compiler endpoints cannot be assigned to it.
+
+**Your models → Add model** saves reusable API connections or imports GGUF
+weights. Upload from the browser, copy a file already on the gateway when
+administering it locally, or download from a public HTTPS URL. Test every intended
+role, then choose **Use as compiler** or **Use as analyzer**. A compatibility test
+checks the model interface and loading, not policy accuracy. Repeated evaluation
+is still required before trusting different analyzer weights.
+
+For example, a direct loopback administrator can save a local OpenAI-compatible
+compiler connection; replace the model identifier with one your server serves:
+
+```bash
+curl http://127.0.0.1:8080/api/settings/models \
+  -H 'Content-Type: application/json' \
+  --data '{"kind":"endpoint","name":"My local compiler","baseUrl":"http://127.0.0.1:11434/v1","model":"my-model"}'
+```
+
+Use the returned `id` with `POST /api/settings/models/:id/test` and then
+`POST /api/settings/models/:id/activate`, each with `{"role":"compiler"}`.
+Remote administration also requires an exempt administrator API key. Saved
+connections and weights are shared by the administrators of this installation,
+not private per-user tenants. Keys are never returned to the browser.
+
+See [model management and HTTP reference](docs/MODEL-MANAGEMENT.md) for storage,
+credential handling, transfer limits, overrides, rollback and custom-model tests.
 
 ### Writing a rule
 
@@ -327,7 +411,7 @@ never gets the last word on it.
 ### Onboarding, generated per person
 
 Adding someone to the directory is half the job; their tools still have to point
-at the gateway. The console generates that too — **People → a person →
+at the gateway. The console generates that too — **Team → a person →
 Onboarding** — with their id, their key and this gateway's reachable address
 already filled in, tabbed by tool, one button per block and one that copies the
 whole thing as a message to paste into a chat.
@@ -383,7 +467,7 @@ looks deployed while governing nobody.
 
 ### People
 
-The People tab is the directory: add someone, assign their role, create a role
+The Team tab is the directory: add someone, assign their role, create a role
 with its own daily quota, rotate a key, remove someone. Opening a person shows
 every rule that will judge them, grouped by *why* it binds them — written for
 them, because of their role, or company-wide — because "everyone is held to
@@ -576,7 +660,9 @@ attachments could not be read. An unreadable attachment fails closed, which
 moves both columns and earns neither — `document-borne` shows 8/8 stopped with
 nothing having read the documents, and its clean invoices count as false
 positives for the same reason. [`REPORT.md`](REPORT.md) says so where the number
-appears; `OCR_LATIN` has no HTTPS mirror and arrives only over the P2P registry.
+appears. That historical run used `OCR_LATIN`, which had no HTTPS mirror.
+The current document path uses bundled Tesseract OCR; its extraction tests do
+not retroactively validate this corpus score or replace a repeated accuracy run.
 
 And every generated number carries the commit that produced it. If
 `git log <that sha>..HEAD -- src/redteam` lists anything, the harness has moved
@@ -646,8 +732,10 @@ benign-controls class caught all of them. Nothing else would have.
 
 ## Where inference happens
 
-Every model call in the project goes through one directory. Nothing else imports
-`@qvac/sdk`.
+Guard and compiler model calls go through `src/qvac/`; nothing else imports
+`@qvac/sdk`. The document reader in `src/documents/` runs bounded local parsers
+and Tesseract OCR separately. No employee document is sent to a remote OCR
+service.
 
 Every link below is pinned to a commit, so it shows the code as it was when this
 was written rather than whatever the branch drifted to. Regenerate with
@@ -678,19 +766,22 @@ Pinned to [`b854bb800dac`](https://github.com/Wardenlabs/warden/tree/b854bb800da
 
 ### Models and capabilities used
 
-| Role | Model | QVAC capability |
+| Role | Model or reader | Capability |
 |---|---|---|
 | Adjudicator (the judge) | `DynaGuard-4B` Q6_K, the default since 2026-09-04; Qwen3 1.7B / 8B and DynaGuard 1.7B / 8B are seats in the console | text generation, grammar-constrained structured output |
 | Compiler (writes rules) | `QWEN3_1_7B_INST_Q4` on this machine, or Claude Code / Codex / an OpenAI-shaped endpoint if you point it there | text generation |
 | Detector (injection pass, off) | `QWEN3_600M_INST_Q4` | text generation |
 | Retrieval | `EMBEDDINGGEMMA_300M_Q8_0` | text embeddings |
-| Attachments | `OCR_LATIN` | OCR |
+| Documents | Local PDF/DOCX/text parsers; bundled Tesseract English/Spanish data | Text extraction and offline OCR |
 | Protected assistant | local QVAC server | OpenAI-compatible serving |
 
-Nothing calls a cloud API. `WARDEN_UPSTREAM` exists so a company could point the
-allowed traffic at a hosted model — with the guard still running on-device,
-masking secrets before anything leaves — but it defaults to the local model and
-that is what everything here was measured against.
+The default upstream is local. `WARDEN_UPSTREAM` can send allowed, sanitized
+traffic to a hosted assistant; an explicitly configured external compiler sees
+administrator compilation inputs. Employee analysis and document extraction
+remain local in both cases. See [Security](SECURITY.md) for the data boundary.
+Model weights have their own licenses; Warden's Apache-2.0 source license does
+not relicense imported weights. [Third-party notices](THIRD_PARTY_NOTICES.md)
+record the document/OCR dependencies and their licenses.
 
 ---
 
@@ -706,6 +797,12 @@ pnpm run eval -- --attacks --reps 3 --label "…"   # the product run, paired by
 pnpm run bench -- --a base --b <variant>         # one message against one rule, with a p-value
 pnpm run verify-audit     # recompute the audit hash chain
 pnpm run typecheck
+pnpm test                 # isolated regression suites; no downloaded judge required
+pnpm run test:documents   # real parsers/OCR and document fail-closed boundaries
+pnpm run test:hook-documents  # bytes and explicit paths exposed by host hooks
+pnpm run test:proxy-documents # inspection-to-forwarding boundary
+pnpm run test:model-management # catalogue, tests, hot switching, transfers
+pnpm run test:console     # identity, form secrecy and UI state boundaries
 
 pnpm run test:hook        # the hook: fail-open deadlines, refusals in both languages
 pnpm run test:cli         # the CLI compiler's command line, against a stand-in claude
@@ -738,7 +835,7 @@ believing anything either of them says.
 | `WARDEN_HOST` | `0.0.0.0` | Binds every interface so teammates can reach the gateway. `127.0.0.1` to keep it private. |
 | `WARDEN_ADMIN_REQUIRE_KEY` | — | `1` drops loopback trust, so every administrative call must present the API key of a role the policy exempts. Set it where employees can log into the gateway host. |
 | `WARDEN_CORS_ORIGIN` | — | Unset means no cross-origin access at all: the console is served by this same process, so it needs none. Set it only to serve `web/` from a separate dev port. |
-| `WARDEN_ADAPTER` | `real` | `mock` runs everything with no model. `llamacpp` runs the same weights under node-llama-cpp instead of the QVAC SDK — an experiment, not a supported mode: it needs `pnpm add node-llama-cpp`, has no OCR, and runs one sequence where the QVAC path runs four. It exists so "would this be better off QVAC" can be answered with a paired bench run rather than an argument. |
+| `WARDEN_ADAPTER` | `real` | `mock` stands in for guard/compiler inference. `llamacpp` runs the same weights under node-llama-cpp instead of the QVAC SDK — an experiment, not a supported mode: it needs `pnpm add node-llama-cpp` and runs one sequence where the QVAC path runs four. Public document parsing and OCR run separately from these adapters. It exists so "would this be better off QVAC" can be answered with a paired bench run rather than an argument. |
 | `WARDEN_MODE` | `warden` | `baseline` disables the guard, for comparison runs. |
 | `WARDEN_TOP_K` | `3` | Non-pinned rules adjudicated per prompt. Each is a model call. |
 | `WARDEN_MIN_RELEVANCE` | `0` | Cosine floor a non-pinned rule must clear to be adjudicated at all. Below it the rule is not handed on — one fewer model call and one fewer chance to misfire. Off by default: measured at `0.5` it moved nothing and lost an attack. |
@@ -753,7 +850,7 @@ believing anything either of them says.
 | `WARDEN_MODEL_<ROLE>` | — | Point one role at a specific GGUF, e.g. `WARDEN_MODEL_ADJUDICATOR=models/Qwen3-8B-Q4_K_M.gguf`. |
 | `WARDEN_UPSTREAM` | `http://localhost:11434` | The model that answers allowed prompts. |
 | `WARDEN_URL` | `http://localhost:8080` | Read by the hook — point at another machine's gateway. |
-| `WARDEN_API_KEY` | — | Read by the hook, on the employee's machine. Their whole identity: no name, no role. Issued from the console's People tab. |
+| `WARDEN_API_KEY` | — | Read by the hook, on the employee's machine. Their whole identity: no name, no role. Issued from the console's Team tab. |
 | `WARDEN_POLICY_PATH` | `data/policies.json` | The ratified policy. |
 | `WARDEN_COMPANY_PATH` | `data/company.json` | The live directory of people and roles. |
 | `WARDEN_COMPANY_SEED` | `data/seed/company.json` | Seeds the directory on first run. |
@@ -803,35 +900,35 @@ Step by step, with what is still missing for a real deployment, in
 
 Stated plainly, because a README that oversells is worse than one that undersells.
 
-**The gateway does not terminate TLS and the admin console has no login.** Both
-are fine on a trusted network and neither is fine on a public address, which is
-why the deployment notes push a private mesh rather than a port forward. API
-keys are stored in cleartext in `data/company.json` — hashing them would work for
-authentication but would stop the admin from ever showing a key again, and
-showing it is what makes onboarding a copy button instead of a support ticket.
-A deliberate trade for a gateway running on a company's own machine.
+**The gateway does not terminate TLS.** The admin API accepts direct loopback
+or a key belonging to a role the ratified policy exempts; it has no separate
+account/password login. A shared host should set `WARDEN_ADMIN_REQUIRE_KEY=1`,
+and public access needs TLS and a trusted deployment boundary. Employee keys in
+`data/company.json` and compiler credentials in the settings/catalogue remain
+plaintext in private files. See [deployment and storage notes](SECURITY.md).
 
 - **The hook sees prompts, not the agent's actions.** Governing what an agent
   *does* — files it writes, commands it runs — is the `PreToolUse` hook, which
   both tools expose and Warden does not use yet.
-- **OpenCode is not supported.** Its plugin system has a pre-LLM hook, but the
-  abort semantics are undocumented and we have not watched it block anything. It
-  goes in this README when it does.
+- **OpenCode's native integration is not verified.** Its pre-LLM plugin is
+  wired to the shared hook, but native abort and attachment behavior still need
+  end-to-end observation beyond the synthetic transport harness.
 - **Quota counters are in memory** and reset with the process. So is the
   one-rewrite-per-block ledger: a restart hands back one rewrite per past block.
 - **A suggested rewrite has never been seen from a real model.** The path is
   wired and verified against the mock; what a 1.7B model actually proposes when
   asked to restate a blocked request is unmeasured, and the re-check is what
   stands between that and an employee.
-- **The admin API has no authentication, and that is where the keys are.**
-  Anyone who can reach the port can read the directory — every employee's API
-  key with it — write policy, and remove people. Cross-origin access is off by
-  default, so a web page an admin visits cannot do it, but every host on the LAN
-  can. The employee-facing paths are properly authenticated; the admin ones are
-  not, so the whole key model rests on that port being reachable only by people
-  who are already trusted. Bind `WARDEN_HOST=127.0.0.1` if that is not true on
-  your network. An admin credential is the obvious next piece of work, and until
-  it exists this is the largest gap in the system.
+- **Native attachment coverage depends on the host event.** Files the host does
+  not expose cannot be inspected by its prompt hook. References in ordinary
+  prompt text are not treated as paths, and native hooks cannot replace or
+  sanitize the original file that the host sends onward.
+- **OCR is fallible.** Clear synthetic scans and failure paths are tested, but
+  document attack-detection accuracy on representative business documents has
+  not been established. Unsupported, unreadable and incomplete files are held.
+- **Custom-model compatibility is not accuracy.** A model that loads and returns
+  the required format can still misclassify policy. Existing repeated-benchmark
+  requirements apply to every replacement analyzer.
 - **Output-scope rules are enforced on the proxy only.** The gateway can judge
   a model's answer, and does — but it only ever sees an answer on the
   OpenAI-compatible path. Through the hook, Warden runs before the prompt is

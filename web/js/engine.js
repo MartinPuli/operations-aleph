@@ -1,169 +1,28 @@
-/**
- * Engine: is the guard working, which model judges, and what is on this disk.
- */
-import { $, esc, post, state } from './core.js';
-import { refreshAdjudicator, refreshCompiler } from './data.js';
+/** Runtime diagnostics. Model choices live together on the Models screen. */
+import { esc, post, state } from './core.js';
 import { modelLabel } from './format.js';
-import { render } from './render.js';
-import { go } from './router.js';
-import { readable } from './answers.js';
 import { VIEWS } from './views.js';
 
-/**
- * What is on this disk, and which of the two seats your subscription can take.
- *
- * Two complaints, one panel. The console named the adjudicator without ever
- * saying whether its weights exist, so a filename in a config and an installed
- * model looked the same on screen; `onDisk` comes from the file system, not
- * from what would be loaded. And people configure Claude Code expecting it to
- * do the work, because nothing said which work. Judging never leaves the
- * machine under any setting on this page, and that sentence belongs here rather
- * than in SECURITY.md where nobody hits it at the moment they are wondering.
- */
-/**
- * Is the guard working, in one sentence, before anything else on the page.
- *
- * The old screen made you infer this from a red banner that appeared beside an
- * inventory of five files: everything on disk and still nothing judging looked
- * exactly like everything on disk and judging fine. The state the gateway
- * already tracks answers it directly, so it says so.
- */
 function engineStatus(m) {
-  if (!m) return { tone: 'bad', title: 'The gateway is not answering.', detail: '' };
-  if (m.mock) {
-    return {
-      tone: 'warn',
-      title: 'Demo mode. Nothing is really being judged.',
-      detail: 'A stand-in is answering in place of the models, so no verdict here means anything.'
-    };
-  }
-  if ((m.runtime && !m.runtime.ok) || m.state === 'failed') {
-    return {
-      tone: 'bad',
-      title: 'Judging is not running. Every rule is escalating.',
-      detail: 'Nothing is being let through unchecked: a rule that cannot be evaluated is held for a person, never assumed clean. But nobody is getting an answer either.'
-    };
-  }
-  if (m.state !== 'ready') {
-    return {
-      tone: 'warn',
-      title: 'Judging is warming up.',
-      detail: 'The first prompt will wait for the model to finish loading.'
-    };
-  }
-  return {
-    tone: 'ok',
-    title: 'Judging is running. Every prompt is being checked.',
-    detail: `${modelLabel(m.judging.model)} on this machine. Nothing leaves it.`
-  };
-}
-
-/**
- * The seat's latency as a figure, out of the sentence the server sends.
- *
- * `perDecision` is a sentence because the console used to print it as one,
- * under the card. In a row there is room for "4.5 s a decision" and not for
- * the clause about which machine measured it; the sentence stays as the title
- * so a hover still has it. A seat that was never run says so instead of
- * dressing an expectation up as a measurement.
- */
-function perDecision(sentence) {
-  const m = /(\d+(?:\.\d+)?)\s*s\b/.exec(sentence ?? '');
-  if (!m) return 'not measured';
-  return `${/^expected/i.test(sentence) ? '~' : ''}${m[1]} s a decision`;
+  if (!m) return { tone: 'bad', title: 'The gateway is not answering.', detail: 'Return to Models and refresh the connection.' };
+  if (m.mock) return { tone: 'warn', title: 'Demo mode is active.', detail: 'A stand-in is answering in place of the models. These verdicts do not measure the real analyzer.' };
+  if (m.runtime?.ok === false || m.state === 'failed') return { tone: 'bad', title: 'The analyzer is unavailable.', detail: 'Rules that cannot be evaluated are held for review. Check the runtime error below.' };
+  if (m.state !== 'ready') return { tone: 'warn', title: 'The analyzer will load when needed.', detail: 'The first request may wait while the local model starts.' };
+  return { tone: 'ok', title: 'Local analysis is running.', detail: `${modelLabel(m.judging.model)} is checking requests on this machine.` };
 }
 
 function enginePage() {
   const m = state.models;
-  const a = state.adjudicator;
-  const st = engineStatus(m);
-  const chosen = a?.model ?? 'default';
-  const picked = (a?.choices ?? []).find((c) => c.id === chosen);
-  // The chosen seat is not always the one answering: choosing the larger model
-  // is what starts its download, and until that lands the default is still
-  // judging. Only for a seat somebody opted into — a machine with nothing
-  // downloaded at all already says so in the banner above the whole console,
-  // and repeating it here produced the sentence "Qwen3 1.7B keeps judging
-  // until the download finishes" about the model that was missing.
-  const fallback = (a?.choices ?? []).find((c) => c.id === 'default');
-  const waiting = Boolean(picked && !picked.onDisk && picked.id !== 'default');
-
-  // In demo mode the banner over the whole console already says nothing is
-  // being judged; a second headline saying it again on this page was the
-  // same sentence twice on one screen.
+  const status = engineStatus(m);
   return `<div class="sheet settings">
-    ${m?.mock ? '' : `<div class="headline">
-      <span class="dot ${st.tone}"></span>
-      <div>
-        <div class="t">${esc(st.title)}</div>
-        ${st.detail ? `<div class="m">${esc(st.detail)}</div>` : ''}
-      </div>
-    </div>`}
-
-    ${m?.runtime && !m.runtime.ok ? `<div class="section">
-      <div class="label">What is wrong</div>
-      <div class="banner bad">
-        <b>The weights are here. The worker that runs them will not start.</b>
-        <pre class="code">${esc(m.runtime.path ?? 'bare-runtime not found')}
-${esc(m.runtime.detail)}</pre>
-      </div>
-    </div>` : ''}
-
-    <div class="section">
-      <div class="label">The model that judges</div>
-      <div class="note">Every prompt your team sends goes through this model before it reaches anything else.</div>
-
-      ${a ? `<div class="seatlist" role="radiogroup" aria-label="The model that judges">
-        ${a.choices.map((c) => {
-          const on = c.id === chosen;
-          const gb = (c.approxMB / 1000).toFixed(1);
-          const status = on
-            ? (a.overriddenByEnv ? 'chosen here, but the environment wins' : waiting ? 'chosen · not on this disk yet' : 'judging now')
-            : (c.id === 'default' ? 'the default' : '');
-          return `<div class="seatrow${on ? ' on' : ''}">
-            <span class="radio" aria-hidden="true"></span>
-            <div class="seatbody">
-              <div class="seathead"><span class="name">${esc(c.label)}</span>${status ? `<span class="badge${on ? '' : ' quiet'}">${esc(status)}</span>` : ''}</div>
-              <div class="trade">${esc(c.trade)}</div>
-              <div class="meta">
-                <span>${esc(perDecision(c.perDecision))}</span>
-                <span>${gb} GB</span>
-                <span class="${c.onDisk ? 'have' : 'want'}">${c.onDisk ? 'on disk' : 'not downloaded'}</span>
-              </div>
-            </div>
-            <div class="seatact">${on
-              ? (waiting ? `<button type="button" class="btn primary js-get-models">Download · ${gb} GB</button>` : '')
-              : `<button type="button" class="btn" data-seat="${esc(c.id)}">${c.onDisk ? 'Use this' : 'Use this'}</button>`}</div>
-          </div>`;
-        }).join('')}
-      </div>` : '<div class="note">Could not read which model is in the seat.</div>'}
-
-      ${a?.overriddenByEnv ? `<div class="banner warn">
-        <b>The environment is setting this.</b> <code>WARDEN_MODEL_ADJUDICATOR</code> wins over what you pick here,
-        and <b>${esc(modelLabel(a.inForce))}</b> is what answers.
-      </div>` : waiting ? `<div class="note">${esc(fallback?.label ?? 'The smaller model')} keeps judging until the download lands. Warden restarts on its own when it does.</div>` : ''}
-    </div>
-
-    <div class="section">
-      <div class="label">Everything else it needs</div>
-      ${m ? `<div class="models">
-        ${m.models.filter((x) => x.role !== 'adjudicator').map((x) => `<div class="model ${x.onDisk ? 'have' : 'off'}">
-          <span class="role">${esc(x.role)}</span>
-          <span class="file">${esc(modelLabel(x.name))}</span>
-          <span class="state">${x.onDisk
-            ? `on disk${x.bytes ? ` · ${(x.bytes / 1e9).toFixed(2)} GB` : ''}`
-            : x.fetchable === false ? 'off — no download exists' : 'not downloaded'}</span>
-        </div>`).join('')}
-      </div>` : ''}
-      <div class="note">The OCR weights have no download; they arrive over the peer registry or not at all, which is why attachments have never been measured.</div>
-    </div>
-
-    <div class="section">
-      <div class="label">Not part of judging</div>
-      <div class="elsewhere">
-        <span>Rules are drafted by <b>${esc(modelLabel(m?.drafting.model) || 'this machine')}</b> through ${esc(m?.drafting.where ?? 'this machine')}, which never sees an employee prompt.</span>
-        <button type="button" class="btn" data-go="compiler">Change it</button>
-      </div>
+    <button type="button" class="btn quiet" data-go="models">Back to Models</button>
+    <div class="headline"><span class="dot ${status.tone}" aria-hidden="true"></span><div><div class="t">${esc(status.title)}</div><div class="m">${esc(status.detail)}</div></div></div>
+    ${m?.runtime?.ok === false ? `<div class="section"><div class="label">Runtime error</div><div class="banner bad"><b>The local model worker could not start.</b><pre class="code">${esc(m.runtime.path ?? 'Runtime not found')}
+${esc(m.runtime.detail)}</pre></div></div>` : ''}
+    <div class="section"><div class="label">Model files on this gateway</div>
+      ${m ? `<div class="models">${m.models.map((model) => `<div class="model ${model.onDisk ? 'have' : 'off'}"><span class="role">${esc(model.role === 'adjudicator' ? 'analyzer' : model.role)}</span><span class="file">${esc(modelLabel(model.name))}</span><span class="state">${model.onDisk ? `On disk${model.bytes ? ` · ${(model.bytes / 1e9).toFixed(2)} GB` : ''}` : model.fetchable === false ? 'Optional · not installed' : 'Not downloaded'}</span></div>`).join('')}</div>` : '<p class="note">Model inventory is unavailable. Refresh Models to try again.</p>'}
+      <p class="note">Text documents are read directly. Scans and images use the document reader’s offline OCR; this inventory lists the guard’s QVAC models.</p>
+      ${m?.models.some((model) => !model.onDisk && model.fetchable !== false) ? state.canLeaveDemo ? '<button type="button" class="btn js-get-models">Download missing models</button>' : '<p class="note">Run <code>pnpm run setup</code> on the gateway to download missing built-in models.</p>' : ''}
     </div>
   </div>`;
 }
@@ -200,30 +59,4 @@ export function bindGetModels() {
   }
 }
 
-function bindEngine() {
-  for (const seat of document.querySelectorAll('[data-seat]')) {
-    seat.onclick = async () => {
-      const model = seat.dataset.seat;
-      if (model === (state.adjudicator?.model ?? 'default')) return;
-      seat.disabled = true;
-      const { ok, j } = await post('/api/settings/adjudicator', { model });
-      seat.disabled = false;
-      if (!ok) {
-        seat.insertAdjacentHTML('afterend', `<span class="note bad">${esc(readable(j) ?? 'could not change it')}</span>`);
-        return;
-      }
-      await refreshAdjudicator();
-      await refreshCompiler();
-      render();
-    };
-  }
-  // The download button is the same one the banner and the panel have always
-  // used: it hands off to the desktop shell, which relaunches into the
-  // first-run screen and fetches whatever is missing, the chosen seat included.
-  bindGetModels();
-}
-
-VIEWS.engine = {
-  body: enginePage,
-  bind: bindEngine
-};
+VIEWS.engine = { railParent: 'models', body: enginePage, bind: bindGetModels };

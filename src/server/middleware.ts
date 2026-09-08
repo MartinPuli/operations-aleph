@@ -28,7 +28,7 @@ export function corsIfConfigured(app: Express): void {
   app.use((_req, res, next) => {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Headers', 'content-type, authorization');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     next();
   });
   app.options(/.*/, (_req, res) => res.sendStatus(204));

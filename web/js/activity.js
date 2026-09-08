@@ -2,6 +2,7 @@
  * Activity: the decision log, the shape of today, and one decision opened in place.
  */
 import { $, attr, esc, state } from './core.js';
+import { documentMetadataMarkup } from './documents.js';
 import { actorName, clip, dayKey, dayLabel, hhmm, plural, ruleName, shortHash } from './format.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
@@ -91,6 +92,7 @@ function decisionRows(entries, emptyState) {
         : '<i class="nokeep" title="The audit log keeps this prompt\'s SHA-256, not its text. The console can show the text only while the gateway that judged it is still running.">not stored</i>'}</span>
       ${fired ? `<span class="rule-ref">${esc(ruleName(fired.ruleId))}</span>` : ''}
       <span class="meta">${esc(hhmm(a.ts))}</span>
+      ${d.documents?.length ? `<span class="attachment-count" title="${d.documents.length} attached document${d.documents.length === 1 ? '' : 's'}">${d.documents.length} file${d.documents.length === 1 ? '' : 's'}</span>` : ''}
     </button>`;
 
     if (open) out += decisionDetail(a);
@@ -177,6 +179,7 @@ export function decisionDetail(entry, head = '') {
       <div class="r"><span class="k">Policy</span><span class="v mono">${esc(shortHash(d.policyVersion))}</span></div>
       ${d.quota?.limit ? `<div class="r"><span class="k">Daily use</span><span class="v num">${d.quota.used} of ${d.quota.limit}</span></div>` : ''}
       ${d.maskedSpans?.length ? `<div class="r"><span class="k">Masked</span><span class="v">${plural(d.maskedSpans.length, 'secret')} removed before checking</span></div>` : ''}
+      ${(d.documents ?? []).map((document) => `<div class="r"><span class="k">${esc(document.name)} SHA-256</span><span class="v mono">${esc(document.sha256)}</span></div>`).join('')}
       ${(d.firedRules ?? []).map((r) => `
         <div class="r"><span class="k">${esc(r.ruleId)}</span><span class="v">${esc(r.reason)} · confidence ${r.confidence ?? '—'}</span></div>`).join('')}
     </div>`;
@@ -198,6 +201,7 @@ export function decisionDetail(entry, head = '') {
     <div class="group">
       <div class="label">What they sent</div>
       <pre class="code">${esc(d.maskedPrompt || '—')}</pre>
+      ${documentMetadataMarkup(d.documents)}
     </div>
 
     ${(d.firedRules ?? []).length ? `

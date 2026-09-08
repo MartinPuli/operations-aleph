@@ -10,8 +10,11 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Router } from 'express';
 import { detectCliTools } from '../../qvac/cli-compiler.js';
-import { remoteCompiler } from '../../qvac/index.js';
-import { forgetRole, resolvedModel } from '../../qvac/client.js';
+import { isMock, remoteCompiler } from '../../qvac/index.js';
+import { withRoleChange } from '../../qvac/coordination.js';
+import { RealQvacAdapter } from '../../qvac/real.js';
+import { applyCompilerSettings, selections, testEndpoint, withModelManagement } from '../../models/manager.js';
+import { activeLocalModel, configuredModel, forgetRole, modelFor, modelInventory } from '../../qvac/client.js';
 import { ADJUDICATOR_CHOICES, modelsDir } from '../../qvac/models.js';
 import { remoteCompilerSource, validate as validateCompilerEndpoint } from '../../qvac/remote.js';
 import {
@@ -22,7 +25,6 @@ import {
   loadCompilerSettings,
   redactedCompilerSettings,
   saveAdjudicatorSettings,
-  saveCompilerSettings
 } from '../../settings.js';
 import { asyncRoute } from '../http.js';
 
@@ -41,9 +43,12 @@ settingsRoutes.get('/api/settings/adjudicator', (_req, res) => {
   const dir = modelsDir();
   res.json({
     model: chosen,
+    modelId: selections().adjudicator,
+    configuredModel: configuredModel('adjudicator'),
+    loadedModel: activeLocalModel('adjudicator'),
     // What is actually loaded, which is not always what was chosen: the env
     // override outranks this setting and a bench run leaves it set.
-    inForce: resolvedModel('adjudicator'),
+    inForce: activeLocalModel('adjudicator'),
     overriddenByEnv: Boolean(process.env['WARDEN_MODEL_ADJUDICATOR']),
     // Named fields rather than a spread: the corpus percentages stay on the
     // server. They are what the choice is grounded in, not what a console has
@@ -72,25 +77,36 @@ settingsRoutes.get('/api/settings/adjudicator', (_req, res) => {
  * model is actually answering, and the guard goes on judging with the 1.7B
  * until the download lands.
  */
-settingsRoutes.post('/api/settings/adjudicator', asyncRoute(async (req, res) => {
-  const parsed = adjudicatorSettingsSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: `model must be one of: ${ADJUDICATOR_CHOICES.map((c) => c.id).join(', ')}` });
-    return;
-  }
-  const choice = ADJUDICATOR_CHOICES.find((c) => c.id === parsed.data.model);
-  const onDisk = Boolean(choice && existsSync(resolve(modelsDir(), choice.filename)));
-  const saved = saveAdjudicatorSettings(parsed.data);
-  // The process caches one loaded model per role for its lifetime, so without
-  // this the console would report the new seat while the old model answered.
-  await forgetRole('adjudicator');
-  res.json({
-    ...saved,
-    onDisk,
-    needsDownload: onDisk ? null : (choice?.filename ?? null),
-    inForce: resolvedModel('adjudicator')
+settingsRoutes.post('/api/settings/adjudicator', asyncRoute(async (req, res) => withModelManagement(async () => {
+  // Custom IDs have their own tested activation route. This endpoint only
+  // accepts the shipped choices, including the request to download one.
+  const parsed = adjudicatorSettingsSchema.safeParse({ model: req.body?.model });
+  if (!parsed.success) return res.status(400).json({ error: `model must be one of: ${ADJUDICATOR_CHOICES.map((c) => c.id).join(', ')}` });
+  const choice = ADJUDICATOR_CHOICES.find((c) => c.id === parsed.data.model)!;
+  const path = resolve(modelsDir(), choice.filename);
+  const onDisk = existsSync(path);
+  await withRoleChange('adjudicator', async () => {
+    const previous = loadAdjudicatorSettings();
+    // An absent preset is a download request. Keep the current loaded model
+    // serving until the desktop completes the transfer and restarts.
+    if (!onDisk || isMock() || process.env['WARDEN_MODEL_ADJUDICATOR']) {
+      saveAdjudicatorSettings(parsed.data);
+      return;
+    }
+    await forgetRole('adjudicator');
+    try {
+      await new RealQvacAdapter().testLocal(path, 'adjudicator', /dynaguard/i.test(choice.filename) ? 'dynaguard' : 'compliance');
+      saveAdjudicatorSettings(parsed.data);
+      await modelFor('adjudicator');
+    } catch (error) {
+      await forgetRole('adjudicator');
+      saveAdjudicatorSettings(previous);
+      throw error;
+    }
   });
-}));
+  res.json({ ...parsed.data, modelId: null, onDisk, needsDownload: onDisk ? null : choice.filename,
+    configuredModel: configuredModel('adjudicator'), inForce: activeLocalModel('adjudicator') });
+})));
 
 /**
  * Where rule compilation runs.
@@ -124,19 +140,23 @@ settingsRoutes.get('/api/settings/compiler', asyncRoute(async (_req, res) => {
     // the split never ran, and the instruction that should have become five
     // rules became one. This is the adapter's own answer, not the file's.
     capable: remoteCompiler() !== null,
-    localModel: resolvedModel('adjudicator')
+    modelId: selections().compiler,
+    inForce: remoteCompiler() ?? activeLocalModel('compiler'),
+    configuredModel: configuredModel('compiler'),
+    localModel: modelInventory().find((m) => m.role === 'compiler')?.name ?? 'local compiler'
   });
 }));
 
-settingsRoutes.put('/api/settings/compiler', asyncRoute(async (req, res) => {
+settingsRoutes.put('/api/settings/compiler', asyncRoute(async (req, res) => withModelManagement(async () => {
   const body = req.body ?? {};
   const current = loadCompilerSettings();
+  const sameEndpoint = String(body.baseUrl ?? '').replace(/\/+$/, '') === current.baseUrl.replace(/\/+$/, '');
   const next = compilerSettingsSchema.safeParse({
     provider: String(body.provider ?? 'local'),
     baseUrl: String(body.baseUrl ?? ''),
     // An empty key means "keep the one already saved", so the console never has
     // to hold a secret in order to change the model beside it.
-    apiKey: typeof body.apiKey === 'string' && body.apiKey.length > 0 ? body.apiKey : current.apiKey,
+    apiKey: body.clearKey === true ? '' : typeof body.apiKey === 'string' && body.apiKey.length > 0 ? body.apiKey : sameEndpoint ? current.apiKey : '',
     model: String(body.model ?? ''),
     redactNames: Boolean(body.redactNames)
   });
@@ -150,17 +170,26 @@ settingsRoutes.put('/api/settings/compiler', asyncRoute(async (req, res) => {
   // The CLI providers are neither local nor an endpoint: there is nothing to
   // validate because there is nothing to type. Holding them to the https-and-a-
   // key bar would reject the one configuration that needs no credential.
+  if (next.data.provider === 'catalog') return res.status(400).json({ error: 'Select a saved model through its Test and Use controls' });
+  if (!COMPILER_PROVIDERS.some((p) => p.id === next.data.provider)) return res.status(400).json({ error: 'Unknown compiler provider' });
   if (next.data.provider !== 'local' && !next.data.provider.endsWith('-cli')) {
     try {
       validateCompilerEndpoint({ ...next.data, timeoutMs: 60_000 });
     } catch (err) {
       return res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
     }
-    if (!next.data.apiKey) return res.status(400).json({ error: 'an API key is required for a remote compiler' });
+    await testEndpoint(next.data);
   }
 
-  res.json(redactedCompilerSettings(saveCompilerSettings(next.data)));
-}));
+  if (next.data.provider.endsWith('-cli')) {
+    const tools = await detectCliTools();
+    const selected = next.data.provider.replace(/-cli$/, '');
+    if (!tools.some((tool) => (tool.tool === selected || (selected === 'cursor' && tool.tool === 'cursor-agent')) && tool.found)) {
+      return res.status(400).json({ error: 'Install and sign in to this compiler CLI before selecting it' });
+    }
+  }
+  res.json(redactedCompilerSettings(await applyCompilerSettings(next.data)));
+})));
 
 /**
  * Try the endpoint before committing to it.
@@ -171,48 +200,15 @@ settingsRoutes.put('/api/settings/compiler', asyncRoute(async (req, res) => {
  * never anything from the policy.
  */
 settingsRoutes.post('/api/settings/compiler/test', asyncRoute(async (req, res) => {
-  const body = req.body ?? {};
   const current = loadCompilerSettings();
-  const apiKey = typeof body.apiKey === 'string' && body.apiKey.length > 0 ? body.apiKey : current.apiKey;
-  if (!apiKey) return res.status(400).json({ ok: false, error: 'no API key to test with' });
-
-  let endpoint: { baseUrl: string; apiKey: string; model: string; timeoutMs: number };
-  try {
-    endpoint = validateCompilerEndpoint({
-      baseUrl: String(body.baseUrl ?? ''),
-      apiKey,
-      model: String(body.model ?? '') || 'claude-sonnet-5',
-      timeoutMs: 20_000
-    });
-  } catch (err) {
-    return res.status(400).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
-  }
-
+  const body = req.body ?? {};
+  const sameEndpoint = String(body.baseUrl ?? '').replace(/\/+$/, '') === current.baseUrl.replace(/\/+$/, '');
+  const apiKey = body.clearKey === true ? '' : typeof body.apiKey === 'string' && body.apiKey.length > 0 ? body.apiKey : sameEndpoint ? current.apiKey : '';
   const started = Date.now();
   try {
-    const upstream = await fetch(`${endpoint.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${endpoint.apiKey}` },
-      body: JSON.stringify({
-        model: endpoint.model,
-        messages: [{ role: 'user', content: 'Reply with the single word: ready' }],
-        max_tokens: 8,
-        temperature: 0
-      }),
-      signal: AbortSignal.timeout(endpoint.timeoutMs)
-    });
-    const text = await upstream.text();
-    if (!upstream.ok) {
-      return res.json({ ok: false, status: upstream.status, error: text.slice(0, 300) });
-    }
-    let reply = '';
-    try {
-      reply = String(JSON.parse(text)?.choices?.[0]?.message?.content ?? '').trim().slice(0, 80);
-    } catch {
-      return res.json({ ok: false, error: 'the endpoint answered, but not in the OpenAI shape' });
-    }
-    res.json({ ok: true, ms: Date.now() - started, model: endpoint.model, reply });
-  } catch (err) {
-    res.json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+    await testEndpoint({ baseUrl: String(body.baseUrl ?? ''), apiKey, model: String(body.model ?? ''), timeoutMs: 20_000 });
+    res.json({ ok: true, ms: Date.now() - started, model: String(body.model), reply: 'ready' });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error instanceof Error ? error.message : 'The compiler test failed' });
   }
 }));

@@ -3,6 +3,7 @@
  */
 import { $, AUDIT_LIMIT, api, state } from './core.js';
 import { render } from './render.js';
+import { renderNav } from './nav.js';
 import { route } from './router.js';
 
 // ── boot ─────────────────────────────────────────────────────────────────────
@@ -94,6 +95,9 @@ function subscribe() {
     const { ok, j } = await api('/api/audit?limit=1');
     if (ok && j[0] && j[0].auditId !== state.audit[0]?.auditId) state.audit.unshift(j[0]);
     void refreshChain();
-    render();
+    // Audit events do not change model forms or the attachment composer. Keep
+    // those DOM nodes intact so an arriving request cannot erase a typed key
+    // or close the browser's file picker. Activity surfaces still update live.
+    if (['activity', 'inbox'].includes(state.view)) render(); else renderNav();
   };
 }

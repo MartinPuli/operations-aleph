@@ -107,6 +107,10 @@ export type GuardInput = {
   prompt: string;
   /** Local file paths for attachments; their OCR text is screened too. */
   attachments?: string[];
+  /** Validated inline bytes from public requests. Employee paths are never accepted. */
+  documents?: import('../documents/types.js').InlineDocument[];
+  /** Disconnecting a client kills in-flight extraction. */
+  signal?: AbortSignal;
   usage?: ReportedUsage;
 };
 
@@ -119,6 +123,10 @@ export type Decision = {
   passes: PassTrace[];
   /** Prompt after secret masking — this, never the raw text, is what goes upstream. */
   maskedPrompt: string;
+  /** Complete-byte digests and extraction status, persisted with the decision. */
+  documents?: import('../documents/types.js').DocumentReport[];
+  /** Private transient forwarding material. Must never enter API/SSE/audit stores. */
+  maskedDocuments?: import('../documents/types.js').MaskedDocument[];
   maskedSpans: MaskedSpan[];
   quota?: { used: number; limit: number };
   /** Session consumption against the role's ceilings, when the client reported any. */

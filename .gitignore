@@ -23,7 +23,7 @@ out/
 
 # QVAC model cache (multi-GB, downloaded on first run)
 .qvac/
-models/
+/models/
 *.gguf
 *.onnx
 
@@ -97,6 +97,7 @@ data/audit-eval.witness.json
 
 # Operational settings set from the console. Holds a provider API key.
 data/settings.json
+data/models.json
 data/prompts.jsonl
 # Failed administrative attempts, kept across restarts so a restart is not a
 # fresh set of guesses. Written 0600.
@@ -106,3 +107,7 @@ data/admin-attempts.json
 # in, rebuilt from the .dc.html sources beside it whenever the design changes.
 design/**/*.html
 !design/**/*.dc.html
+
+# Local browser verification evidence, kept outside release/source artifacts.
+output/playwright/
+.playwright-cli/

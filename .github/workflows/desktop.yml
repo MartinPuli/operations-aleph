@@ -27,15 +27,25 @@ on:
       - 'tsconfig.build.json'
       - 'src/**'
       - 'web/**'
-      - 'scripts/copy-dist-assets.mjs'
+      - 'scripts/**'
+      - 'integrations/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/desktop.yml'
   pull_request:
     paths:
       - 'desktop/**'
+      - 'src/**'
+      - 'web/**'
+      - 'scripts/**'
+      - 'integrations/**'
       - 'forge.config.cjs'
       - 'qvac.config.json'
+      - 'tsconfig*.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/desktop.yml'
 
 # A release run gets a group of its own, keyed on the tag it is publishing, so
@@ -69,7 +79,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
+      - name: Regression and document extraction tests
+        run: pnpm test
       - run: pnpm run build
+      - name: Compiled document worker reads PDF and offline OCR
+        run: node dist/documents/smoke.js
       - name: Compiled gateway answers in mock mode
         run: |
           WARDEN_ADAPTER=mock WARDEN_PORT=18080 node dist/server/index.js &

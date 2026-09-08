@@ -7,7 +7,7 @@ import type { Decision } from './types.js';
  * would quietly turn the governance record into a transcript of everything
  * employees typed, which is the exposure the README promises the log is not.
  */
-export type AuditedDecision = Omit<Decision, 'maskedPrompt'>;
+export type AuditedDecision = Omit<Decision, 'maskedPrompt' | 'maskedDocuments'>;
 
 export type AuditEntry = {
   auditId: string;

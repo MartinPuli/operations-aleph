@@ -24,6 +24,7 @@ import './js/inbox.js';
 import './js/rules.js';
 import './js/compiler.js';
 import './js/engine.js';
+import './js/models.js';
 import './js/draft.js';
 import './js/team.js';
 import './js/simulator.js';

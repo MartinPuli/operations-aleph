@@ -7,6 +7,7 @@
 import type { Request, Response } from 'express';
 import { remember as rememberPromptText, textFor as promptTextFor } from '../audit/prompts.js';
 import { isMock } from '../qvac/index.js';
+import { withoutDocumentText } from '../documents/index.js';
 
 const sseClients = new Set<Response>();
 
@@ -67,6 +68,7 @@ export function withRememberedPrompts(entries: unknown): unknown {
 
 /** Broadcast a decision to every connected trace viewer. */
 export function emitDecision(decision: unknown): void {
+  if (decision && typeof decision === 'object') decision = withoutDocumentText(decision);
   rememberPrompt(decision);
   const payload = `data: ${JSON.stringify({ type: 'decision', decision })}\n\n`;
   for (const client of sseClients) {

@@ -8,6 +8,7 @@
  */
 import { createHash } from 'node:crypto';
 import { Router } from 'express';
+import { DocumentInputError, documentCapabilities, withoutDocumentText } from '../../documents/index.js';
 import { findDecision } from '../../audit/log.js';
 import { checkQuota } from '../../guard/quota.js';
 import { rewriteGate, suggestRewrite } from '../../guard/rewrite.js';
@@ -21,18 +22,28 @@ import { evaluateRequest, extractPrompt, resolveActor, UNKNOWN_KEY } from '../id
 
 export const guardRoutes = Router();
 
+guardRoutes.get('/api/documents/capabilities', (_req, res) => { res.json(documentCapabilities()); });
+
 guardRoutes.post('/api/guard/check', asyncRoute(async (req, res) => {
   const actor = resolveActor(req);
   if (!actor) return res.status(401).json(UNKNOWN_KEY);
 
-  const decision = await evaluateRequest(req, actor);
+  const controller = new AbortController();
+  const abort = () => { if (!res.writableEnded) controller.abort(); };
+  res.once('close', abort);
+  let decision;
+  try { decision = await evaluateRequest(req, actor, controller.signal); }
+  catch (error) {
+    if (error instanceof DocumentInputError) return res.status(error.status).json({ error: error.message, code: 'invalid_attachment' });
+    throw error;
+  } finally { res.off('close', abort); }
   // The hook names the tool it came from; that sighting is what the console's
   // "connected" badges are built from. `actor.id` comes from the key the
   // gateway issued, so it is an employee by construction — the id no longer
   // arrives on a header that could inflate the count with strangers.
   recordActivity(actor.id, typeof req.body?.source === 'string' ? req.body.source : undefined);
   emitDecision(decision);
-  res.json(decision);
+  res.json(withoutDocumentText(decision));
 }));
 
 /**

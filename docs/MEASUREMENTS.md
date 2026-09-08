@@ -1414,3 +1414,102 @@ another day or another network (three samples, one afternoon), and whether
 `/health` slower than the deadline shows up as a hook that is installed and
 judges nothing, silently, which is why the number moved on three samples
 rather than waiting for thirty.
+
+## Documents and administrator-owned models: engineering verification
+
+2026-09-08. These changes add document ingestion, a unified Models console and a
+per-installation custom-model catalogue. They do not change a built-in judge's
+default weights, the aggregate verdict order or any historical accuracy score.
+The new evidence is parser completeness, runtime compatibility and interface
+behavior. It is deliberately not presented as a new attack-detection rate.
+
+**The old attachment availability gap has a new reader.** Historical rows that
+skipped files or counted unreadable attachments as stopped used the unavailable
+QVAC OCR model. The public document path now uses local PDF/DOCX/text parsing and
+bundled English/Spanish Tesseract OCR. The real extraction suite creates and
+reads PDF, DOCX and image fixtures, including scanned/mixed PDF pages and source
+images, and passed on this machine. It also exercises malformed encodings,
+base64/path rejection, byte/page/text/pixel/ZIP limits, active or embedded
+content, empty/low-quality images, timeout/cancellation and cleanup.
+
+The completeness regression that matters most is a PDF page with readable text
+and an oversized source image. PDF.js 6.3.289 can resolve its public rendering
+promise with partial output before an underlying operator stream rejects. The
+reader now waits on that stream as well; the actual reproducer is held instead
+of letting the visible paragraph stand in for the entire file. This adapter is
+pinned to the parser version and needs its regression rerun before an upgrade.
+See [document screening](DOCUMENTS.md) for the limits and the dependency on that
+completion boundary.
+
+**All document windows and applicable rules are evaluated.** The tests put an
+attack late in a long document, outside the first window, and cover a rule that
+would fall outside ordinary top-K retrieval. Whole-policy shortcut screening is
+disabled for document requests. An unfinished window, failed call or exhausted
+deadline holds the request. Digest tests bind ordered source bytes to extraction
+results and audit metadata; document text and original bytes do not enter the
+persistent record. These are structural tests against a stand-in judge, not
+proof that the selected model recognizes every attack in the extracted text.
+
+**Model changes now reach the running roles.** The model-management suite uses
+real Express authorization and a local HTTP provider, replacing the expensive
+QVAC loader for failure and concurrency cases. It covers hot compiler changes,
+role-specific compatibility gates, active-entry restrictions, credential
+redaction, explicit local formats, transfer bounds, private-address rejection,
+activation rollback, nested evaluation leases and corrupt-state preservation.
+A separate real QVAC smoke imported `Qwen3-0.6B-Q4_0.gguf`, tested and activated
+both roles, checked the loaded identity, and completed a structured compiler
+request: compiler import/test/activation 17,207 ms; analyzer test/activation
+1,641 ms. See [model management](MODEL-MANAGEMENT.md). These are one-machine
+compatibility timings, not latency expectations for another model or machine.
+
+**The console and transports have separate evidence.** Ten console boundary
+tests pass, including employee identity precedence over a stored admin key,
+no privileged retry, password/file snapshot exclusion, caret/checkbox state,
+untrusted metadata escaping, and role-specific test-to-use gates. A browser
+walkthrough at 1440-pixel desktop and 390-pixel mobile widths observed no page
+horizontal overflow or console errors, exercised endpoint save/test/activate/
+replace/edit/delete, allowed a file-only TXT check, held a corrupt PDF, and
+showed invalid GGUF import feedback. That walkthrough verifies operational
+states, not model accuracy.
+
+Hook tests cover inline bytes and explicit host-provided paths, refused missing
+or changed files and incomplete inspection responses. Proxy tests cover
+structured content and reconstruction from matching sanitized extractions.
+Neither substitutes for watching a native Claude Code, Codex or OpenCode client
+expose and refuse each attachment type. Hosts may omit attachments from prompt
+hook events, and hooks do not infer filesystem access from a filename in prose.
+That native-client coverage remains a separate release/deployment verification
+item under [hook verification](HOOK-VERIFICATION.md).
+
+**Still unmeasured:** OCR robustness against adversarial typography and
+representative business documents, guard false-positive/attack rates on a
+repeatable document corpus, and custom analyzer accuracy beyond the tested
+response interface. Re-run both sides of the relevant corpus with repetitions
+before deriving those claims. New parser tests do not turn earlier skipped or
+unreadable attachments into successfully detected attacks after the fact.
+
+The full corpus harness also completed three repetitions against the mock
+adapter: 588 evaluations with no structured-output failures. This establishes
+that the harness and deterministic pipeline run; a mock answer is not a
+measurement of the real analyzer's attack-detection or false-positive rate.
+
+The packaged macOS arm64 application was booted and its PDF and offline OCR
+paths checked successfully. Packaging itself exposed an upstream toolchain
+issue: a local Forge run under Node 26 exited with status zero while extracting
+Electron, without producing an application; running the packaging path with
+Node 24 produced the artifact. CI uses Node 22. This is bounded evidence about
+those packaging runs, not a declaration that Node 26 cannot run the gateway or
+that untested desktop targets have passed.
+
+### Real default-model document path probe — 2026-09-08
+
+A stable-source DynaGuard 4B run compared two benign and two violating requests
+as plain text and TXT attachments, three repetitions each. All 12 attachments
+were read with no parser or inference failures. Each path blocked all six
+violating repetitions. Plain text allowed all six benign repetitions; TXT
+allowed five and falsely blocked one USD 1200 purchase. Median wall times were
+1488.5 ms and 1847.5 ms respectively on an Apple M1 Pro with 16 GiB RAM. These
+four synthetic requests are path-comparison evidence, not a production accuracy
+estimate. The false block is retained, alongside an earlier source-changing run
+and a substantially worse optional Qwen3 0.6B result. See the
+[full protocol, per-case results, limitations and source/model hashes](measurements/2026-09-08-document-paths.md).

@@ -11,6 +11,8 @@
  * answers "why was this blocked" in five seconds instead of five minutes.
  */
 import { recordDecision } from '../audit/log.js';
+import { extractDocuments } from '../documents/index.js';
+import type { DocumentReport, MaskedDocument } from '../documents/types.js';
 import { selectRules } from '../policy/index.js';
 import { rulesForActor } from '../policy/store.js';
 import type { PolicySpec } from '../policy/types.js';
@@ -83,7 +85,7 @@ export async function evaluate(
   // Observes only. Its ESCALATE is combined at the end rather than returned
   // here, because returning it would make a prompt that ALSO breaks a rule come
   // back held instead of refused — a decision loosened by adding a control.
-  const budget = checkBudget(policy, input.actor, input.usage, input.prompt.length);
+  let budget = checkBudget(policy, input.actor, input.usage, input.prompt.length);
   passes.push(budget.trace);
 
   // ── pass -1: secrets ───────────────────────────────────────────────────────
@@ -108,6 +110,27 @@ export async function evaluate(
   let subject = masked;
   let rawSubject = input.prompt;
   let unreadableAttachments = 0;
+  const documents: DocumentReport[] = [];
+  const maskedDocuments: MaskedDocument[] = [];
+  if (input.documents?.length) {
+    const readStart = Date.now();
+    const extracted = await extractDocuments(input.documents, { signal: input.signal });
+    for (const item of extracted) {
+      if (item.report.status !== 'read') unreadableAttachments++;
+      const sanitized = sanitize(normalizeUntrusted(item.text));
+      documents.push({ ...item.report, redactions: item.report.redactions + sanitized.spans.length });
+      maskedDocuments.push({ name: item.report.name, sha256: item.report.sha256, text: sanitized.masked });
+      // Include the name as untrusted content too; a filename can carry a payload.
+      rawSubject += `${SEPARATOR}${item.report.name}\n${item.text}`;
+      subject += `${SEPARATOR}${item.report.name}\n${sanitized.masked}`;
+    }
+    passes.push({
+      pass: 'documents', ms: Date.now() - readStart,
+      verdict: unreadableAttachments ? 'ESCALATE' : 'ALLOW',
+      ...(unreadableAttachments ? { failedClosed: true } : {}),
+      detail: { attachments: documents.length, unreadable: unreadableAttachments, chars: documents.reduce((n, d) => n + d.chars, 0), hashes: documents.map((d) => d.sha256) }
+    });
+  }
   if (input.attachments?.length) {
     const ocrStart = Date.now();
     const extracted: string[] = [];
@@ -115,6 +138,7 @@ export async function evaluate(
     for (const path of input.attachments) {
       try {
         const text = await qvac.ocr(path);
+        if (!text.trim()) throw new Error('OCR returned no readable text');
         rawExtracted.push(text);
         extracted.push(sanitize(normalizeUntrusted(text)).masked);
       } catch (err) {
@@ -141,6 +165,12 @@ export async function evaluate(
     });
   }
 
+  if (input.documents?.length || input.attachments?.length) {
+    const previousBudgetTrace = budget.trace;
+    budget = checkBudget(policy, input.actor, input.usage, subject.length);
+    passes[passes.indexOf(previousBudgetTrace)] = budget.trace;
+  }
+
   // ── pass 0: isolate ────────────────────────────────────────────────────────
   const isoStart = Date.now();
   const iso = isolate(subject, rawSubject);
@@ -151,7 +181,13 @@ export async function evaluate(
   // for this person by name — resolved in one place so none can be forgotten.
   const applicable = rulesForActor(policy, input.actor);
   const retrieveStart = Date.now();
-  const selected = await selectRules(policy, applicable, iso.clean, TOP_K);
+  // A whole-document embedding can hide a small paragraph on another topic.
+  // Attachments therefore get every applicable rule; windows cover every byte
+  // of extracted text instead of letting retrieval choose which pages matter.
+  const hasDocuments = Boolean(input.documents?.length || input.attachments?.length);
+  const selected = hasDocuments
+    ? { rules: applicable, scores: [], degraded: false }
+    : await selectRules(policy, applicable, iso.clean, TOP_K);
   passes.push({
     pass: 'retrieve',
     ms: Date.now() - retrieveStart,
@@ -171,7 +207,7 @@ export async function evaluate(
   // about instruction override, the policy is where the company says whether it
   // cares, and deleting the rule takes the pass with it rather than leaving a
   // refusal that names nothing.
-  const pinned = INJECTION_MODE === 'off' ? [] : selected.rules.filter((r) => r.pinned);
+  const pinned = INJECTION_MODE === 'off' || hasDocuments ? [] : selected.rules.filter((r) => r.pinned);
   const injections = await Promise.all(
     pinned.map(async (rule) => {
       try {
@@ -199,14 +235,18 @@ export async function evaluate(
   // In `replace` mode the pinned rules are already answered, so asking the
   // adjudicator about them too would be paying twice for the decision this
   // change exists to move — and letting the worse answer of the two still fire.
-  const toAdjudicate = INJECTION_MODE === 'replace'
+  const toAdjudicate = INJECTION_MODE === 'replace' && !hasDocuments
     ? selected.rules.filter((r) => !r.pinned)
     : selected.rules;
   // `screenOver` is every rule the actor is bound by. It is read only when
   // the policy screen is on (`WARDEN_POLICY_SCREEN`, off), and then it is the
   // point: one call sees the whole policy where retrieval shows the per-rule
   // calls the top few.
-  const { verdicts, traces, screen } = await adjudicateAll(qvac, iso, toAdjudicate, { screenOver: applicable });
+  const { verdicts, traces, screen } = await adjudicateAll(
+    hasDocuments ? documentDeadlineAdapter(qvac, input.signal) : qvac,
+    iso, toAdjudicate,
+    { screenOver: applicable, ...(hasDocuments ? { screen: false, windowChars: 6_000, windowOverlap: 500 } : {}) }
+  );
   passes.push(...traces);
 
   // ── pass 4: aggregate ──────────────────────────────────────────────────────
@@ -249,6 +289,7 @@ export async function evaluate(
   return finish({
     verdict, policy, passes, started, input,
     maskedPrompt: masked, maskedSpans: spans,
+    ...(documents.length ? { documents, maskedDocuments } : {}),
     firedRules: result.firedRules,
     warnings: result.warnings,
     quota: { used: quota.used, limit: quota.limit ?? 0 },
@@ -265,6 +306,8 @@ function finish(args: {
   input: GuardInput;
   maskedPrompt: string;
   maskedSpans: Decision['maskedSpans'];
+  documents?: DocumentReport[];
+  maskedDocuments?: MaskedDocument[];
   firedRules: Decision['firedRules'];
   warnings?: Decision['warnings'];
   quota: { used: number; limit: number };
@@ -280,6 +323,7 @@ function finish(args: {
     passes: args.passes,
     maskedPrompt: args.maskedPrompt,
     maskedSpans: args.maskedSpans,
+    ...(args.documents ? { documents: args.documents, maskedDocuments: args.maskedDocuments } : {}),
     quota: args.quota,
     ...(args.budget ? { budget: args.budget } : {}),
     explanation: args.explanation
@@ -289,4 +333,36 @@ function finish(args: {
   // that actually exists in the log rather than a number generated alongside it.
   const entry = recordDecision(args.input.actor, args.input.prompt, partial);
   return { ...partial, auditId: entry.auditId };
+}
+
+/** One bounded inference budget across all document windows, with real adapter cancellation. */
+function documentDeadlineAdapter(qvac: QvacAdapter, signal?: AbortSignal): QvacAdapter {
+  const deadline = Date.now() + 25_000;
+  const request = (req: import('../qvac/types.js').CompleteRequest) => {
+    const remaining = deadline - Date.now();
+    if (signal?.aborted || remaining <= 0) throw new Error('Document judgement did not finish; remaining content was not cleared');
+    return { ...req, timeoutMs: Math.min(req.timeoutMs ?? remaining, remaining) };
+  };
+  const bounded = async <T>(run: () => Promise<T>): Promise<T> => {
+    if (signal?.aborted || deadline <= Date.now()) throw new Error('Document judgement was cancelled or timed out; remaining content was not cleared');
+    let timer: NodeJS.Timeout | undefined;
+    let abort: (() => void) | undefined;
+    const expiry = new Promise<never>((_resolve, reject) => {
+      const stop = () => reject(new Error('Document judgement was cancelled or timed out; remaining content was not cleared'));
+      timer = setTimeout(stop, Math.max(1, deadline - Date.now()));
+      abort = stop;
+      signal?.addEventListener('abort', abort, { once: true });
+    });
+    // The adapter also receives the remaining deadline and cancels generation.
+    // This outer timer covers its cold model-load step, which some runtimes do
+    // before starting their generation timer. Such a late load cannot approve.
+    try { return await Promise.race([run(), expiry]); }
+    finally { clearTimeout(timer); if (abort) signal?.removeEventListener('abort', abort); }
+  };
+  return {
+    complete: (req) => bounded(() => qvac.complete(request(req))),
+    completeJSON: (req, schema, jsonSchema) => bounded(() => qvac.completeJSON(request(req), schema, jsonSchema)),
+    embed: (texts) => qvac.embed(texts), ocr: (path) => qvac.ocr(path),
+    stats: () => qvac.stats(), dispose: () => qvac.dispose()
+  };
 }

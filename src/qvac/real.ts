@@ -15,7 +15,8 @@
  */
 import { cancel, completion, embed, ocr } from '@qvac/sdk';
 import type { ZodType } from 'zod';
-import { modelFor, shutdown } from './client.js';
+import { modelFor, shutdown, withTemporaryModel } from './client.js';
+import type { ManagedRole } from '../models/store.js';
 import { completeWithRepair } from './json.js';
 import { withDeadline } from './deadline.js';
 import {
@@ -71,6 +72,19 @@ export class RealQvacAdapter implements QvacAdapter {
   #repaired = 0;
   #failed = 0;
 
+  /** A candidate is loaded and exercised without ever selecting it. This checks
+   * engine compatibility and structured decoding, not policy accuracy. */
+  async testLocal(path: string, role: ManagedRole, format: 'compliance' | 'dynaguard'): Promise<void> {
+    const labels = role === 'compiler' ? ['ready'] : format === 'dynaguard' ? ['PASS', 'FAIL'] : ['COMPLIES', 'VIOLATES', 'UNCLEAR'];
+    const schema = { type: 'object', properties: { verdict: { type: 'string', enum: labels } }, required: ['verdict'], additionalProperties: false };
+    await withTemporaryModel(role, path, async (id) => {
+      const result = await this.#run({ role, system: 'Return the requested JSON object.', user: `Return {"verdict":"${labels[0]}"}.`, maxTokens: 64, timeoutMs: 20_000 }, schema, id);
+      let value: unknown;
+      try { value = JSON.parse(result.text); } catch { throw new Error('The model did not return valid structured output'); }
+      if (!value || typeof value !== 'object' || !labels.includes(String((value as { verdict?: unknown }).verdict))) throw new Error('The model did not return the required response format');
+    });
+  }
+
   async complete(req: CompleteRequest): Promise<{ text: string; stats: GenStats }> {
     const { text, stats } = await this.#run(req, undefined);
     return { text, stats };
@@ -121,9 +135,10 @@ export class RealQvacAdapter implements QvacAdapter {
   /** One generation, with a hard timeout and stats collection. */
   async #run(
     req: CompleteRequest,
-    jsonSchema: Record<string, unknown> | undefined
+    jsonSchema: Record<string, unknown> | undefined,
+    candidateModelId?: string
   ): Promise<{ text: string; stats: GenStats }> {
-    const modelId = await modelFor(req.role);
+    const modelId = candidateModelId ?? await modelFor(req.role);
     const started = Date.now();
 
     const run = completion({

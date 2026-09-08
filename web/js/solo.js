@@ -327,6 +327,7 @@ function soloSettingsBody() {
     <div class="section">
       <div class="label">This installation</div>
       <p class="note">Warden is protecting one device: yours. Nobody else's prompts are checked, and nothing here is visible to anyone else.</p>
+      <button type="button" class="btn" data-go="models">Manage compiler and analyzer models</button>
     </div>
     <div class="section">
       <div class="label">Managing a team too?</div>

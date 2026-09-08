@@ -21,10 +21,13 @@ allowBuilds:
   fs-xattr: true
   fsevents: true
   macos-alias: true
+  # Its published package already includes the worker and WASM loader. The
+  # postinstall only prints an Open Collective funding message.
+  tesseract.js: false
 
 # The darwin-x64 installer is cut on an arm64 runner. Fetching both cpus'
 # optional deps (the bare runtime, esbuild) on every install means that
 # cross-arch package step needs nothing special. os stays "current".
 supportedArchitectures:
-  os: [current]
-  cpu: [current, x64]
+  os: [ current ]
+  cpu: [ current, x64 ]

@@ -4,6 +4,7 @@
 import { $, esc, post, state, val } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindGetModels } from './engine.js';
+import { captureFieldValues, restoreFieldValues } from './form-state.js';
 import { renderNav } from './nav.js';
 import { go } from './router.js';
 import { firstRunBanner, mockBanner } from './rules.js';
@@ -21,11 +22,7 @@ const STICK_PX = 140;
 const SMOOTH = () => (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
 
 function captureFields() {
-  const saved = {};
-  for (const f of $('pane').querySelectorAll('input, textarea, select')) {
-    if (!f.id) continue;
-    saved[f.id] = { value: f.value, start: f.selectionStart, end: f.selectionEnd };
-  }
+  const saved = captureFieldValues($('pane'));
   const chat = $('pane').querySelector('.chat');
   return {
     saved,
@@ -39,16 +36,7 @@ function captureFields() {
 }
 
 function restoreFields({ saved, focus, scroll, chat }) {
-  for (const [id, s] of Object.entries(saved)) {
-    const f = $(id);
-    if (!f || f.value === s.value) continue;
-    // A <select> whose option list was rebuilt may no longer hold the value.
-    if (f.tagName === 'SELECT' && ![...f.options].some((o) => o.value === s.value)) continue;
-    f.value = s.value;
-    if (s.start != null && f.setSelectionRange) {
-      try { f.setSelectionRange(s.start, s.end); } catch { /* not a text field */ }
-    }
-  }
+  restoreFieldValues($('pane'), saved);
   if (focus && $(focus)) $(focus).focus();
   if (scroll) $('pane').scrollTop = scroll;
 }

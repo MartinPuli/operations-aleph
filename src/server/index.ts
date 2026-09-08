@@ -41,4 +41,10 @@ const server = createApp().listen(PORT, HOST, () => {
   preloadModels();
 });
 
+// Managed GGUF uploads are streamed and have their own byte, disk and duration
+// limits. Node's five-minute request default would cut off legitimate multi-GB
+// imports before that route's 30-minute transfer budget.
+server.requestTimeout = 30 * 60_000;
+server.headersTimeout = 30_000;
+
 installExitHandlers(server);
