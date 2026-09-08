@@ -779,6 +779,14 @@ input.inline.wide { min-width: 320px; flex: 1 1 320px; }
 /* ═══ conversation ═══════════════════════════════════════════════════════ */
 
 .chatwrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+/* The header stays out of the scrolling half. It is the same header on all
+   three tabs and moving between them must not move it — and a conversation
+   that opens scrolled to its newest turn would otherwise take the title with
+   it on the way down. */
+/* width:100% for the same reason `.blank-fill` needs it: a flex item with auto
+   side margins sizes to its content instead of stretching, so the header would
+   be narrower than the conversation under it. */
+.chatwrap > .chat-head { flex: none; width: 100%; padding-bottom: 0; }
 .chat { flex: 1; overflow-y: auto; }
 .chat .sheet { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-7); align-content: start; }
 
@@ -1220,6 +1228,11 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .c-aud, .c-activity { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .c-activity { color: var(--muted); font-size: var(--fs-2); }
 .tbl.rules .detail { padding: var(--s-5) var(--s-5) var(--s-6); border-bottom: 1px solid var(--line); }
+
+/* Who the test is sent as, under the header on the Test tab. It is the
+   identity being borrowed, and the rules that apply depend on it, so it stays
+   even though a single-person install has only one answer. */
+.send-as { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-3); padding: 0 var(--s-3); }
 
 /* The counts and the search box, between the tabs and the table. */
 .filters { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); flex-wrap: wrap; padding: var(--s-6) var(--s-3) var(--s-2); }

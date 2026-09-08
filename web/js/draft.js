@@ -24,9 +24,11 @@ import { bindSet, runSetPreviews, setCards } from './draft-set.js';
  *  bottom and the turns take the space it was holding. */
 export function ruleChatPane() {
   return `<div class="chatwrap">
+    <div class="sheet chat-head">
+      ${rulesHead('<button type="button" class="btn quiet" id="cancelDraft">Start over</button>')}
+    </div>
     <div class="chat" id="ruleChat">
       <div class="sheet">
-        ${rulesHead('<button type="button" class="btn quiet" id="cancelDraft">Start over</button>')}
         ${state.ruleChat.map(renderTurn).join('')}
         ${state.draft ? draftCard() : ''}
         ${state.set ? setCards() : ''}

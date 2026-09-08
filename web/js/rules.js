@@ -52,7 +52,10 @@ VIEWS.policy = {
  * the conversation away, and nothing else on the screen would say so.
  *
  * Exported because the simulator draws the same header. One definition, or the
- * count of active rules is right on two tabs out of three.
+ * count of active rules is right on two tabs out of three. It returns one
+ * element rather than two: `.chat .sheet` is a grid, and a header and a tab
+ * strip landing there as separate items are pushed apart by the gap meant for
+ * turns in a conversation.
  */
 const TABS = [['new', 'New rule'], ['rules', 'Rules'], ['test', 'Test']];
 
@@ -65,7 +68,8 @@ export function rulesHead(right = '') {
   const tab = rulesTab();
   const today = dayKey(new Date().toISOString());
   const checks = state.audit.filter((a) => dayKey(a.ts) === today).length;
-  return `<header class="page-head">
+  return `<div class="rules-frame">
+    <header class="page-head">
       <div>
         <h1 class="page-title">Rules</h1>
         <div class="page-status">
@@ -80,7 +84,8 @@ export function rulesHead(right = '') {
       ${TABS.map(([id, label]) => `<button type="button" class="tab${tab === id ? ' on' : ''}" ${
         id === 'test' ? 'data-go="simulator"' : id === 'new' ? 'data-go="policy" data-sel="new"' : 'data-go="policy"'
       }>${label}${id === 'new' && tab !== 'new' && (state.draft || state.set) ? ' •' : ''}</button>`).join('')}
-    </nav>`;
+    </nav>
+  </div>`;
 }
 
 /**
