@@ -18,3 +18,7 @@ desktop/dist
 
 .git
 .claude
+
+# Source films, revision history and local QA are not part of the website.
+videos
+output

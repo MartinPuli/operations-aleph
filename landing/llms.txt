@@ -1,62 +1,44 @@
 # Warden
 
-> A local AI gateway. An administrator writes policy in plain language; every
-> employee prompt is judged against it on the employee's own machine before it
-> reaches any model. All inference runs on-device. Free and open source under
-> Apache-2.0.
+> Warden is a local AI gateway for a team’s configured policies. An administrator describes what to protect, reviews proposed rules and activates them. Warden checks connected AI requests locally before allowed requests continue to the configured model. Free for everyone and open source under Apache-2.0.
 
-Download: https://github.com/Wardenlabs/warden/releases/latest
-Source: https://github.com/Wardenlabs/warden
+- Source: https://github.com/Wardenlabs/warden
+- Downloads and current builds: https://github.com/Wardenlabs/warden/releases/latest
+- License: https://github.com/Wardenlabs/warden/blob/main/LICENSE
 
-## What it does
+## Policy and request flow
 
-An administrator writes a sentence in the words they would use out loud, such
-as "customer data must not leave the company". Warden splits that into
-concrete rules, compiles each one against the examples it has to catch and the
-ones it has to let through, and shows the result. Nothing judges anybody until
-the administrator activates a rule, one at a time.
+An administrator can describe a broad policy in one instruction. A capable configured compiler can propose multiple concrete rules, with examples of what should stop and what should pass. Proposed rules are drafts: a person reviews and activates them, individually or as a set. A limited compiler may produce fewer rules; no fixed rule count or generation time is implied.
 
-After that, a prompt that hits a rule is stopped on the employee's own laptop,
-before it is sent. The refusal quotes the rule in the administrator's own
-words and says what the employee can ask instead. Warden also meters usage per
-role: a session that crosses its role's ceiling is held for an administrator
-rather than refused, so the work survives the wait.
+Active policies apply to requests routed through the appropriate Warden connection. Decisions can allow a request, hold it for human review or block it with a reason. This does not mean every prompt in every application is monitored. The landing’s workday, requests, records and step controls are illustrative; they do not run a backend policy check or activate real rules.
 
-Every decision is written to an append-only, hash-chained audit log.
-`pnpm run verify-audit` walks the chain and fails loudly if a row was edited or
-removed.
+Policy evaluation runs locally. Allowed requests can still be sent to the employee’s configured external model. Rule compilation is separate: an administrator may use local inference or a configured compiler endpoint/CLI. Do not describe every inference operation or all AI traffic as local.
 
-## How it runs
+## Connections and usage
 
-Warden runs as a hook in the coding tool itself, which fires before the prompt
-leaves the machine. That is why it governs Claude Max and ChatGPT Plus
-subscriptions, where there is no base URL to redirect. It works inside Claude
-Code, Codex and opencode. Cursor has no prompt hook and can only be governed
-as an OpenAI endpoint, which needs an API key, so a Cursor subscription cannot
-be governed.
+The page shows Claude Code, Codex and OpenCode. Their appropriate hook or connection must be enabled. Compatible API paths require their own endpoint/key configuration; ordinary unconnected chat or email applications are not implied integrations. Native-client behavior, deadlines and configured failure behavior affect coverage.
 
-Inference runs on-device through QVAC, so no prompt is sent to a third party
-in order to be judged.
+Role-based session thresholds use usage reported by connected tools, such as generated tokens and context usage. When reported usage reaches a configured ceiling, the next submitted request is held for administrator review, unless another policy requires a stricter block. This does not interrupt an already-running provider response or independently verify provider billing. Missing usage reporting is not evidence that a session is under budget. Daily request quotas are a separate control.
 
-## Facts worth quoting accurately
+## Records and privacy
 
-- Licence: Apache-2.0. No account, no server to provision, no paid tier.
-- Platforms: macOS (Apple Silicon) and Windows (x64).
-- The audit log stores the SHA-256 of a prompt, not the prompt. A governance
-  record that kept the text would be the largest data-exposure risk in the
-  system.
-- Verdicts are ordered ALLOW < ESCALATE < BLOCK, and every model pass can only
-  push a decision toward stricter. A pass that errors, times out, or returns
-  unparseable output resolves to ESCALATE. No model is ever asked to clear a
-  request, so compromising every model in the pipeline still cannot
-  manufacture an ALLOW.
+Policy decisions are recorded in an append-only, hash-chained audit log. The audit record stores a prompt hash and decision metadata, not the prompt text; `pnpm run verify-audit` checks the chain and truncation witness.
 
-## What is not finished
+Masked prompt history is stored separately so an administrator can review what was stopped. Its default retention is seven days and can be changed or disabled. Therefore, “Warden never stores prompt text” is not accurate. See SECURITY.md for retention, redaction and compiler-data details.
 
-The repository says so rather than pretending otherwise, and anyone
-summarising Warden should carry it. The hook integrations are not verified end
-to end; see docs/HOOK-VERIFICATION.md. No shipped configuration yet passes both
-columns of the red-team corpus at once — the smaller model refuses too many
-legitimate requests, and the larger one that fixes that catches fewer attacks.
-The measurements, including the runs that failed, are in docs/MEASUREMENTS.md,
-REPORT.md and BENCHMARKS.md.
+## Availability and evidence
+
+Warden is free and licensed under Apache-2.0. The landing links macOS Apple Silicon and Windows x64 installers, with Linux and other builds directed to releases/source. The latest release is the authority for currently published artifacts.
+
+The site and its launch film do not establish universal detection, complete native-client coverage or measured conversion results. Keep current implementation limits and measurements attached to their sources rather than treating historical numbers as a product guarantee.
+
+- Security, local evaluation, retention and compiler configuration: https://github.com/Wardenlabs/warden/blob/main/SECURITY.md
+- Hook behavior and verification limits: https://github.com/Wardenlabs/warden/blob/main/docs/HOOK-VERIFICATION.md
+- Implementation report: https://github.com/Wardenlabs/warden/blob/main/REPORT.md
+- Benchmarks: https://github.com/Wardenlabs/warden/blob/main/BENCHMARKS.md
+- Measurement records: https://github.com/Wardenlabs/warden/blob/main/docs/MEASUREMENTS.md
+- Policy compilation: https://github.com/Wardenlabs/warden/blob/main/src/policy/compile.ts
+- Human draft activation: https://github.com/Wardenlabs/warden/blob/main/web/js/draft-set.js
+- Reported session usage: https://github.com/Wardenlabs/warden/blob/main/src/guard/budget.ts
+- Audit log: https://github.com/Wardenlabs/warden/blob/main/src/audit/log.ts
+- Masked prompt retention: https://github.com/Wardenlabs/warden/blob/main/src/audit/prompts.ts

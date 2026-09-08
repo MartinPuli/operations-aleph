@@ -1,0 +1,187 @@
+/* The closing statement and the film's official object share one composition.
+   Loaded after the original page styles; every rule is confined to the footer. */
+#download {
+  padding-block: clamp(40px, 5vw, 72px) 36px;
+  scroll-margin-top: 24px;
+}
+#download .foot {
+  max-width: 1160px;
+  gap: 36px;
+}
+#download .closing-body {
+  display: grid;
+  grid-template-columns: minmax(0, .93fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 60px);
+  width: 100%;
+}
+#download .shield-stage {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0;
+  align-self: center;
+  isolation: isolate;
+}
+#download .shield-stage::before {
+  content: "";
+  position: absolute;
+  width: 58%;
+  height: 9%;
+  left: 21%;
+  bottom: 1%;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: 0 16px 22px 6px rgb(0 0 0 / .28);
+  transform: scaleY(.5);
+  pointer-events: none;
+  z-index: -1;
+}
+#download .shield-stage canvas,
+#download .shield-stage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+#download .closing-copy { min-width: 0; }
+#download .close {
+  max-width: 15ch;
+  margin: 0 0 28px;
+  font-size: clamp(36px, 4.1vw, 54px);
+  line-height: 1.08;
+  font-weight: 480;
+  letter-spacing: -.035em;
+  text-align: left;
+  text-wrap: balance;
+}
+#download .closing-actions { max-width: 480px; }
+#download .dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  gap: 10px;
+  width: 100%;
+}
+#download .dl a {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  min-width: 0;
+  width: 100%;
+  height: 68px;
+  justify-content: flex-start;
+  padding: 14px 20px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: inset 0 1px rgb(255 255 255 / .44), 0 8px 18px rgb(0 0 0 / .13);
+  transition: background-color .18s var(--ease-out), transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
+}
+#download .dl a > svg { width: 23px; height: 23px; }
+#download .dl a > span:not(.go) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+#download .dl .t { font-size: 16px; line-height: 1.3; font-weight: 590; }
+#download .dl .m {
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.35;
+  color: #2f5e4b;
+}
+#download .dl .go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+}
+#download .dl .go svg {
+  width: 21px;
+  height: 21px;
+  transition: transform .18s var(--ease-out);
+}
+#download .dl a:focus-visible { outline: 2px solid var(--ink); outline-offset: 5px; }
+#download .other-builds {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  margin-top: 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+  text-decoration-thickness: 1px;
+}
+#download .other-builds:hover { color: var(--ink); }
+#download .fine {
+  margin: 9px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: left;
+  color: var(--muted);
+}
+#download .fine strong {
+  display: inline-block;
+  margin-bottom: 5px;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 500;
+}
+#download .links {
+  width: 100%;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  justify-content: flex-start;
+  gap: 8px 14px;
+  color: var(--muted);
+}
+#download .links .brand { margin-right: auto; }
+#download .links a { min-height: 32px; display: inline-flex; align-items: center; }
+#download .links .brand + .sep { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  #download .dl a:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: inset 0 1px rgb(255 255 255 / .6), 0 12px 24px rgb(0 0 0 / .2);
+  }
+  #download .dl a:hover .go svg { transform: translateY(2px); }
+}
+#download .dl a:active { transform: translateY(1px); }
+@media (max-width: 760px) {
+  #download { padding-top: 20px; padding-bottom: 28px; }
+  #download .foot { max-width: 600px; gap: 28px; }
+  #download .closing-body { grid-template-columns: 1fr; gap: 8px; }
+  #download .shield-stage { width: min(260px, 65vw); justify-self: center; }
+  #download .close {
+    max-width: 17ch;
+    margin: 0 auto 24px;
+    font-size: clamp(32px, 7.8vw, 44px);
+    line-height: 1.1;
+    text-align: center;
+  }
+  #download .closing-actions { margin-inline: auto; max-width: 460px; text-align: center; }
+  #download .dl { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  #download .dl a { height: 72px; padding: 12px 14px; gap: 10px; }
+  #download .dl a > svg { width: 20px; height: 20px; }
+  #download .dl .t { font-size: 14px; }
+  #download .dl .m { font-size: 10px; }
+  #download .dl .go { display: none; }
+  #download .fine { max-width: 46ch; margin-inline: auto; text-align: center; }
+  #download .links { justify-content: center; gap: 6px 10px; }
+  #download .links .brand { flex-basis: 100%; margin-right: 0; justify-content: center; }
+}
+@media (max-width: 360px) {
+  #download .dl a { padding-inline: 10px; gap: 7px; }
+  #download .dl a > svg { width: 17px; height: 17px; }
+  #download .links { column-gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #download .dl a,
+  #download .dl a:hover,
+  #download .dl .go svg { transform: none; transition: none; }
+}
