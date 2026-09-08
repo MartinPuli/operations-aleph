@@ -15,14 +15,22 @@ const text = 'Quarterly report: the team completed the migration.';
 const data = Buffer.from(text).toString('base64');
 const sha256 = createHash('sha256').update(text).digest('hex');
 const file = join(root, 'report.txt');
+const timerProbe = join(root, 'observe-request-timers.mjs');
+writeFileSync(timerProbe, `const original = globalThis.setTimeout;
+globalThis.setTimeout = (callback, delay, ...args) => {
+  process.stderr.write('WARDEN_TEST_TIMER:' + delay + '\\n');
+  return original(callback, delay, ...args);
+};
+`);
 writeFileSync(file, text);
 writeFileSync(join(root, 'oversized.txt'), Buffer.alloc(8 * 1024 * 1024 + 1));
 const seen: Record<string, any>[] = [];
 let status = 200;
 let response: Record<string, unknown> | null = null;
+let healthDeadlines: Record<string, unknown> | undefined;
 const server = createServer(async (req, res) => {
   res.setHeader('content-type', 'application/json');
-  if (req.url === '/health') return res.end(JSON.stringify({ ok: true, failClosed: false }));
+  if (req.url === '/health') return res.end(JSON.stringify({ ok: true, failClosed: false, deadlines: healthDeadlines }));
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(Buffer.from(chunk));
   const body = JSON.parse(Buffer.concat(chunks).toString());
@@ -42,7 +50,7 @@ const address = server.address();
 assert(address && typeof address === 'object');
 const gatewayUrl = `http://127.0.0.1:${address.port}`;
 
-async function run(payload: unknown, plugin = false) {
+async function run(payload: unknown, plugin = false, observeTimers = false) {
   const args = plugin ? ['--input-type=module', '-e', `
     import { readFileSync } from 'node:fs';
     const { WardenPlugin } = await import(${JSON.stringify(pathToFileURL(resolve('integrations/opencode/warden.js')).href)});
@@ -50,6 +58,7 @@ async function run(payload: unknown, plugin = false) {
     try { await (await WardenPlugin())['chat.message']({}, { parts: event.parts }); }
     catch (err) { console.error(err.message); process.exitCode = 2; }
   `] : [hook];
+  if (observeTimers) args.unshift('--import', timerProbe);
   const child = spawn(process.execPath, args, {
     env: {
       ...process.env,
@@ -69,6 +78,27 @@ async function run(payload: unknown, plugin = false) {
 }
 
 try {
+  for (const [deadlines, expected] of [
+    [undefined, 240_000],
+    [{ decisionMs: 90_000, documentMs: 270_000 }, 270_000],
+    [{ decisionMs: 90_000, documentMs: 1_000 }, 240_000],
+    [{ decisionMs: 90_000, documentMs: '270000' }, 240_000],
+    [{ decisionMs: 310_000, documentMs: 240_000 }, 310_000]
+  ] as [Record<string, unknown> | undefined, number][]) {
+    healthDeadlines = deadlines;
+    const timed = await run({ attachments: [{ name: 'report.txt', data }] }, false, true);
+    assert.equal(timed.code, 0, timed.stderr);
+    const timers = [...timed.stderr.matchAll(/WARDEN_TEST_TIMER:(\d+)/g)].map((match) => Number(match[1]));
+    assert(timers.includes(expected), `attachment request did not use ${expected} ms: ${timed.stderr}`);
+  }
+  healthDeadlines = { decisionMs: 90_000, documentMs: 270_000 };
+  const ordinary = await run({ prompt: 'A text-only request.' }, false, true);
+  assert.equal(ordinary.code, 0, ordinary.stderr);
+  assert.match(ordinary.stderr, /WARDEN_TEST_TIMER:90000\n/);
+  assert.doesNotMatch(ordinary.stderr, /WARDEN_TEST_TIMER:(240000|270000)\n/);
+  healthDeadlines = undefined;
+  console.log('✓ attachment transport covers 240 seconds, learns longer budgets, and preserves the text deadline');
+
   let result = await run({ prompt: '', cwd: root, attachments: [{ path: 'report.txt' }] });
   assert.equal(result.code, 0, result.stderr);
   assert.deepEqual(seen.at(-1)?.attachments, [{ name: 'report.txt', data }]);

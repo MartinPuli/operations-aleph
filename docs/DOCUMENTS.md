@@ -112,22 +112,33 @@ returned as unchecked content.
 | DOCX expanded data | 32 MiB total, 8 MiB per entry |
 | Reader processes | 2 concurrently |
 | Extraction time | 45 seconds per request |
-| Document model judgement | 25 seconds across all windows and rules |
+| Document analysis | 180 seconds across all windows, rules and queue waits |
+| Active document model call | 60 seconds, starting when admitted to the model |
+| Model cancellation grace | Up to 5 seconds |
 
 DOCX, TXT and other flowing text do not have stable page layout; their report's
 single text unit is not a claim about printed page count. The character limit
 governs these formats. Large requests are held instead of truncated or summarized.
-Hooks need at least 75 seconds for the combined extraction and judgement limits;
-normal text-only requests keep their existing timeout.
+The gateway advertises a 240-second document transport budget. Updated hooks use
+it for attachments; normal text-only requests keep their existing timeout. Host
+hook wrappers allow 300 seconds, including connection and response handling.
 
 Every applicable input rule is checked for documents. Long text is divided into
 overlapping 6,000-character windows with 500 characters repeated at each boundary.
 Every window must be cleared. A violation can stop a rule's remaining windows;
 an unread window, failed model call or exhausted deadline cannot produce ALLOW.
-Whole-policy shortcut screening is disabled for document requests. Model calls
-receive the remaining deadline; an outer deadline also covers a cold model load.
-Runtime model loading may finish after a cancelled request, but that late work
-cannot approve or forward the request.
+Whole-policy shortcut screening is disabled for document requests. QVAC 0.17.1
+serializes completions for a model despite its native `parallel: 4` setting.
+Document checks therefore share an admission queue per adapter: waiting consumes
+the overall analysis budget, but does not start an individual generation timer.
+The admitted call receives the smaller of 60 seconds and the remaining overall
+budget, including any cold model load. Cancellation removes queued checks and
+cancels active generation. A shared model load can finish later, but its cancelled
+caller cannot start a new generation or approve the request.
+
+Extraction and analysis failures are reported separately. A `read` document can
+still be held because its policy checks did not finish; that is not an OCR
+failure. The console keeps the reading result and explains incomplete analysis.
 
 Each batch runs in a separate process with a 512 MiB JavaScript heap limit. A
 timeout or disconnected client kills the process and its OCR threads. File bytes
@@ -170,6 +181,12 @@ including OCR. It covers mixed/readable/unreadable source parts, all-rule window
 coverage, late document attacks, secret masking, duplicate document order, digest
 binding, timeouts, cancellation and cleanup. It does not claim an adversarial
 accuracy benchmark for OCR or the selected guard model.
+
+`node --import tsx scripts/test-document-budget.ts` covers queued workloads,
+simultaneous documents, cancellation, late model output and bounded hangs.
+`scripts/measure-document-workload.ts` runs synthetic documents with a real local
+model in isolated temporary state to check multi-rule latency without employee
+data. Passing these probes does not establish general document accuracy.
 
 `node dist/documents/smoke.js` checks compiled extraction with a real native PDF
 and an image requiring actual offline OCR. Desktop smoke mode invokes that same

@@ -1,0 +1,453 @@
+{
+  "title": "Isolated synthetic pdf-pair workload across 11 applicable rules",
+  "started": "2026-09-08T16:31:47.998Z",
+  "finished": "2026-09-08T16:37:21.182Z",
+  "implementation": "src",
+  "sourceHashes": {
+    "src/guard/pipeline.ts": "7c088b74c103a200d32eb7002afcc1a51eaeaf644dab57648f30b02b7f41c79a",
+    "src/guard/document-budget.ts": "f85c91bf19627f56568917164dc01237d519c2200c3107be976c9e426f671e09",
+    "src/guard/passes/adjudicate.ts": "e81b84d1178bf38528e513537a30ec5eefa0659fbeb5bbbb318f0e78bf066f01",
+    "src/guard/passes/forms.ts": "ca9cc5223a4b1cf2994138ceb80803adfaac4ac7b4d9896a2e13478c4240f83d",
+    "src/documents/extract.ts": "418c4b7a50c6ec2c04ff47c12e0bdff5dc55fe1c5ad8105f62c9c83f42c5270f",
+    "src/documents/runner.ts": "9384a6c8c2ec76068cc380332603e9be67a76d51f526840fa2f525a1ab9b7a8a",
+    "src/qvac/real.ts": "79b761d3fc47615412b2e740f97d18f2fee1c0ee347d05e0fed63d626e8bb1b4",
+    "src/qvac/client.ts": "bf6c48a02f0ad01e5a389066f3f5c5503eec5eb3f66de4cb4dc863ad020f5a84",
+    "src/qvac/json.ts": "afac0ae12fe20201b545fcd097eb8e3f8334f49bc58e4df4a490266601f9b2bb",
+    "src/qvac/types.ts": "f18b59e341ff83efba1f46412c6e09ecfd9697b63fac962874781baafbeb3dc0",
+    "src/prompts/store.ts": "f884e32ea3e6db226ece171beb7be7040a9f4354f169513a51606e9e1bf3a053",
+    "src/prompts/catalog.ts": "18092cf628e541b4eaa0ec9898674c949edd4461edd6969c2730103d513c662a",
+    "scripts/measure-document-workload.ts": "915702bf02b53c236e1f5054006f81736e35ecef57aa1c97c5cb9958939c4a08",
+    "scripts/fixtures/documents.ts": "266d7db2cf5256836d0ef2a7d9968e788fda15063bd83b6fa5a069f019065440"
+  },
+  "sourceUnchanged": true,
+  "model": "DynaGuard-8B.Q4_K_M.gguf",
+  "modelSha256": "692a65b2e1cf5ddecdbbc67b1ace71e3a571173383e44c059d2b4d8e2fac05c3",
+  "rules": 11,
+  "form": "dynaguard",
+  "warmingMs": 10252,
+  "hardware": {
+    "platform": "darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "memoryBytes": 17179869184,
+    "node": "v26.8.1"
+  },
+  "limitation": "Synthetic cases, one repetition on a shared machine. Processing and latency diagnostic only; no policy accuracy estimate.",
+  "scenario": "pdf-pair",
+  "extractOnly": false,
+  "rows": [
+    {
+      "sample": "benign-four-page-mixed-pdf",
+      "expected": "ALLOW",
+      "verdict": "ALLOW",
+      "totalMs": 142607,
+      "documents": [
+        {
+          "mimeType": "application/pdf",
+          "bytes": 1054347,
+          "status": "read",
+          "pages": 4,
+          "chars": 9658,
+          "method": "mixed",
+          "redactions": 0
+        }
+      ],
+      "firedRuleIds": [],
+      "passes": [
+        {
+          "pass": "quota",
+          "ms": 0,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "budget",
+          "ms": 0,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "sanitize",
+          "ms": 2,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "documents",
+          "ms": 13379,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "isolate",
+          "ms": 8,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "retrieve",
+          "ms": 0,
+          "failedClosed": false
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-1",
+          "ms": 79437,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-2",
+          "ms": 84806,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-3",
+          "ms": 89761,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-4",
+          "ms": 94717,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-5",
+          "ms": 99671,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-6",
+          "ms": 104626,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-7",
+          "ms": 109572,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-8",
+          "ms": 114424,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-9",
+          "ms": 119384,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-10",
+          "ms": 124350,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-11",
+          "ms": 129205,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "aggregate",
+          "ms": 1,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        }
+      ]
+    },
+    {
+      "sample": "final-page-payroll-violation",
+      "expected": "BLOCK",
+      "verdict": "BLOCK",
+      "totalMs": 175809,
+      "documents": [
+        {
+          "mimeType": "application/pdf",
+          "bytes": 1065558,
+          "status": "read",
+          "pages": 4,
+          "chars": 9768,
+          "method": "mixed",
+          "redactions": 0
+        }
+      ],
+      "firedRuleIds": [
+        "synthetic-document-rule-3"
+      ],
+      "passes": [
+        {
+          "pass": "quota",
+          "ms": 0,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "budget",
+          "ms": 0,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "sanitize",
+          "ms": 1,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "documents",
+          "ms": 16593,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "isolate",
+          "ms": 2,
+          "verdict": "ALLOW",
+          "failedClosed": false
+        },
+        {
+          "pass": "retrieve",
+          "ms": 0,
+          "failedClosed": false
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-1",
+          "ms": 94481,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-2",
+          "ms": 100645,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-3",
+          "ms": 106918,
+          "verdict": "BLOCK",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-4",
+          "ms": 113498,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-5",
+          "ms": 120333,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-6",
+          "ms": 126895,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-7",
+          "ms": 133292,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-8",
+          "ms": 139902,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-9",
+          "ms": 146018,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-10",
+          "ms": 152564,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "adjudicate:synthetic-document-rule-11",
+          "ms": 159163,
+          "verdict": "ALLOW",
+          "failedClosed": false,
+          "windows": 2
+        },
+        {
+          "pass": "aggregate",
+          "ms": 15,
+          "verdict": "BLOCK",
+          "failedClosed": false
+        }
+      ]
+    }
+  ],
+  "fatal": null,
+  "verdict": "BLOCK",
+  "totalMs": 175809,
+  "documents": [
+    {
+      "mimeType": "application/pdf",
+      "bytes": 1065558,
+      "status": "read",
+      "pages": 4,
+      "chars": 9768,
+      "method": "mixed",
+      "redactions": 0
+    }
+  ],
+  "passes": [
+    {
+      "pass": "quota",
+      "ms": 0,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "budget",
+      "ms": 0,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "sanitize",
+      "ms": 1,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "documents",
+      "ms": 16593,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "isolate",
+      "ms": 2,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "retrieve",
+      "ms": 0,
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-1",
+      "ms": 94481,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-2",
+      "ms": 100645,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-3",
+      "ms": 106918,
+      "verdict": "BLOCK",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-4",
+      "ms": 113498,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-5",
+      "ms": 120333,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-6",
+      "ms": 126895,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-7",
+      "ms": 133292,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-8",
+      "ms": 139902,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-9",
+      "ms": 146018,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-10",
+      "ms": 152564,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-11",
+      "ms": 159163,
+      "verdict": "ALLOW",
+      "failedClosed": false,
+      "windows": 2
+    },
+    {
+      "pass": "aggregate",
+      "ms": 15,
+      "verdict": "BLOCK",
+      "failedClosed": false
+    }
+  ]
+}

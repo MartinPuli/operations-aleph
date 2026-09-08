@@ -74,13 +74,16 @@ const DEFAULT_HEALTH_TIMEOUT_MS = 10_000;
  * The cost is a person waiting. That is the trade being made here, out loud.
  */
 const DEFAULT_DECISION_TIMEOUT_MS = 90_000;
+// Extraction, queued analysis, cancellation grace and response delivery have
+// separate budgets. An attachment must not inherit the shorter text deadline.
+const DEFAULT_DOCUMENT_TIMEOUT_MS = 240_000;
 
 /**
  * The other half of that deadline: what `--fix` writes into Claude Code's
  * hook entry, in seconds, so the harness does not kill the hook before Warden
  * has answered. Claude Code's own default for this event is 30 s.
  */
-const CLAUDE_CODE_HOOK_TIMEOUT_S = 120;
+const CLAUDE_CODE_HOOK_TIMEOUT_S = 300;
 
 function timeoutFromEnv(name, fallback) {
   const raw = process.env[name];
@@ -833,12 +836,11 @@ function fixClaudeCode() {
   // Claude Code kills a UserPromptSubmit command hook at 30 seconds unless the
   // entry says otherwise (it used to be 60), and a hook it kills is a prompt
   // that goes through unjudged: the output is discarded and the prompt reaches
-  // the model. Warden's own deadline is 90 s because the 8B was measured at
-  // 46 s on four CPU cores, so an entry without a timeout is a guard that
-  // silently stops guarding on exactly the machines where it is slow. The
-  // shipped integrations/claude-code/settings.json has carried 120 since the
-  // deadline moved; this writes the same number, and repairs an entry an
-  // earlier --fix wrote without one.
+  // the model. Warden's text deadline is 90 s, while documents have 240 s
+  // for extraction and queued analysis, so an entry without a timeout is a
+  // guard that silently stops guarding on exactly the machines where it is
+  // slow. The shipped settings now allow 300 s; repair both the older 120 s
+  // entry and entries that an earlier --fix wrote without any timeout.
   const ours = list.flatMap((entry) => entry?.hooks ?? []).find((h) => String(h?.command ?? '').includes('warden-hook'));
   const entryOk = Boolean(ours) && ours.timeout >= CLAUDE_CODE_HOOK_TIMEOUT_S;
 
@@ -1223,11 +1225,14 @@ async function main() {
     // for a gateway too old to answer, and for debugging.
     const stated = health?.deadlines?.decisionMs;
     if (Number.isFinite(stated) && stated > 0) decisionTimeoutMs = stated;
-    // Extraction (45 s) and document adjudication (25 s) are separate bounded
-    // stages. Leave room for their explicit verdict even on a gateway whose
-    // ordinary text deadline is shorter; an early transport timeout cannot
-    // substitute for a completed document inspection.
-    if (attachments.length) decisionTimeoutMs = Math.max(decisionTimeoutMs, 80_000);
+    // Extraction (45 s), analysis (180 s), cancellation grace (5 s), and
+    // response delivery need their own budget. A shorter ordinary deadline
+    // must not cancel the request before its document decision can arrive.
+    if (attachments.length) {
+      const documentMs = health?.deadlines?.documentMs;
+      decisionTimeoutMs = Math.max(decisionTimeoutMs, DEFAULT_DOCUMENT_TIMEOUT_MS,
+        Number.isFinite(documentMs) && documentMs > 0 ? documentMs : 0);
+    }
     // Read on the health call so it is known before the decision can fail. A
     // gateway that never answered leaves this false, which is the fail-open
     // default and the only answer available: refusing on the basis of a policy

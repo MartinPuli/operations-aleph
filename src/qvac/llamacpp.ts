@@ -46,6 +46,7 @@
 import type { ZodType } from 'zod';
 import {
   FailClosedError,
+  throwIfCompletionCancelled,
   type CompleteRequest,
   type GenStats,
   type ModelRole,
@@ -262,9 +263,12 @@ export class LlamaCppAdapter implements QvacAdapter {
     req: CompleteRequest,
     jsonSchema: Record<string, unknown> | undefined
   ): Promise<{ text: string; stats: GenStats }> {
+    throwIfCompletionCancelled(req);
     const started = Date.now();
     const { LlamaChatSession } = await sdk();
+    throwIfCompletionCancelled(req);
     const { context } = await this.#load(req.role);
+    throwIfCompletionCancelled(req);
 
     /**
      * The sequence is borrowed and given back, and the first version of this
@@ -299,14 +303,20 @@ export class LlamaCppAdapter implements QvacAdapter {
       const grammar = jsonSchema
         ? await (await this.#instance()).createGrammarForJsonSchema(jsonSchema)
         : undefined;
+      throwIfCompletionCancelled(req);
+      const timeoutSignal = AbortSignal.timeout(req.timeoutMs ?? 30_000);
+      const signal = req.signal ? AbortSignal.any([req.signal, timeoutSignal]) : timeoutSignal;
 
       const text = await session.prompt(req.user, {
         ...(grammar ? { grammar } : {}),
         temperature: req.temp ?? 0,
         seed: req.seed ?? 42,
         maxTokens: req.maxTokens ?? 256,
-        signal: AbortSignal.timeout(req.timeoutMs ?? 30_000)
+        signal
       });
+      // Native engines can return the generated prefix when aborted. Partial
+      // output is never a completed analysis, even if that prefix parses.
+      throwIfCompletionCancelled({ ...req, signal });
 
       return {
         text: typeof text === 'string' ? text : JSON.stringify(text),

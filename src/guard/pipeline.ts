@@ -19,6 +19,7 @@ import type { PolicySpec } from '../policy/types.js';
 import type { QvacAdapter } from '../qvac/types.js';
 import { aggregate } from './aggregate.js';
 import { checkBudget } from './budget.js';
+import { withDocumentBudget } from './document-budget.js';
 import { isolate, normalizeUntrusted } from './isolate.js';
 import { adjudicateAll } from './passes/adjudicate.js';
 import { detectInjection } from './passes/injection.js';
@@ -242,11 +243,21 @@ export async function evaluate(
   // the policy screen is on (`WARDEN_POLICY_SCREEN`, off), and then it is the
   // point: one call sees the whole policy where retrieval shows the per-rule
   // calls the top few.
-  const { verdicts, traces, screen } = await adjudicateAll(
-    hasDocuments ? documentDeadlineAdapter(qvac, input.signal) : qvac,
-    iso, toAdjudicate,
-    { screenOver: applicable, ...(hasDocuments ? { screen: false, windowChars: 6_000, windowOverlap: 500 } : {}) }
-  );
+  const judge = (runtime: QvacAdapter) => adjudicateAll(runtime, iso, toAdjudicate,
+    { screenOver: applicable, ...(hasDocuments ? { screen: false, windowChars: 6_000, windowOverlap: 500 } : {}) });
+  const judgeStarted = Date.now();
+  const { verdicts, traces, screen } = await (hasDocuments
+    ? withDocumentBudget(qvac, input.signal, judge).catch((error: unknown) => ({
+      // Admission can expire before adjudicateAll owns a role lease. It is
+      // still missing evidence for every rule, not an HTTP failure or a pass.
+      verdicts: [], screen: null,
+      traces: toAdjudicate.map((rule): PassTrace => ({
+        pass: `adjudicate:${rule.id}`, ms: Date.now() - judgeStarted,
+        verdict: 'ESCALATE', failedClosed: true,
+        detail: { error: error instanceof Error ? error.message : String(error) }
+      }))
+    }))
+    : judge(qvac));
   passes.push(...traces);
 
   // ── pass 4: aggregate ──────────────────────────────────────────────────────
@@ -333,36 +344,4 @@ function finish(args: {
   // that actually exists in the log rather than a number generated alongside it.
   const entry = recordDecision(args.input.actor, args.input.prompt, partial);
   return { ...partial, auditId: entry.auditId };
-}
-
-/** One bounded inference budget across all document windows, with real adapter cancellation. */
-function documentDeadlineAdapter(qvac: QvacAdapter, signal?: AbortSignal): QvacAdapter {
-  const deadline = Date.now() + 25_000;
-  const request = (req: import('../qvac/types.js').CompleteRequest) => {
-    const remaining = deadline - Date.now();
-    if (signal?.aborted || remaining <= 0) throw new Error('Document judgement did not finish; remaining content was not cleared');
-    return { ...req, timeoutMs: Math.min(req.timeoutMs ?? remaining, remaining) };
-  };
-  const bounded = async <T>(run: () => Promise<T>): Promise<T> => {
-    if (signal?.aborted || deadline <= Date.now()) throw new Error('Document judgement was cancelled or timed out; remaining content was not cleared');
-    let timer: NodeJS.Timeout | undefined;
-    let abort: (() => void) | undefined;
-    const expiry = new Promise<never>((_resolve, reject) => {
-      const stop = () => reject(new Error('Document judgement was cancelled or timed out; remaining content was not cleared'));
-      timer = setTimeout(stop, Math.max(1, deadline - Date.now()));
-      abort = stop;
-      signal?.addEventListener('abort', abort, { once: true });
-    });
-    // The adapter also receives the remaining deadline and cancels generation.
-    // This outer timer covers its cold model-load step, which some runtimes do
-    // before starting their generation timer. Such a late load cannot approve.
-    try { return await Promise.race([run(), expiry]); }
-    finally { clearTimeout(timer); if (abort) signal?.removeEventListener('abort', abort); }
-  };
-  return {
-    complete: (req) => bounded(() => qvac.complete(request(req))),
-    completeJSON: (req, schema, jsonSchema) => bounded(() => qvac.completeJSON(request(req), schema, jsonSchema)),
-    embed: (texts) => qvac.embed(texts), ocr: (path) => qvac.ocr(path),
-    stats: () => qvac.stats(), dispose: () => qvac.dispose()
-  };
 }

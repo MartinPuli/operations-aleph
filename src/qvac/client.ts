@@ -119,9 +119,9 @@ export function sourceFor(role: ModelRole): string | object {
 /**
  * Per-role load settings.
  *
- * `parallel` on the adjudicator is what lets pass 3 judge K rules concurrently
- * against one loaded model — the alternative is K sequential calls, which is
- * the difference between a usable pipeline and a three-second-per-rule one.
+ * `parallel` configures native context slots. The QVAC 0.17.1 request registry
+ * still serializes completions per model; document checks explicitly queue
+ * admission so their generation deadlines do not expire while waiting.
  */
 function configFor(role: ModelRole): Record<string, unknown> {
   switch (role) {

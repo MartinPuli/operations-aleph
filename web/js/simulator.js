@@ -4,7 +4,7 @@
 import { passRow } from './activity.js';
 import { $, attr, esc, post, state } from './core.js';
 import { refreshAppeals } from './data.js';
-import { bindDocuments, clearDocuments, documentComposer, documentMetadataMarkup, documentsBusy, loadDocumentCapabilities, selectedAttachments, selectedMetadata } from './documents.js';
+import { bindDocuments, clearDocuments, documentAnalysisNotice, documentComposer, documentMetadataMarkup, documentReviewPendingMarkup, documentsBusy, loadDocumentCapabilities, selectedAttachments, selectedMetadata } from './documents.js';
 import { say } from './draft.js';
 import { personById, plural, ruleName, sendOnEnter } from './format.js';
 import { disclosure, render } from './render.js';
@@ -34,6 +34,7 @@ VIEWS.simulator = {
         ${state.chat.length
           ? state.chat.map(renderMessage).join('')
           : state.company.employees.length ? '<div class="empty"><b>See what Warden would do</b><span>Check a prompt, a document, or both as somebody on your team. The same policy and identity checks apply.</span></div>' : '<div class="empty"><b>Set up an identity to check requests</b><span>Choose who Warden should check as. Protect this device to create your own identity, or add people to your team.</span><div class="actions"><button type="button" class="btn primary" data-go="soloRules">Set up this device</button><button type="button" class="btn" data-go="people">Add people</button></div></div>'}
+        ${documentReviewPendingMarkup(state.chat.at(-1)?.documents, state.sending && state.chat.at(-1)?.from === 'employee')}
       </div>
     </div>
     <div class="composer">
@@ -145,6 +146,7 @@ async function judge(text, person, who, attachments) {
     : ({ ALLOW: 'Allowed', BLOCK: 'Stopped', ESCALATE: 'Held for a person' }[j.verdict] ?? j.verdict);
 
   let why = '';
+  why += documentAnalysisNotice(j);
   if (exempt && j.verdict === 'ALLOW') {
     why += `<div><b>${esc(person.role)} is exempt</b>, so no rule was applied and nothing here tells you
       whether the prompt would pass. Send it as somebody the policy governs to find out.</div>`;

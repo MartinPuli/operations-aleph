@@ -26,6 +26,30 @@ export const selectedAttachments = () => selected.map(({ name, mimeType, data })
 export const selectedMetadata = () => selected.map(({ name, mimeType, bytes }) => ({ name, mimeType, bytes }));
 export function clearDocuments() { selected = []; errors = []; }
 
+/** The HTTP check has no stage stream, so describe the work without guessing
+ * whether extraction or an individual rule has already finished. */
+export function documentReviewPendingMarkup(documents = [], sending = false) {
+  if (!sending || !documents.length) return '';
+  return '<div class="msg" role="status" aria-live="polite"><div class="who">Warden</div><div class="why"><b>Reading and reviewing documents…</b><div>Files are read first, then checked against the rules. Several rules or a busy analyzer can make this take a few minutes.</div></div></div>';
+}
+
+/** Model timeouts are separate from unreadable files. Only the actual reading
+ * reports can establish that extraction (including OCR) completed. */
+export function documentAnalysisNotice(decision) {
+  const documents = decision.documents ?? [];
+  if (!documents.length) return '';
+  const errors = (decision.passes ?? []).filter((pass) => pass.failedClosed && String(pass.pass).startsWith('adjudicate:')).map((pass) => String(pass.detail?.error ?? ''));
+  const timedOut = errors.some((error) => /^Document analysis\b.*timed out/i.test(error));
+  const cancelled = errors.some((error) => /^Document analysis\b.*cancelled/i.test(error));
+  const legacy = errors.some((error) => /^Document judgement was cancelled or timed out/i.test(error));
+  if (!timedOut && !cancelled && !legacy) return '';
+  const reading = documents.every((document) => document.status === 'read')
+    ? 'The files were read. '
+    : 'Document reading results are shown separately below. ';
+  const analysis = timedOut ? 'Policy analysis ran out of time' : cancelled ? 'Policy analysis was cancelled' : 'Policy analysis did not finish';
+  return `<div><b>${analysis}.</b> ${reading}Not every part and rule was checked, so this request was not cleared.</div><div>Try again after other checks finish. If this keeps happening, check the analyzer in <button type="button" class="linkbtn" data-go="models">Models</button>.</div>`;
+}
+
 /** Stable server reasons need a recovery sentence where a person sees the file. */
 export function documentReason(reason) {
   const messages = {

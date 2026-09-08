@@ -239,14 +239,15 @@ Ansible, a provisioning script) and the gateway stops being a suggestion.
 
 ## Behaviour worth knowing
 
-**If Warden is unreachable, the prompt goes through**, with a warning on stderr.
-This is the one place in the system that fails open. Everywhere else an
+**By default, if Warden is unreachable, the prompt goes through**, with a warning
+on stderr. A hook that has learned the gateway's `WARDEN_FAIL_CLOSED=1` policy
+refuses instead. This is the one place in the system that can fail open. Everywhere else an
 unusable answer escalates to a human; here that would mean a crashed daemon
 bricking every developer's CLI at once, and a gateway that can strand the team
 gets uninstalled the first morning it does. The missing heartbeat in the admin
 console is the alert.
 
-Availability and inference use separate deadlines. `/health` gets 2 seconds by
+Availability and inference use separate deadlines. `/health` gets 10 seconds by
 default (`WARDEN_HEALTH_TIMEOUT_MS`); a real decision gets whatever the
 gateway states on `/health`, 90 seconds unless `WARDEN_HOOK_TIMEOUT_MS` says
 otherwise on the gateway. `WARDEN_TIMEOUT_MS` on the employee's machine is a
@@ -255,12 +256,25 @@ of what an employee is asked to set: the deadline decides when the hook stops
 checking, so it belongs to the administrator who owns the policy, not to the
 person the policy constrains. Both values must be positive and finite. The decision
 deadline includes reading and validating the complete HTTP body. A decision
-that exceeds the deadline still fails open; on 2026-08-23, when the deadline
+that exceeds the deadline follows the learned failure policy; on 2026-08-23, when the deadline
 was 30 seconds, one cold Windows Codex check took 35.954 seconds and reached
 the model, so Codex remains NOT VERIFIED. The deadline moved to 90 in v0.1.18
 to cover the optional 8B adjudicator, which was measured at 46 seconds on four
 CPU cores — that raises the number a decision has to beat, and changes nothing
 about what happens when it does not.
+
+Document requests use a separate 240-second transport budget, exposed as
+`deadlines.documentMs` on `/health`: 45 seconds for extraction, 180 seconds for
+queued rule analysis, 5 seconds for cancellation, and response delivery margin.
+The hook uses at least 240 seconds for attachments, including with older
+gateways, and honors a longer gateway document or decision deadline. Ordinary
+text requests retain the 90-second default. Claude Code's installed hook entry
+and the OpenCode wrapper allow 300 seconds so they do not kill a normal document
+check first. Run `warden-hook --fix` after updating an existing hook to repair
+its Claude Code timeout; update the OpenCode plugin copy too. If an administrator
+raises the gateway budget above these outer limits, the host tool's timeout must
+also be raised. Native tool attachment exposure and refusal still require the
+client verification described above.
 
 **Secrets are masked before the guard sees them.** An API key pasted into a
 prompt is replaced with `[REDACTED:OpenAI key]` before any model runs, and only

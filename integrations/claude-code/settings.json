@@ -6,7 +6,7 @@
           {
             "type": "command",
             "command": "node ~/.warden-hook.mjs",
-            "timeout": 120
+            "timeout": 300
           }
         ]
       }
