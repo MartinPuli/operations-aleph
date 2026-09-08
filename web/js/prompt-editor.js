@@ -5,6 +5,7 @@ import { render } from './render.js';
 export const promptEditor = { catalog: null, drafts: Object.create(null), openRole: null, selected: {}, loading: false, error: '', busy: '', confirmReset: null };
 let loadingRequest = null;
 let unloadBound = false;
+let catalogGeneration = 0;
 const tokenText = (name) => `{{${name}}}`;
 const currentTemplate = () => promptEditor.catalog?.templates.find((item) => item.id === promptEditor.selected[promptEditor.openRole]);
 const dirty = (draft) => Boolean(draft && draft.text !== draft.base);
@@ -42,6 +43,7 @@ export function acceptPromptCatalog(catalog) {
     const choices = catalog.templates.filter((item) => item.role === role);
     if (!choices.some((item) => item.id === promptEditor.selected[role])) promptEditor.selected[role] = preferredTemplate(choices)?.id;
   }
+  catalogGeneration++;
 }
 
 export async function loadPrompts() {
@@ -49,12 +51,17 @@ export async function loadPrompts() {
   if (promptEditor.busy) return;
   promptEditor.loading = true;
   promptEditor.error = '';
+  const generation = catalogGeneration;
+  const obsolete = () => generation !== catalogGeneration || Boolean(promptEditor.busy);
   loadingRequest = (async () => {
     try {
       const result = await api('/api/prompts');
+      // A refresh may have captured its snapshot before a concurrent save.
+      // Neither that snapshot nor its error may replace the newer result.
+      if (obsolete()) return;
       if (!result.ok || !Array.isArray(result.j?.templates)) throw new Error(result.j?.error || 'Prompts could not be loaded.');
       acceptPromptCatalog(result.j);
-    } catch (error) { promptEditor.error = error.message || 'Warden could not be reached. Try again.'; }
+    } catch (error) { if (!obsolete()) promptEditor.error = error.message || 'Warden could not be reached. Try again.'; }
     finally { promptEditor.loading = false; loadingRequest = null; repaint(); }
   })();
   return loadingRequest;
@@ -151,6 +158,7 @@ async function writePrompt(action) {
     draft.errors = validatePromptTemplate(template, draft.text);
     if (draft.errors.length) { updateDraftControls(template, draft); $('promptTemplateText')?.focus(); return; }
   }
+  catalogGeneration++;
   promptEditor.busy = action;
   draft.note = null;
   repaint();

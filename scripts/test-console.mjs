@@ -12,7 +12,7 @@ globalThis.sessionStorage = { getItem: () => 'administrator-secret' };
 const { api, post, state } = await import('../web/js/core.js');
 const { documentMetadataMarkup, documentReason } = await import('../web/js/documents.js');
 const { library, libraryMarkup } = await import('../web/js/model-library.js');
-const { promptEditor, acceptPromptCatalog, hasPromptChanges, validatePromptTemplate, promptEditorMarkup, togglePromptEditor, closePromptEditor } = await import('../web/js/prompt-editor.js');
+const { promptEditor, acceptPromptCatalog, hasPromptChanges, validatePromptTemplate, promptEditorMarkup, togglePromptEditor, closePromptEditor, loadPrompts } = await import('../web/js/prompt-editor.js');
 await import('../web/js/models.js');
 const { VIEWS } = await import('../web/js/views.js');
 
@@ -216,4 +216,44 @@ test('refresh updates an untouched prompt without creating a local edit', () => 
   assert.equal(promptEditor.drafts[template.id].text, 'Updated saved instruction {{input}}');
   assert.equal(promptEditor.drafts[template.id].revision, 'second');
   assert.equal(hasPromptChanges(), false);
+});
+
+test('a delayed prompt refresh cannot overwrite a newer accepted save', async () => {
+  const template = promptTemplate('compile-system', 'compiler');
+  const initial = { revision: 'first', templates: [template] };
+  for (const outcome of ['snapshot', 'failure']) {
+    acceptPromptCatalog(initial);
+    promptEditor.openRole = 'compiler'; promptEditorMarkup('compiler');
+    let releaseRead, rejectRead;
+    globalThis.fetch = () => new Promise((resolve, reject) => { releaseRead = resolve; rejectRead = reject; });
+    const pending = loadPrompts();
+    acceptPromptCatalog({ revision: 'saved', templates: [{ ...template, template: 'Newly saved instruction {{input}}', custom: true }] });
+    if (outcome === 'snapshot') releaseRead(new Response(JSON.stringify(initial)));
+    else rejectRead(new Error('The older refresh failed.'));
+    await pending;
+    assert.equal(promptEditor.catalog.revision, 'saved');
+    assert.equal(promptEditor.drafts[template.id].text, 'Newly saved instruction {{input}}');
+    assert.equal(promptEditor.drafts[template.id].revision, 'saved');
+    assert.equal(promptEditor.error, '');
+    assert.equal(hasPromptChanges(), false);
+  }
+});
+
+test('a prompt refresh finishing during a write cannot rebase that write’s draft', async () => {
+  const template = promptTemplate('compile-system', 'compiler');
+  acceptPromptCatalog({ revision: 'first', templates: [template] });
+  togglePromptEditor('compiler'); promptEditorMarkup('compiler');
+  const draft = promptEditor.drafts[template.id];
+  draft.text = 'Instruction being saved {{input}}';
+  let releaseRead;
+  globalThis.fetch = () => new Promise((resolve) => { releaseRead = resolve; });
+  const pending = loadPrompts();
+  promptEditor.busy = 'save';
+  releaseRead(new Response(JSON.stringify({ revision: 'concurrent', templates: [{ ...template, template: 'An external edit {{input}}' }] })));
+  await pending;
+  assert.equal(promptEditor.catalog.revision, 'first');
+  assert.equal(draft.text, 'Instruction being saved {{input}}');
+  assert.equal(draft.base, template.template);
+  assert.equal(draft.revision, 'first');
+  assert.equal(draft.conflict, false);
 });
