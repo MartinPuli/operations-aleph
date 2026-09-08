@@ -9,8 +9,9 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Router } from 'express';
-import { detectCliTools } from '../../qvac/cli-compiler.js';
-import { isMock, remoteCompiler } from '../../qvac/index.js';
+import { cliCompilerConfig, detectCliTools, type CliTool } from '../../qvac/cli-compiler.js';
+import { claudeStatus, CliConnectionError, testCliCompiler } from '../../qvac/cli-setup.js';
+import { compilerEnvironmentError, isMock, remoteCompiler } from '../../qvac/index.js';
 import { withRoleChange } from '../../qvac/coordination.js';
 import { RealQvacAdapter } from '../../qvac/real.js';
 import { applyCompilerSettings, selections, testEndpoint, withModelManagement } from '../../models/manager.js';
@@ -21,6 +22,7 @@ import {
   adjudicatorSettingsSchema,
   COMPILER_PROVIDERS,
   compilerSettingsSchema,
+  compilerSetupRequired,
   loadAdjudicatorSettings,
   loadCompilerSettings,
   redactedCompilerSettings,
@@ -115,23 +117,30 @@ settingsRoutes.post('/api/settings/adjudicator', asyncRoute(async (req, res) => 
  * characters, which is enough to tell "a key is saved" from "the field is
  * empty" without putting the secret back on the wire on every page load.
  */
-settingsRoutes.get('/api/settings/compiler', asyncRoute(async (_req, res) => {
+settingsRoutes.get('/api/settings/compiler', asyncRoute(async (req, res) => {
   const source = remoteCompilerSource();
   // Which CLIs are actually on this machine, so the console can say so beside
   // the option instead of letting somebody pick one that will fail on the first
   // compile. `detectCliTools` existed and nothing called it, which is the same
   // as it not existing: an administrator picked "Claude Code on this machine"
   // and found out whether that was true a minute later, from a compile error.
-  const cliTools = await detectCliTools().catch(() => []);
+  const [cliTools, claude] = await Promise.all([detectCliTools().catch(() => []), claudeStatus(req.query.refresh === '1')]);
+  const setupRequired = compilerSetupRequired();
+  const configurationError = compilerEnvironmentError();
+  const cli = cliCompilerConfig();
+  const overriddenByEnv = Boolean(process.env['WARDEN_COMPILER_CLI']?.trim() || process.env['WARDEN_COMPILER_API']?.trim() || process.env['WARDEN_MODEL_COMPILER']?.trim());
   res.json({
     cliTools,
+    claude,
+    setupRequired,
+    configurationError,
     ...redactedCompilerSettings(loadCompilerSettings()),
     providers: COMPILER_PROVIDERS,
     // Which source is actually in force. An administrator whose saved settings
     // are overridden by the environment should see that rather than conclude
     // the page did not save.
-    activeSource: source ?? 'local',
-    overriddenByEnv: source === 'env',
+    activeSource: overriddenByEnv ? 'env' : setupRequired ? 'setup-required' : cli ? 'settings' : source ?? 'local',
+    overriddenByEnv,
     // Whether a compiler better than the local weights is actually in force —
     // a CLI or an endpoint, from the environment or from the saved settings.
     // The console was reading `provider`, which is the SAVED setting, and so a
@@ -139,10 +148,10 @@ settingsRoutes.get('/api/settings/compiler', asyncRoute(async (_req, res) => {
     // sentence through the single-rule route as if the 1.7B were answering:
     // the split never ran, and the instruction that should have become five
     // rules became one. This is the adapter's own answer, not the file's.
-    capable: remoteCompiler() !== null,
+    capable: !setupRequired && !configurationError && remoteCompiler() !== null,
     modelId: selections().compiler,
-    inForce: remoteCompiler() ?? activeLocalModel('compiler'),
-    configuredModel: configuredModel('compiler'),
+    inForce: setupRequired || configurationError ? null : remoteCompiler() ?? activeLocalModel('compiler'),
+    configuredModel: cli ? cli.model || `${cli.tool} default` : configuredModel('compiler'),
     localModel: modelInventory().find((m) => m.role === 'compiler')?.name ?? 'local compiler'
   });
 }));
@@ -152,7 +161,7 @@ settingsRoutes.put('/api/settings/compiler', asyncRoute(async (req, res) => with
   const current = loadCompilerSettings();
   const sameEndpoint = String(body.baseUrl ?? '').replace(/\/+$/, '') === current.baseUrl.replace(/\/+$/, '');
   const next = compilerSettingsSchema.safeParse({
-    provider: String(body.provider ?? 'local'),
+    provider: String(body.provider ?? current.provider),
     baseUrl: String(body.baseUrl ?? ''),
     // An empty key means "keep the one already saved", so the console never has
     // to hold a secret in order to change the model beside it.
@@ -185,10 +194,16 @@ settingsRoutes.put('/api/settings/compiler', asyncRoute(async (req, res) => with
     const tools = await detectCliTools();
     const selected = next.data.provider.replace(/-cli$/, '');
     if (!tools.some((tool) => (tool.tool === selected || (selected === 'cursor' && tool.tool === 'cursor-agent')) && tool.found)) {
-      return res.status(400).json({ error: 'Install and sign in to this compiler CLI before selecting it' });
+      return res.status(400).json({ error: 'Install and sign in to this compiler CLI before selecting it', code: 'cli_not_installed' });
     }
+    if (next.data.provider === 'claude-cli') {
+      try { await testCliCompiler('claude', next.data.model.trim()); }
+      catch (error) { return res.status(400).json({ ok: false, error: error instanceof CliConnectionError ? error.message : 'The compiler connection test failed.', code: error instanceof CliConnectionError ? error.code : 'cli_test_failed' }); }
+    }
+    next.data.baseUrl = '';
+    next.data.apiKey = '';
   }
-  res.json(redactedCompilerSettings(await applyCompilerSettings(next.data)));
+  res.json({ ...redactedCompilerSettings(await applyCompilerSettings(next.data)), setupRequired: compilerSetupRequired() });
 })));
 
 /**
@@ -206,9 +221,17 @@ settingsRoutes.post('/api/settings/compiler/test', asyncRoute(async (req, res) =
   const apiKey = body.clearKey === true ? '' : typeof body.apiKey === 'string' && body.apiKey.length > 0 ? body.apiKey : sameEndpoint ? current.apiKey : '';
   const started = Date.now();
   try {
+    if (typeof body.provider === 'string' && body.provider.endsWith('-cli')) {
+      const cliTools: Record<string, CliTool> = { 'claude-cli': 'claude', 'codex-cli': 'codex', 'gemini-cli': 'gemini', 'opencode-cli': 'opencode', 'cursor-cli': 'cursor-agent', 'copilot-cli': 'copilot' };
+      const tool = cliTools[body.provider];
+      if (!tool || (body.model !== undefined && (typeof body.model !== 'string' || body.model.length > 120))) return res.status(400).json({ ok: false, error: 'Choose a supported compiler and model.', code: 'invalid_compiler' });
+      const model = String(body.model ?? '').trim();
+      await testCliCompiler(tool, model);
+      return res.json({ ok: true, ms: Date.now() - started, model, reply: 'ready' });
+    }
     await testEndpoint({ baseUrl: String(body.baseUrl ?? ''), apiKey, model: String(body.model ?? ''), timeoutMs: 20_000 });
     res.json({ ok: true, ms: Date.now() - started, model: String(body.model), reply: 'ready' });
   } catch (error) {
-    res.status(400).json({ ok: false, error: error instanceof Error ? error.message : 'The compiler test failed' });
+    res.status(400).json({ ok: false, error: error instanceof Error ? error.message : 'The compiler test failed', ...(error instanceof CliConnectionError ? { code: error.code } : {}) });
   }
 }));

@@ -15,7 +15,7 @@
 import { app, BrowserWindow, clipboard, dialog, Menu, shell } from 'electron';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { askMode, ensureModels, modelsPresent, sendState, setupLibReady } from './first-run.js';
 import {
@@ -206,13 +206,13 @@ async function main(): Promise<void> {
       modelsDir: modelsDir(),
       // The gateway runs with cwd set to userData, so its `data/settings.json`
       // is this path. That is where the console records a larger adjudicator.
-      gatewaySettingsPath: join(userData, 'data', 'settings.json')
+      gatewaySettingsPath: resolve(userData, process.env['WARDEN_SETTINGS_PATH'] ?? 'data/settings.json')
     });
     if (adapter === 'mock') {
       settings = { ...settings, adapter: 'mock' };
       writeSettings(userData, settings);
     }
-  } else if (await modelsPresent(APP_ROOT, modelsDir())) {
+  } else if (await modelsPresent(APP_ROOT, modelsDir(), resolve(userData, process.env['WARDEN_SETTINGS_PATH'] ?? 'data/settings.json'))) {
     // Demo mode was a decision about a machine with no models on it. This
     // machine has them now, so the decision has expired — and leaving it in
     // place would mean an installation that is fully able to run the guard

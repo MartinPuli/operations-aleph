@@ -11,6 +11,7 @@
  * warns loudly on drift, so a model change cannot quietly leave the desktop
  * app downloading the wrong weights.
  */
+import { loadAdjudicatorSettings, loadCompilerSettings } from '../settings.js';
 import type { DownloadSpec } from './download.js';
 
 export const MODEL_CATALOG: DownloadSpec[] = [
@@ -88,3 +89,39 @@ export const MODEL_CATALOG: DownloadSpec[] = [
     required: false
   }
 ];
+
+/** The bundled compiler is optional when drafting uses a CLI, an endpoint, or
+ * an imported model. Read the same settings as the gateway, including its
+ * conservative local fallback for unreadable prior configuration. */
+function needsBundledCompiler(settingsPath: string | undefined, env: NodeJS.ProcessEnv): boolean {
+  if (env['WARDEN_COMPILER_CLI']?.trim() || env['WARDEN_COMPILER_API']?.trim() || env['WARDEN_MODEL_COMPILER']?.trim()) return false;
+  const saved = loadCompilerSettings(settingsPath);
+  if (saved.provider === 'local') return true;
+  if (saved.provider === 'catalog' || saved.provider.endsWith('-cli')) return false;
+  // Legacy incomplete endpoint settings fall back to local at runtime. Keep
+  // that path usable without turning an invalid saved object into a new CLI.
+  if (!saved.baseUrl.trim()) return true;
+  if (saved.apiKey.trim()) return false;
+  try { return !['localhost', '127.0.0.1', '[::1]', '::1'].includes(new URL(saved.baseUrl).hostname); }
+  catch { return true; }
+}
+
+/** Settings-aware first-run downloads, shared by the shell and terminal setup.
+ * Optional analyzer seats are included only for an explicit download request;
+ * the automatic demo-exit check continues to require the base guard weights.
+ * The Qwen base analyzer shares the bundled compiler file, so selecting that
+ * analyzer still requires it even when compilation uses Claude Code. */
+export function setupModelDownloads(
+  settingsPath?: string,
+  includeExtras = false,
+  env: NodeJS.ProcessEnv = process.env
+): DownloadSpec[] {
+  const analyzer = loadAdjudicatorSettings(settingsPath);
+  const chosen = !env['WARDEN_MODEL_ADJUDICATOR']?.trim() && !analyzer.modelId ? analyzer.model : 'default';
+  const compiler = needsBundledCompiler(settingsPath, env) || chosen === 'base';
+  return MODEL_CATALOG.filter((spec) => spec.url && (
+    (spec.required && spec.role !== 'compiler') ||
+    (spec.role === 'compiler' && compiler) ||
+    (includeExtras && spec.role === `adjudicator-${chosen}`)
+  ));
+}

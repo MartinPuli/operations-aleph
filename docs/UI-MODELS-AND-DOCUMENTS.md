@@ -16,7 +16,7 @@ links open the same Models surface with the compiler editor expanded.
 
 - **Compiler:** choose local weights, a supported provider, or an installed CLI.
   Provider defaults populate the endpoint and model fields. **Test connection**
-  checks an endpoint. **Apply compiler** updates the selection for new drafts.
+  checks an endpoint or installed CLI. **Apply compiler** updates the selection for new drafts.
 - **Analyzer:** choose a built-in model. Missing weights are explicitly marked;
   a saved download preference is distinct from the model currently running.
   The desktop download action is offered only when its shell can perform it.

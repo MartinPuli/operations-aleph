@@ -5,11 +5,12 @@
 import { MockQvacAdapter } from './mock.js';
 import { LlamaCppAdapter } from './llamacpp.js';
 import { RealQvacAdapter } from './real.js';
-import { RemoteCompilerAdapter, remoteCompilerConfig } from './remote.js';
-import type { CompleteRequest, QvacAdapter } from './types.js';
+import { RemoteCompilerAdapter, remoteCompilerConfig, validate as validateRemoteCompiler } from './remote.js';
+import { CompilerSetupRequiredError, type CompleteRequest, type QvacAdapter } from './types.js';
+import { compilerSetupRequired } from '../settings.js';
 import type { ZodType } from 'zod';
 import { withModelRole } from './coordination.js';
-import { CliCompilerAdapter, cliCompilerConfig } from './cli-compiler.js';
+import { CliCompilerAdapter, cliCompilerConfig, cliCompilerEnvironmentError } from './cli-compiler.js';
 
 let instance: QvacAdapter | null = null;
 
@@ -28,6 +29,8 @@ let compilerInstance: QvacAdapter | null = null;
 let compilerSignature = '';
 
 function compilerAdapter(local: QvacAdapter): QvacAdapter {
+  if (compilerEnvironmentError()) return local;
+  if (!process.env['WARDEN_COMPILER_CLI']?.trim() && !process.env['WARDEN_COMPILER_API']?.trim() && process.env['WARDEN_MODEL_COMPILER']?.trim()) return local;
   const cli = cliCompilerConfig();
   const remote = cli ? null : remoteCompilerConfig();
   const signature = JSON.stringify([cli, remote]);
@@ -38,6 +41,29 @@ function compilerAdapter(local: QvacAdapter): QvacAdapter {
   return compilerInstance;
 }
 
+/** A malformed explicit override is never permission to use another provider.
+ * Status remains readable; only an actual compiler request raises the error. */
+export function compilerEnvironmentError(): string | null {
+  const cliError = cliCompilerEnvironmentError();
+  if (cliError) return cliError;
+  if (process.env['WARDEN_COMPILER_CLI']?.trim()) return null;
+  const baseUrl = process.env['WARDEN_COMPILER_API']?.trim();
+  if (!baseUrl) return null;
+  try {
+    validateRemoteCompiler({ baseUrl, apiKey: process.env['WARDEN_COMPILER_API_KEY']?.trim() ?? '', model: process.env['WARDEN_COMPILER_MODEL']?.trim() || 'default', timeoutMs: 60_000 });
+    return null;
+  } catch {
+    return 'The compiler endpoint environment settings are incomplete or invalid. Check WARDEN_COMPILER_API and its API key, then restart Warden. HTTPS and a key are required except for a local endpoint.';
+  }
+}
+
+function readyCompiler(local: QvacAdapter): QvacAdapter {
+  const environmentError = compilerEnvironmentError();
+  if (environmentError) throw new CompilerSetupRequiredError(environmentError);
+  if (compilerSetupRequired()) throw new CompilerSetupRequiredError();
+  return compilerAdapter(local);
+}
+
 /** The routing object stays stable, while each compiler call captures the
  * currently saved connection. Updating it never disposes the local guard. */
 export function adapter(): QvacAdapter {
@@ -45,9 +71,9 @@ export function adapter(): QvacAdapter {
     const choice = process.env['WARDEN_ADAPTER'];
     const local = localInstance = choice === 'mock' ? new MockQvacAdapter() : choice === 'llamacpp' ? new LlamaCppAdapter() : new RealQvacAdapter();
     instance = {
-      complete: (req) => withModelRole(req.role, () => (req.role === 'compiler' ? compilerAdapter(local) : local).complete(req)),
+      complete: (req) => withModelRole(req.role, () => (req.role === 'compiler' ? readyCompiler(local) : local).complete(req)),
       completeJSON: <T>(req: CompleteRequest, schema: ZodType<T>, json: Record<string, unknown>) =>
-        withModelRole(req.role, () => (req.role === 'compiler' ? compilerAdapter(local) : local).completeJSON(req, schema, json)),
+        withModelRole(req.role, () => (req.role === 'compiler' ? readyCompiler(local) : local).completeJSON(req, schema, json)),
       embed: (texts) => withModelRole('embedder', () => local.embed(texts)),
       ocr: (path) => withModelRole('ocr', () => local.ocr(path)),
       stats: () => local.stats(),
@@ -64,7 +90,7 @@ export function refreshCompiler(): void { compilerInstance = null; compilerSigna
  *
  * An administrator ratifying a draft should be able to see whether the model
  * that wrote it was theirs, and a recorded run should say the same. Returns
- * null when compilation is local, which is the default.
+ * null when compilation is explicitly local or the mock demo is running.
  */
 export function remoteCompiler(): string | null {
   adapter();

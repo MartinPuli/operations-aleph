@@ -11,7 +11,7 @@
  */
 import { ipcMain } from 'electron';
 import type { BrowserWindow } from 'electron';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { statfs } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -23,7 +23,10 @@ type DownloadLib = {
   downloadModel: (spec: DownloadSpec, dir: string, onProgress?: (p: ByteProgress) => void) => Promise<DownloadOutcome>;
   missingModels: (dir: string, specs: DownloadSpec[]) => DownloadSpec[];
 };
-type CatalogLib = { MODEL_CATALOG: DownloadSpec[] };
+type CatalogLib = {
+  MODEL_CATALOG: DownloadSpec[];
+  setupModelDownloads: (settingsPath?: string, includeExtras?: boolean) => DownloadSpec[];
+};
 
 export type ModelProgress = { role: string; totalMB: number; receivedMB: number; done: boolean; failed?: string };
 
@@ -87,15 +90,15 @@ export async function askMode(splash: BrowserWindow): Promise<'solo' | 'team'> {
  * Separate from `ensureModels` because this one asks and never prompts: it
  * touches the splash, the network and the user's attention not at all.
  */
-export async function modelsPresent(appRoot: string, modelsDir: string): Promise<boolean> {
+export async function modelsPresent(appRoot: string, modelsDir: string, gatewaySettingsPath?: string): Promise<boolean> {
   try {
     const lib = (await import(
       pathToFileURL(join(appRoot, 'dist', 'setup', 'download.js')).href
     )) as DownloadLib;
-    const { MODEL_CATALOG } = (await import(
+    const { setupModelDownloads } = (await import(
       pathToFileURL(join(appRoot, 'dist', 'setup', 'catalog.js')).href
     )) as CatalogLib;
-    const required = MODEL_CATALOG.filter((spec) => spec.required && spec.url);
+    const required = setupModelDownloads(gatewaySettingsPath);
     return lib.missingModels(modelsDir, required).length === 0;
   } catch {
     // A build without the setup modules, or an unreadable models directory.
@@ -120,7 +123,7 @@ export async function setupLibReady(appRoot: string): Promise<void> {
   const lib = (await import(
     pathToFileURL(join(appRoot, 'dist', 'setup', 'download.js')).href
   )) as Partial<DownloadLib>;
-  const { MODEL_CATALOG } = (await import(
+  const { MODEL_CATALOG, setupModelDownloads } = (await import(
     pathToFileURL(join(appRoot, 'dist', 'setup', 'catalog.js')).href
   )) as Partial<CatalogLib>;
   for (const name of ['missingModels', 'downloadModel'] as const) {
@@ -129,38 +132,12 @@ export async function setupLibReady(appRoot: string): Promise<void> {
   if (!Array.isArray(MODEL_CATALOG) || MODEL_CATALOG.length === 0) {
     throw new Error('dist/setup/catalog.js does not export MODEL_CATALOG');
   }
-  const required = MODEL_CATALOG.filter((spec) => spec.required && spec.url);
+  if (typeof setupModelDownloads !== 'function') {
+    throw new Error('dist/setup/catalog.js does not export setupModelDownloads');
+  }
+  const required = setupModelDownloads(join(appRoot, 'no-such-settings.json'));
   const missing = lib.missingModels!(join(appRoot, 'no-such-models-dir'), required);
   if (missing.length !== required.length) throw new Error('missingModels did not report an empty directory as missing everything');
-}
-
-/**
- * The optional weights this installation has asked for on top of the required
- * ones.
- *
- * The adjudicator seat, when it is not the default. It is read out of the
- * gateway's own settings file rather than passed down from a menu, because the
- * choice is made in the console — the gateway's half of the app — and this
- * process must not import the gateway to find out. A missing or unparseable
- * file means no extras, which is the same answer as not having chosen.
- *
- * The seat's id is the catalog id minus the `adjudicator-` prefix (`large`,
- * `dynaguard`), so a new seat is a catalog entry and nothing here. An id the
- * catalog does not know yields nothing, which the gateway reports as "not on
- * disk" rather than this process guessing at a file.
- */
-function chosenExtras(settingsPath: string | undefined, catalog: DownloadSpec[]): DownloadSpec[] {
-  if (!settingsPath || !existsSync(settingsPath)) return [];
-  try {
-    const raw = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
-      adjudicator?: { model?: unknown };
-    };
-    const seat = raw.adjudicator?.model;
-    if (typeof seat !== 'string' || seat === 'default') return [];
-    return catalog.filter((spec) => spec.role === `adjudicator-${seat}` && spec.url);
-  } catch {
-    return [];
-  }
 }
 
 export async function ensureModels(opts: {
@@ -173,19 +150,14 @@ export async function ensureModels(opts: {
   const lib = (await import(
     pathToFileURL(join(opts.appRoot, 'dist', 'setup', 'download.js')).href
   )) as DownloadLib;
-  const { MODEL_CATALOG } = (await import(
+  const { setupModelDownloads } = (await import(
     pathToFileURL(join(opts.appRoot, 'dist', 'setup', 'catalog.js')).href
   )) as CatalogLib;
 
   mkdirSync(opts.modelsDir, { recursive: true });
-  // The required set plus whatever was chosen. Appended rather than merged
-  // into the catalog so that `modelsPresent` — the boot check — keeps meaning
-  // "can this judge at all", and a 5 GB optional download never decides
-  // whether the app starts.
-  const required = [
-    ...MODEL_CATALOG.filter((spec) => spec.required && spec.url),
-    ...chosenExtras(opts.gatewaySettingsPath, MODEL_CATALOG)
-  ];
+  // The same selector powers setup and model inventory. It adds a compiler
+  // only for a saved local choice, and includes requested analyzer extras.
+  const required = setupModelDownloads(opts.gatewaySettingsPath, true);
 
   for (;;) {
     const missing = lib.missingModels(opts.modelsDir, required);

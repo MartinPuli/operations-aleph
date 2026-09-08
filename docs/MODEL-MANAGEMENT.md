@@ -18,10 +18,15 @@ endpoint on `localhost`, `127.0.0.1`, or `[::1]` may use HTTP without an API key
 Other endpoints require HTTPS and a key. Provider presets are conveniences;
 successful testing determines compatibility, not the provider's name.
 
+For installations without a saved compiler, Claude Code is the initial choice.
+The console guides the administrator through installation, sign-in, connection
+testing and applying the choice. Existing selections remain intact. See
+[compiler setup](COMPILER-SETUP.md) for the startup behavior and API contract.
+
 Analysis always runs locally through QVAC. A custom endpoint cannot be assigned
 to it. Model management is not available under the optional experimental
-`WARDEN_ADAPTER=llamacpp` benchmark adapter. No built-in default, aggregation
-rule, model timeout, or measured accuracy claim is changed by this feature.
+`WARDEN_ADAPTER=llamacpp` benchmark adapter. The compiler's initial choice does
+not change analyzer weights, aggregation rules or measured accuracy claims.
 
 ## Adding and selecting a model
 

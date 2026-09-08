@@ -145,7 +145,7 @@ source image was inspected.
 
 ```bash
 pnpm install
-pnpm run setup                    # downloads the models (~5.4 GB)
+pnpm run setup                    # downloads the selected local models (~4.3 GB for initial Claude setup)
 pnpm run dev                      # gateway + console on :8080
 WARDEN_ADAPTER=mock pnpm run dev  # no models, no GPU — the mock stands in
 pnpm run typecheck
@@ -181,6 +181,17 @@ role check is repeated inside the call as the line that would have to be wrong
 for that to happen. Both are subclasses of [`qvac/offload.ts`](src/qvac/offload.ts),
 which is that gate written once; a third one is a subclass with a `run()` and
 a header saying exactly what leaves.
+
+**New compiler setup starts with Claude Code.** Since 2026-09-08, an installation
+without a configured compiler offers the installed Claude CLI and asks the
+administrator to install, sign in, test and apply it before real compilation.
+This is the owner's requested initial choice, not a new accuracy measurement.
+Preserve existing saved selections and environment overrides. An empty model
+means the CLI's own default; opening the form must not silently turn it into
+`opus`. Fresh demos remain mock. Installation detection, authentication status
+and a successful structured response are different checks. Never expose raw
+authentication metadata. Read [`docs/COMPILER-SETUP.md`](docs/COMPILER-SETUP.md)
+before changing this flow.
 
 `src/qvac/` is the only place `@qvac/sdk` is imported, and the adapter interface
 is six methods. That is what makes "is the runtime the problem" answerable
@@ -279,8 +290,9 @@ Warden was built fast and the repo says so rather than pretending otherwise.
   `docs/MEASUREMENTS.md` says so. Owed before anyone relies on the numbers:
   `--reps 3`, a second machine, and a CPU-only machine — 4.4 s a decision on
   Metal will be several times slower on CPU, against a hook that fails open at
-  90 s. The compiler keeps its own Qwen3-1.7B weights because DynaGuard can only
-  say PASS or FAIL. Where the remaining error lives: developer sentences about
+  90 s. Local compilation uses separate Qwen3-1.7B weights because DynaGuard can
+  only say PASS or FAIL; initial Claude setup does not need those compiler
+  weights. Where the remaining error lives: developer sentences about
   code against `r-instruction-override`, on every model, in both languages; a
   **rule boundary** (what a rule is *not* about, now a schema field the
   compiler fills) fixes twenty points of it on the base model and hurts the

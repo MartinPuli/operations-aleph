@@ -263,6 +263,14 @@ an explicitly configured endpoint or installed CLI, enforced by role rather than
 by convention. Allowed, sanitized requests may also be sent to the administrator's
 configured upstream assistant; that forwarding is separate from analysis.
 
+New installations offer Claude Code as the initial compiler and require the
+administrator to complete configuration before using it. The setup check sends
+only a fixed, synthetic compatibility question. Normal compilation uses the
+CLI's configured account and provider; running the CLI locally does not make
+the provider's inference local. Warden does not collect the CLI's login tokens
+or expose its account identity in the console. Existing saved selections and
+explicit environment overrides are preserved.
+
 Compilation turns one sentence an administrator typed into a draft rule that
 the same administrator then reads and ratifies. It never sees an employee
 prompt and it cannot enact policy — `src/policy/compile.ts` states that split in

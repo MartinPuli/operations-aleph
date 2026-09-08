@@ -9,6 +9,7 @@ import { cliCompilerConfig, cliToolLabel } from '../../qvac/cli-compiler.js';
 import { activeLocalModel, configuredModel, modelInventory, probeRuntime, resolvedModel } from '../../qvac/client.js';
 import { selections } from '../../models/manager.js';
 import { findModel } from '../../models/store.js';
+import { setupModelDownloads } from '../../setup/catalog.js';
 import { isMock, remoteCompiler } from '../../qvac/index.js';
 import { shellAttached, tellShell } from '../desktop-bridge.js';
 import { asyncRoute } from '../http.js';
@@ -91,15 +92,6 @@ systemRoutes.get('/health', (_req, res) =>
 );
 
 /**
- * The roles `ensureModels` will actually fetch: required, and with a URL.
- *
- * Kept beside the route rather than imported from the desktop catalog, because
- * the gateway is also the thing a checkout runs and it must not depend on the
- * Electron half to describe itself.
- */
-const FETCHABLE_ROLES = new Set(['adjudicator', 'compiler', 'embedder', 'detector']);
-
-/**
  * What Warden is actually running on, said plainly enough to act on.
  *
  * The console could name the adjudicator and could not say whether its weights
@@ -118,20 +110,17 @@ systemRoutes.get('/api/models', asyncRoute(async (_req, res) => {
   const selected = selections();
   const customJudge = selected.adjudicator && !process.env['WARDEN_MODEL_ADJUDICATOR'] ? findModel(selected.adjudicator) : null;
   const customCompiler = selected.compiler && !process.env['WARDEN_COMPILER_API'] && !process.env['WARDEN_COMPILER_CLI'] && !process.env['WARDEN_MODEL_COMPILER'] ? findModel(selected.compiler) : null;
+  const fetchableRoles = new Set(setupModelDownloads().map((spec) => spec.role));
   res.json({
     mock: isMock(),
     state: modelState(),
     runtime,
-    // `fetchable` is what the first-run downloader would actually go and get:
-    // `required` and carrying an HTTPS url. OCR_LATIN has neither (`url: null`,
-    // it resolves only over the P2P registry) and the assistant is optional, so
-    // the panel offered to download two models that the download step skips by
-    // design, and pressing the button changed nothing about either. Saying
-    // which is which is the difference between a broken button and a fact.
+    // Match the downloader: a Claude compiler does not need bundled weights;
+    // selecting local makes those weights actionable on the next refresh.
     models: modelInventory().map((m) => ({
       ...m,
-      fetchable: FETCHABLE_ROLES.has(m.role),
-      optional: !FETCHABLE_ROLES.has(m.role)
+      fetchable: fetchableRoles.has(m.role),
+      optional: !fetchableRoles.has(m.role)
     })),
     // Two seats, one of which never leaves. Named separately because conflating
     // them is the misunderstanding this route exists to end.

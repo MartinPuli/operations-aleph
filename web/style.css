@@ -1372,6 +1372,25 @@ select.mini {
 .models-page h1 { font-size: var(--fs-5); font-weight: var(--fw-semi); letter-spacing: var(--ls-tight); line-height: var(--lh-tight); }
 .models-page h2 { font-size: var(--fs-4); font-weight: var(--fw-semi); line-height: var(--lh-snug); }
 .models-page h3 { font-size: var(--fs-3); font-weight: var(--fw-semi); line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.compiler-setup-nudge { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); padding: var(--s-5); margin: 0 var(--s-3) var(--s-5); border: 1px solid var(--accent-line); border-radius: var(--r-lg); background: var(--selected); }
+.compiler-setup-nudge > div { min-width: 0; }
+.compiler-setup-nudge h2 { margin: 0; font-size: var(--fs-4); font-weight: var(--fw-semi); color: var(--ink); }
+.compiler-setup-nudge p { margin: var(--s-2) 0 0; max-width: var(--prose); font-size: var(--fs-2); color: var(--ink-2); }
+.compiler-setup-nudge > .btn { flex: none; }
+.claude-setup { margin-top: var(--s-6); border-top: 1px solid var(--line-firm); padding-top: var(--s-5); }
+.claude-setup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-3); }
+.claude-setup-head > div { min-width: 0; }
+.claude-setup-head > .btn { flex: none; }
+.claude-setup-head .note { margin-top: var(--s-2); max-width: var(--prose); }
+.claude-setup-steps { margin: var(--s-4) 0 0; padding-left: var(--s-5); }
+.claude-setup-steps > li { padding: var(--s-4) 0 var(--s-4) var(--s-2); border-top: 1px solid var(--line); }
+.claude-setup-steps > li::marker { color: var(--muted); font-size: var(--fs-2); font-weight: var(--fw-semi); }
+.claude-step-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s-3); }
+.claude-step-heading h4 { margin: 0; font-size: var(--fs-3); font-weight: var(--fw-semi); }
+.claude-setup-steps li > p { margin: var(--s-2) 0 var(--s-3); font-size: var(--fs-2); color: var(--ink-2); max-width: var(--prose); }
+.claude-login-command { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); }
+.claude-login-command > code { padding: var(--s-3); border: 1px solid var(--line-firm); border-radius: var(--r-md); background: var(--bg); overflow-wrap: anywhere; }
+.compiler-local-missing { display: grid; justify-items: start; gap: var(--s-3); }
 .models-page-head { display: flex; align-items: flex-start; gap: var(--s-5); justify-content: space-between; padding: var(--s-5) 0 var(--s-6); }
 .models-page-head p { margin-top: var(--s-3); color: var(--ink-2); max-width: var(--prose); }
 .models-page-head .btn { flex: none; }
@@ -1514,6 +1533,8 @@ select.mini {
   /* The team nav is wider than a phone. Keep all destinations reachable
      without creating horizontal overflow in the page itself. */
   nav { overflow-x: auto; padding-bottom: var(--s-1); }
+  .compiler-setup-nudge, .claude-setup-head { flex-direction: column; align-items: flex-start; }
+  .compiler-setup-nudge > .btn { white-space: normal; }
   .active-model-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3); }
   .active-role-title { grid-column: 1; }
   .active-role-value { grid-column: 1; }

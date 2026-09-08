@@ -341,6 +341,12 @@ drafts; the analyzer checks employee requests and extracted documents. The page
 separates the saved preference from the runtime model, labels missing downloads
 and environment overrides, and links to runtime diagnostics.
 
+New installations start with **Claude Code on this machine** selected for the
+compiler. Open **Configure Claude Code**, follow the installation and sign-in
+steps, then test and apply the connection. Leave the model blank to use Claude
+Code's own default. Existing saved compiler choices and environment overrides
+are preserved. See [compiler setup](docs/COMPILER-SETUP.md).
+
 **Apply compiler** changes new compiler calls without restarting the gateway.
 Built-in analyzers can be selected there too. Existing requests finish before a
 role changes, and a local activation must load successfully before it succeeds.
@@ -392,7 +398,7 @@ for the template catalogue, API, storage and verification boundaries.
 
 ### Writing a rule
 
-**Write it in plain Spanish** → a local model compiles it to structured policy,
+**Write it in plain Spanish** → the configured compiler turns it into structured policy,
 inventing few-shot examples as it goes → **preview** runs the candidate rule
 through the real adjudicator and flags any legitimate request it would wrongly
 block → **activate** puts it in force immediately, no restart.
@@ -788,7 +794,7 @@ Pinned to [`b854bb800dac`](https://github.com/Wardenlabs/warden/tree/b854bb800da
 | Role | Model or reader | Capability |
 |---|---|---|
 | Adjudicator (the judge) | `DynaGuard-4B` Q6_K, the default since 2026-09-04; Qwen3 1.7B / 8B and DynaGuard 1.7B / 8B are seats in the console | text generation, grammar-constrained structured output |
-| Compiler (writes rules) | `QWEN3_1_7B_INST_Q4` on this machine, or Claude Code / Codex / an OpenAI-shaped endpoint if you point it there | text generation |
+| Compiler (writes rules) | Claude Code on the gateway machine after guided setup; local GGUF, other installed CLIs and OpenAI-shaped endpoints remain available | text generation |
 | Detector (injection pass, off) | `QWEN3_600M_INST_Q4` | text generation |
 | Retrieval | `EMBEDDINGGEMMA_300M_Q8_0` | text embeddings |
 | Documents | Local PDF/DOCX/text parsers; bundled Tesseract English/Spanish data | Text extraction and offline OCR |

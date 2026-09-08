@@ -4,8 +4,8 @@
  * The person setting Warden up almost certainly has Claude Code or Codex
  * installed and logged in — it is why they are looking at a tool that guards
  * coding agents. That session is a far better model than the 1.7B in `models/`,
- * it costs them nothing extra, and it needs no API key, no base URL and no
- * second bill. This file spends it on the one job where model quality is
+ * it needs no separate API key or base URL. That account's usage limits and
+ * billing still apply. This file uses it for the one job where model quality is
  * visible and local weights are the bottleneck.
  *
  * ## Why this is safe to offer, stated plainly
@@ -60,7 +60,7 @@
 import { execFile } from 'node:child_process';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadCompilerSettings } from '../settings.js';
+import { compilerSettingsConfigured, loadCompilerSettings } from '../settings.js';
 import { CompilerOffload } from './offload.js';
 import {
   FailClosedError,
@@ -206,10 +206,18 @@ const PROVIDER_TOOL: Record<string, CliTool> = {
 function toolFromEnv(): CliTool | null {
   const raw = process.env['WARDEN_COMPILER_CLI']?.trim();
   if (!raw) return null;
-  return raw in TOOLS ? (raw as CliTool) : null;
+  return Object.hasOwn(TOOLS, raw) ? (raw as CliTool) : null;
+}
+
+export function cliCompilerEnvironmentError(): string | null {
+  const raw = process.env['WARDEN_COMPILER_CLI']?.trim();
+  return raw && !Object.hasOwn(TOOLS, raw)
+    ? `WARDEN_COMPILER_CLI must name a supported CLI (${Object.keys(TOOLS).join(', ')}). Correct that environment setting and restart Warden.`
+    : null;
 }
 
 export function cliCompilerConfig(): CliCompilerConfig | null {
+  if (cliCompilerEnvironmentError()) return null;
   const fromEnv = toolFromEnv();
   if (fromEnv) {
     return {
@@ -218,6 +226,12 @@ export function cliCompilerConfig(): CliCompilerConfig | null {
       timeoutMs: Number(process.env['WARDEN_COMPILER_TIMEOUT_MS']) || 120_000
     };
   }
+
+  // Explicit compiler environment choices outrank saved CLI settings and the
+  // first-run recommendation. In particular, adding that recommendation must
+  // not redirect a deployment already configured with an endpoint or GGUF.
+  if (process.env['WARDEN_COMPILER_API']?.trim() || process.env['WARDEN_MODEL_COMPILER']?.trim()) return null;
+  if (process.env['WARDEN_ADAPTER'] === 'mock' && !compilerSettingsConfigured()) return null;
 
   const saved = loadCompilerSettings();
   const tool = PROVIDER_TOOL[saved.provider];
@@ -260,7 +274,7 @@ function searchPath(): string {
 }
 
 /** `process.env` with that PATH, for anything that has to find one of these. */
-function cliEnv(): NodeJS.ProcessEnv {
+export function cliEnv(): NodeJS.ProcessEnv {
   // `WARDEN_INTERNAL` tells Warden's own hook, wherever a CLI runs it, that
   // this invocation is the gateway compiling a rule and not an employee
   // prompting — the hook exits clean on it. Claude Code also gets
@@ -347,6 +361,8 @@ export class CliCompilerAdapter extends CompilerOffload {
       .join('\n');
 
     const run = (argv: string[]): Promise<string> => new Promise<string>((resolve, reject) => {
+      const remaining = Math.min(this.config.timeoutMs, req.timeoutMs ?? this.config.timeoutMs) - (Date.now() - started);
+      if (remaining <= 0) return reject(new FailClosedError(`${spec.label} did not finish before the compiler deadline.`, { role: req.role, attempts: 1 }));
       const child = execFile(
         this.config.tool,
         argv,
@@ -354,13 +370,13 @@ export class CliCompilerAdapter extends CompilerOffload {
           // No repository underneath it. Combined with the denied tools this
           // is two independent reasons the compile cannot touch a project.
           cwd: tmpdir(),
-          timeout: this.config.timeoutMs,
+          timeout: remaining,
           maxBuffer: 4 * 1024 * 1024,
           env: cliEnv()
         },
         (err, stdout, stderr) => {
           if (err) {
-            const detail = String(stderr || err.message).trim().slice(0, 300);
+            const detail = err.killed ? 'The compiler deadline was exceeded.' : String(stderr || err.message).trim().slice(0, 300);
             if (this.#safeMode && argv.includes(SAFE_MODE) && UNKNOWN_SAFE_MODE.test(detail)) {
               return reject(new UnknownSafeModeError());
             }

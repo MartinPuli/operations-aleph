@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const suites = [
-  'test-vote.ts', 'test-hook.ts', 'test-cli-compiler.ts', 'test-draft-schema.ts',
+  'test-vote.ts', 'test-hook.ts', 'test-cli-compiler.ts', 'test-claude-setup.ts', 'test-draft-schema.ts',
   'test-screen.ts', 'test-desktop-lib.ts', 'test-auth.ts', 'test-rules-for-actor.ts',
   'test-remote-boundary.ts', 'test-hook-documents.ts', 'test-proxy-documents.ts',
   'test-documents.ts', 'test-model-management.ts', 'test-prompt-management.ts', 'test-console.mjs'

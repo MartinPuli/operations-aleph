@@ -12,12 +12,16 @@ globalThis.sessionStorage = { getItem: () => 'administrator-secret' };
 const { api, post, state } = await import('../web/js/core.js');
 const { documentMetadataMarkup, documentReason } = await import('../web/js/documents.js');
 const { library, libraryMarkup } = await import('../web/js/model-library.js');
+const { compilerNeedsSetup, compilerSetupNudge, compilerSettings, bindModelPicker } = await import('../web/js/compiler.js');
+const { compileFailure } = await import('../web/js/answers.js');
+const { restoreSoloRuleText } = await import('../web/js/solo.js');
 const { promptEditor, acceptPromptCatalog, hasPromptChanges, validatePromptTemplate, promptEditorMarkup, togglePromptEditor, closePromptEditor, loadPrompts } = await import('../web/js/prompt-editor.js');
 await import('../web/js/models.js');
 const { VIEWS } = await import('../web/js/views.js');
 
 beforeEach(() => {
   elements.clear(); library.catalog = null; library.error = ''; library.loading = false;
+  Object.assign(state, { compiler: null, compilerDraft: null, compilerTest: null, compilerBusy: false, view: 'activity', canLeaveDemo: false });
   Object.assign(promptEditor, { catalog: null, drafts: Object.create(null), openRole: null, selected: {}, loading: false, error: '', busy: '', confirmReset: null });
 });
 after(() => { for (const [key, value] of Object.entries(original)) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; } });
@@ -256,4 +260,146 @@ test('a prompt refresh finishing during a write cannot rebase that write’s dra
   assert.equal(draft.base, template.template);
   assert.equal(draft.revision, 'first');
   assert.equal(draft.conflict, false);
+});
+
+function compilerConfiguration(overrides = {}) {
+  return { provider: 'claude-cli', model: '', setupRequired: true, overriddenByEnv: false,
+    providers: [
+      { id: 'local', label: 'Local weights', models: [] },
+      { id: 'claude-cli', label: 'Claude Code on this machine', models: ['opus', 'sonnet'] },
+      { id: 'custom', label: 'Custom endpoint', baseUrl: 'https://example.test/v1', models: ['provider-model'] }
+    ], cliTools: [{ tool: 'claude', found: true }],
+    claude: { installed: true, auth: 'unknown', status: 'unknown', message: 'Check the connection to confirm access.' }, ...overrides };
+}
+
+test('compiler setup appears in solo and team until an explicit provider or environment is configured', () => {
+  state.compiler = compilerConfiguration();
+  for (const view of ['soloRules', 'soloSettings', 'activity', 'policy']) {
+    state.view = view;
+    const html = compilerSetupNudge();
+    assert.match(html, /Configure Claude Code/);
+    assert.match(html, /data-go="models" data-q="setup=compiler"/);
+    assert.match(html, /keep exploring/);
+  }
+  state.compiler.setupRequired = false;
+  assert.equal(compilerNeedsSetup(), false);
+  assert.equal(compilerSetupNudge(), '');
+  state.compiler.setupRequired = true;
+  state.compiler.overriddenByEnv = true;
+  assert.equal(compilerSetupNudge(), '');
+});
+
+test('opening a Claude compiler keeps its blank CLI model and separates auth status from connection validation', () => {
+  state.compiler = compilerConfiguration();
+  const html = compilerSettings();
+  assert.equal(state.compilerDraft.model, '');
+  assert.match(html, /id="cModel"[^>]*value=""[^>]*placeholder="Claude Code default"/);
+  assert.match(html, /claude auth login/);
+  assert.match(html, /code\.claude\.com\/docs\/en\/setup#install-claude-code/);
+  assert.ok(!html.match(/<button[^>]*id="cTest"[^>]*>/)?.[0].includes('disabled'));
+  assert.match(html, /id="cSave"[^>]*disabled/);
+  state.compiler.claude.auth = 'signed-in';
+  assert.match(compilerSettings(), /id="cSave"[^>]*disabled/);
+});
+
+test('Claude Apply requires a successful check for the current model and error text is escaped', () => {
+  state.compiler = compilerConfiguration({ claude: { installed: false, auth: 'unavailable', status: 'install-required', message: '<img src=x onerror=alert(1)>' } });
+  state.compilerTest = { ok: false, error: '<script>account error</script>' };
+  let html = compilerSettings();
+  assert.ok(!html.includes('<img') && !html.includes('<script>'));
+  assert.match(html, /Not found/);
+  assert.match(html, /id="cSave"[^>]*disabled/);
+  state.compilerTest = { ok: true, provider: 'claude-cli', model: '', ms: 25 };
+  html = compilerSettings();
+  assert.ok(!html.match(/<button[^>]*id="cSave"[^>]*>/)?.[0].includes('disabled'));
+  state.compilerDraft.model = 'a-different-model';
+  assert.match(compilerSettings(), /id="cSave"[^>]*disabled/);
+});
+
+test('existing provider and explicit model preferences survive opening the setup form', () => {
+  for (const config of [compilerConfiguration({ model: 'sonnet', setupRequired: false }), compilerConfiguration({ provider: 'custom', model: 'kept-model', baseUrl: 'https://saved.test/v1', setupRequired: false, overriddenByEnv: true })]) {
+    state.compiler = config; state.compilerDraft = null;
+    compilerSettings();
+    assert.equal(state.compilerDraft.provider, config.provider);
+    assert.equal(state.compilerDraft.model, config.model);
+    if (config.baseUrl) assert.equal(state.compilerDraft.baseUrl, config.baseUrl);
+    assert.equal(compilerSetupNudge(), '');
+  }
+});
+
+test('the Claude quick picker opens guided setup with a blank model instead of applying or authenticating', async () => {
+  state.compiler = compilerConfiguration({ provider: 'local', setupRequired: false });
+  const savedQuery = document.querySelectorAll;
+  const savedLocation = globalThis.location;
+  const button = { dataset: { pick: 'claude-cli' }, closest: () => ({ removeAttribute() {} }) };
+  document.querySelectorAll = () => [button];
+  globalThis.location = { hash: '#/policy/new' };
+  globalThis.fetch = () => { throw new Error('Picking Claude must not apply, install or authenticate it.'); };
+  try {
+    bindModelPicker(); await button.onclick();
+    assert.equal(state.compilerDraft.provider, 'claude-cli');
+    assert.equal(state.compilerDraft.model, '');
+    assert.equal(location.hash, '#/compiler');
+  } finally { document.querySelectorAll = savedQuery; if (savedLocation === undefined) delete globalThis.location; else globalThis.location = savedLocation; }
+});
+
+test('missing local weights offer download only after the local compiler is selected', () => {
+  state.compiler = compilerConfiguration();
+  state.compilerDraft = { provider: 'local', model: '', baseUrl: '', redactNames: false };
+  const previous = state.models;
+  state.models = { models: [{ role: 'compiler', onDisk: false }] };
+  state.canLeaveDemo = true;
+  try {
+    assert.match(compilerSettings(), /class="btn js-get-models" disabled/);
+    state.compiler.provider = 'local'; state.compiler.setupRequired = false;
+    const html = compilerSettings();
+    assert.match(html, /Download its weights before drafting/);
+    assert.ok(!html.match(/<button[^>]*class="btn js-get-models"[^>]*>/)?.[0].includes('disabled'));
+  } finally { state.models = previous; }
+});
+
+test('a compiler setup refusal offers configuration instead of asking to rephrase the rule', () => {
+  const html = compileFailure({ kind: 'compiler-setup-required', error: 'Apply the compiler before drafting. <script>x</script>' });
+  assert.match(html, /data-go="models" data-q="setup=compiler"/);
+  assert.match(html, /Configure Claude Code/);
+  assert.ok(!html.includes('<script>'));
+  assert.ok(!html.includes('more plainly') && !html.includes('showLog'));
+});
+
+test('a solo setup refusal restores the typed rule only while its field is still empty', () => {
+  const input = field('soloRuleText', 'text', '');
+  elements.set(input.id, input);
+  restoreSoloRuleText('  Keep customer records private.  ');
+  assert.equal(input.value, '  Keep customer records private.  ');
+  input.value = 'A newer rule typed while the request finished.';
+  restoreSoloRuleText('The earlier request.');
+  assert.equal(input.value, 'A newer rule typed while the request finished.');
+  elements.clear();
+  assert.doesNotThrow(() => restoreSoloRuleText('A rule on a page we left.'));
+});
+
+test('a fresh demo does not label the implicit Claude preference as applied', () => {
+  state.compiler = compilerConfiguration({ setupRequired: false, activeSource: 'local' });
+  const applied = /<h4>Apply the compiler<\/h4><span[^>]*>Applied<\/span>/;
+  assert.doesNotMatch(compilerSettings(), applied);
+  state.compiler.activeSource = 'settings';
+  assert.match(compilerSettings(), applied);
+  state.compiler.overriddenByEnv = true;
+  assert.doesNotMatch(compilerSettings(), applied);
+});
+
+test('an invalid compiler environment shows its escaped configuration error without claiming an active model', () => {
+  state.compiler = compilerConfiguration({ overriddenByEnv: true, setupRequired: false, inForce: null, configurationError: 'Fix the compiler environment. <script>bad</script>' });
+  const form = compilerSettings();
+  assert.match(form, /Compiler configuration needs attention/);
+  assert.match(form, /Fix the compiler environment\. &lt;script&gt;/);
+  assert.ok(!form.includes('<script>'));
+  const previous = state.models;
+  state.models = { state: 'ready', drafting: { model: 'Old compiler', where: 'Old active connection' } };
+  try {
+    const html = VIEWS.models.body();
+    assert.match(html, /data-active-model="compiler">Compiler unavailable<\/b>/);
+    assert.ok(!html.includes('Old active connection') && !html.includes('<script>'));
+    assert.match(html, /Fix the compiler environment\. &lt;script&gt;/);
+  } finally { state.models = previous; }
 });

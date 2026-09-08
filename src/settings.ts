@@ -37,13 +37,13 @@ const SETTINGS_PATH = process.env['WARDEN_SETTINGS_PATH'] ?? join('data', 'setti
  * capability. "Something else" exists because the list will be out of date.
  */
 export const COMPILER_PROVIDERS = [
-  { id: 'local', label: 'This machine', baseUrl: '', models: [], note: 'Nothing leaves the machine. The default.' },
+  { id: 'local', label: 'This machine', baseUrl: '', models: [], note: 'Compile with local weights. Nothing leaves the machine.' },
   {
     id: 'claude-cli',
     label: 'Claude Code on this machine',
     baseUrl: '',
     models: ['opus', 'sonnet', 'haiku'],
-    note: 'Uses the session you are already signed in to. No API key, no extra bill.'
+    note: 'Recommended for new installations. Uses Claude Code’s configured account and model; its usage limits and billing apply.'
   },
   {
     id: 'codex-cli',
@@ -133,10 +133,35 @@ const LOCAL: CompilerSettings = {
   redactNames: false
 };
 
-export function loadCompilerSettings(): CompilerSettings {
-  if (!existsSync(SETTINGS_PATH)) return { ...LOCAL };
+const DEFAULT_COMPILER: CompilerSettings = { ...LOCAL, provider: 'claude-cli' };
+
+/** Absence is first-run setup; unreadable prior state is never permission to
+ * start sending compilation to a newly chosen external provider. */
+function compilerConfigurationState(settingsPath = SETTINGS_PATH): 'missing' | 'configured' | 'invalid' {
+  if (!existsSync(settingsPath)) return 'missing';
   try {
-    const raw = JSON.parse(readFileSync(SETTINGS_PATH, 'utf8')) as { compiler?: unknown };
+    const raw = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return 'invalid';
+    if (!Object.hasOwn(raw, 'compiler')) return 'missing';
+    return compilerSettingsSchema.safeParse(raw.compiler).success ? 'configured' : 'invalid';
+  } catch { return 'invalid'; }
+}
+
+export function compilerSettingsConfigured(settingsPath = SETTINGS_PATH): boolean { return compilerConfigurationState(settingsPath) === 'configured'; }
+
+/** An explicit shell configuration is already an administrator's choice. The
+ * mock demo is not authorized to execute an implicit external compiler. */
+export function compilerSetupRequired(): boolean {
+  if (process.env['WARDEN_ADAPTER'] === 'mock') return false;
+  if (process.env['WARDEN_COMPILER_CLI']?.trim() || process.env['WARDEN_COMPILER_API']?.trim() || process.env['WARDEN_MODEL_COMPILER']?.trim()) return false;
+  return compilerConfigurationState() === 'missing';
+}
+
+export function loadCompilerSettings(settingsPath = SETTINGS_PATH): CompilerSettings {
+  if (!existsSync(settingsPath)) return { ...DEFAULT_COMPILER };
+  try {
+    const raw = JSON.parse(readFileSync(settingsPath, 'utf8')) as { compiler?: unknown };
+    if (raw && typeof raw === 'object' && !Array.isArray(raw) && !Object.hasOwn(raw, 'compiler')) return { ...DEFAULT_COMPILER };
     const parsed = compilerSettingsSchema.safeParse(raw.compiler);
     return parsed.success ? parsed.data : { ...LOCAL };
   } catch {
@@ -208,10 +233,10 @@ export type AdjudicatorSettings = z.infer<typeof adjudicatorSettingsSchema>;
 
 const DEFAULT_ADJUDICATOR: AdjudicatorSettings = { model: 'default' };
 
-export function loadAdjudicatorSettings(): AdjudicatorSettings {
-  if (!existsSync(SETTINGS_PATH)) return { ...DEFAULT_ADJUDICATOR };
+export function loadAdjudicatorSettings(settingsPath = SETTINGS_PATH): AdjudicatorSettings {
+  if (!existsSync(settingsPath)) return { ...DEFAULT_ADJUDICATOR };
   try {
-    const raw = JSON.parse(readFileSync(SETTINGS_PATH, 'utf8')) as { adjudicator?: unknown };
+    const raw = JSON.parse(readFileSync(settingsPath, 'utf8')) as { adjudicator?: unknown };
     const parsed = adjudicatorSettingsSchema.safeParse(raw.adjudicator);
     return parsed.success ? parsed.data : { ...DEFAULT_ADJUDICATOR };
   } catch {

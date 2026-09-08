@@ -83,6 +83,13 @@ export class FailClosedError extends Error {
   }
 }
 
+/** Operational setup is distinct from a sentence the compiler could not parse. */
+export class CompilerSetupRequiredError extends FailClosedError {
+  constructor(message = 'Finish compiler setup in Models: install and sign in to Claude Code, then Test connection and Apply. You can also explicitly choose another compiler.') {
+    super(message, { role: 'compiler', attempts: 0 });
+  }
+}
+
 export interface QvacAdapter {
   complete(req: CompleteRequest): Promise<{ text: string; stats: GenStats }>;
 

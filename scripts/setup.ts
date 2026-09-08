@@ -19,7 +19,7 @@ import { writeFile } from 'node:fs/promises';
 import { arch, platform, release, totalmem } from 'node:os';
 import { join, resolve } from 'node:path';
 import { ALTERNATE_MODELS, MODEL_SPECS, modelsDir, toHttpsUrl, type ModelSpec } from '../src/qvac/models.js';
-import { MODEL_CATALOG } from '../src/setup/catalog.js';
+import { MODEL_CATALOG, setupModelDownloads } from '../src/setup/catalog.js';
 import { downloadModel, type DownloadSpec } from '../src/setup/download.js';
 
 const MIN_NODE_MAJOR = 22;
@@ -300,7 +300,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  const wanted = process.env['WARDEN_ALL_MODELS'] ? MODEL_SPECS : MODEL_SPECS.filter((m) => m.required);
+  const requiredRoles = new Set(setupModelDownloads().map((spec) => spec.role));
+  const wanted = process.env['WARDEN_ALL_MODELS'] ? MODEL_SPECS : MODEL_SPECS.filter((m) => requiredRoles.has(m.role));
   for (const spec of wanted) await download(spec, dir);
 
   console.log(`\n${bold('Inference check')}`);
