@@ -236,7 +236,8 @@ test('current HTML still exposes the instrumented native controls and known asse
   const html = await readFile(new URL('../landing/index.html', import.meta.url), 'utf8');
   const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map(match => match[1]);
   const downloads = hrefs.map(href => classifyLink(href, base)).filter(x => x?.name === 'download_clicked');
-  assert.equal(downloads.length, 4);
+  assert.equal(downloads.length, 5);
+  assert.match(html, /<a href="https:\/\/github\.com\/Wardenlabs\/warden\/releases\/latest\/download\/Warden-arm64\.dmg"[^>]*header-download/);
   for (const chapter of ['write', 'hit', 'log', 'spend']) assert.ok(html.includes(`data-chapter="${chapter}"`));
   for (const id of ['launch-video', 'tool-cc', 'tool-cx', 'tool-oc']) assert.ok(html.includes(`id="${id}"`));
   assert.ok(html.includes('data-open-film')); assert.ok(html.includes('data-story-replay'));

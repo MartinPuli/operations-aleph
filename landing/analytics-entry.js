@@ -1,4 +1,4 @@
-import { analyticsConfig } from './analytics-config.js?v=launch-1';
+import { analyticsConfig } from './analytics-config.js?v=motion-2';
 import { initAnalytics } from './analytics.js?v=launch-1';
 
 // Analytics is deliberately independent from the animation module.

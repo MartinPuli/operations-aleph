@@ -1,4 +1,4 @@
-import { mountLight } from './light.js?v=story-20260908';
+import { mountLight } from './light.js?v=motion-2';
 
 // The head watchdog falls back to readable markup if this module cannot load.
 window.__wardenReady = true;
@@ -57,8 +57,19 @@ function makeTyper(elements) {
 }
 
 const zone = document.querySelector('.hero-zone');
+let heroReady = false, heroFallback;
+function showHeroChoices() {
+  if (heroReady) return;
+  heroReady = true;
+  clearTimeout(heroFallback);
+  zone?.classList.add('hero-ready');
+  if (zone) zone.dataset.heroPhase = 'ready';
+}
 let light;
-try { if (zone) light = mountLight(zone); }
+try { if (zone) light = mountLight(zone, {
+  onVerdictSettled: showHeroChoices,
+  onUnavailable: () => { if (zone.classList.contains('judged')) showHeroChoices(); }
+}); }
 catch (error) { zone?.classList.add('nogl'); console.warn(error.message); }
 const judge = document.getElementById('judge');
 const heroTyper = makeTyper(judge ? [judge.querySelector('.typed')] : []);
@@ -70,12 +81,20 @@ function heroVerdict(on) {
 }
 if (judge && !motion.matches) {
   heroVerdict(false);
+  if (zone) zone.dataset.heroPhase = 'request';
+  // Secondary links must still become available if the GPU or a tab stops
+  // producing frames. The primary action is never in this delayed group.
+  heroFallback = setTimeout(showHeroChoices, 2500);
   (async () => {
     if (!await wait(140, heroPlayback.signal)) return;
     await heroTyper?.run(620, heroPlayback.signal);
-    if (await wait(140, heroPlayback.signal)) heroVerdict(true);
+    if (await wait(140, heroPlayback.signal)) {
+      heroVerdict(true);
+      if (zone && !heroReady) zone.dataset.heroPhase = 'verdict';
+      if (!light && await wait(500, heroPlayback.signal)) showHeroChoices();
+    }
   })();
-} else heroVerdict(true);
+} else { heroVerdict(true); showHeroChoices(); }
 
 const revealables = $$('[data-reveal]');
 let revealObserver;
@@ -217,6 +236,7 @@ else {
 motion.addEventListener('change', () => {
   if (!motion.matches) return;
   heroPlayback.abort(); heroTyper?.finish(); heroVerdict(true);
+  showHeroChoices();
   revealObserver?.disconnect(); revealables.forEach(el => el.classList.add('is-in'));
   chapters.forEach(complete);
 });
@@ -249,14 +269,16 @@ filmDialog?.addEventListener('click', event => {
 const LATEST = 'https://github.com/Wardenlabs/warden/releases/latest';
 const MAC = { label: 'Download for macOS', href: `${LATEST}/download/Warden-arm64.dmg`, other: 'Also on macOS' };
 const WIN = { label: 'Download for Windows', href: `${LATEST}/download/Warden-Setup.exe`, other: 'Also on Windows' };
-const primary = document.querySelector('.hero .btn-primary');
 const alt = document.querySelector('.hero .cta .alt');
 const onWindows = /Windows|Win64|Win32/i.test(navigator.userAgent || '');
-if (primary && alt && onWindows) {
-  primary.classList.add('on-windows');
-  const label = primary.querySelector('.txt');
-  if (label) label.textContent = WIN.label;
-  primary.href = WIN.href; alt.textContent = MAC.other; alt.href = MAC.href;
+if (onWindows) {
+  $$('[data-platform-download]').forEach(primary => {
+    primary.classList.add('on-windows');
+    const label = primary.querySelector('.txt');
+    if (label) label.textContent = WIN.label;
+    primary.href = WIN.href;
+  });
+  if (alt) { alt.textContent = MAC.other; alt.href = MAC.href; }
 }
 const footerDownloads = document.querySelector('.foot .dl');
 const windowsDownload = footerDownloads?.querySelector(`a[href="${WIN.href}"]`);

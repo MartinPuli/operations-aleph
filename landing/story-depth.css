@@ -7,41 +7,50 @@
 #how .how-intro h2.loud { font-size:clamp(28px,3.2vw,45px); max-width:none; margin:0; line-height:1.18; }
 .how-intro h2.loud .ln { overflow:visible; }
 .js .how-intro[data-reveal] h2.loud .ln>span { transform:none; transition:none; }
+/* A request enters the check; the resulting record settles on its own plane. */
 .checkpoint { margin:0; width:100%; aspect-ratio:560/350; position:relative; perspective:1000px; }
-.checkpoint-geometry { width:560px; height:350px; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(var(--checkpoint-scale,1)); }
-.checkpoint-route { position:absolute; z-index:0; inset:0; width:100%; height:100%; overflow:visible; }
+.checkpoint-geometry { width:560px; height:350px; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(var(--checkpoint-scale,1)); perspective:900px; isolation:isolate; transform-style:flat; }
+/* Opaque, isolated plate faces always occlude this lower plane, including during
+   entrances. Never fade a whole plate: that would expose the route through type. */
+.checkpoint-route { position:absolute; z-index:-1; inset:0; width:100%; height:100%; overflow:hidden; pointer-events:none; }
 .route-base { stroke:#304853; stroke-width:1; }
-.route-in { stroke:var(--block); stroke-width:2; stroke-dasharray:220; }
-.route-out { stroke:var(--accent); stroke-width:2; stroke-dasharray:220; }
+.route-in { stroke:var(--block); stroke-width:2; stroke-dasharray:220; stroke-dashoffset:0; }
+.route-out { stroke:var(--accent); stroke-width:2; stroke-dasharray:220; stroke-dashoffset:0; }
 .checkpoint-shield { position:absolute; z-index:1; left:151px; top:13px; width:265px; height:285px; }
 .checkpoint-shield img,.checkpoint-shield canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 .checkpoint-shield canvas { visibility:hidden; }
-.request-object,.decision-object { position:absolute; z-index:2; display:grid; text-align:left; transform-style:preserve-3d; }
-.request-object { left:0; top:58px; width:197px; padding:20px 18px 19px; gap:12px; border-radius:12px; background:#182c37; transform:rotateY(18deg) rotateZ(-7deg); box-shadow:4px 6px 0 #0d1b23,10px 20px 25px #0004; }
-.request-object::before { content:''; position:absolute; inset:0; border-radius:inherit; border:1px solid #48616c; pointer-events:none; }
-.object-label { display:flex; align-items:center; gap:7px; color:#a9bac0; font:11px var(--sans); }
-.object-label svg { width:15px; height:15px; stroke:currentColor; stroke-width:1.5; fill:none; }
-.request-object strong { color:var(--ink); font-size:18px; font-weight:500; }
-.request-object-line { width:68%; height:4px; border-radius:2px; background:#4d6470; }
-.decision-object { right:0; top:209px; width:211px; padding:16px 18px; row-gap:9px; background:#f0ede4; border-radius:10px; transform:rotateY(-14deg) rotateZ(5deg); box-shadow:4px 6px 0 #8d9c9c,12px 20px 28px #0005; }
-.decision-object .object-label { color:#54616b; justify-content:space-between; }
-.decision-time { font-variant-numeric:tabular-nums; }
-.decision-object strong { display:flex; align-items:center; gap:8px; color:#a92f44; font-size:20px; font-weight:580; }
-.decision-object strong svg { width:20px; height:20px; stroke:currentColor; stroke-width:1.7; fill:none; }
-.decision-rule { padding-left:28px; font:11px var(--mono); color:#56676e; }
-.checkpoint-caption { position:absolute; top:307px; left:204px; font-size:11px; color:var(--muted); }
+.request-object,.decision-object { position:absolute; z-index:2; display:grid; text-align:left; transform-style:flat; isolation:isolate; overflow:hidden; border:2px solid transparent; backface-visibility:hidden; opacity:1; }
+.request-object>* ,.decision-object>* { position:relative; z-index:2; }
+.request-object { left:8px; top:58px; width:197px; padding:18px 16px 17px; gap:11px; border-radius:12px; background:linear-gradient(135deg,#203b46,#142a35) padding-box,linear-gradient(145deg,#799d9b,#3c646e 40%,#142832 85%) border-box; transform:rotateY(18deg) rotateZ(-6deg); box-shadow:8px 18px 25px rgb(0 0 0 / .24); }
+.request-object::before,.decision-object::before { content:''; position:absolute; z-index:0; inset:0; border-radius:inherit; pointer-events:none; background:linear-gradient(110deg,transparent 25%,rgb(196 247 225 / .18) 46%,transparent 66%); background-size:260% 100%; background-position:130% 0; }
+.object-label { display:flex; align-items:center; gap:7px; color:#c2d1d2; font:clamp(14px,calc(10px / var(--checkpoint-scale,1)),20px)/1.2 var(--sans); }
+.object-label svg { width:17px; height:17px; flex:none; stroke:currentColor; stroke-width:1.5; fill:none; }
+.request-object strong { color:var(--ink); font-size:clamp(20px,calc(12px / var(--checkpoint-scale,1)),24px); line-height:1.25; font-weight:500; white-space:nowrap; }
+.request-object-line { width:68%; height:4px; border-radius:2px; background:#5d7c83; }
+.decision-object { right:8px; top:209px; width:211px; padding:14px 16px; row-gap:8px; background:linear-gradient(140deg,#f6f3eb,#e5e9df) padding-box,linear-gradient(145deg,#fffdf7,#bdcec6 50%,#718d87) border-box; border-radius:12px; transform:rotateY(-14deg) rotateZ(5deg); box-shadow:9px 18px 26px rgb(0 0 0 / .28); }
+.decision-object::before { background-image:linear-gradient(110deg,transparent 25%,rgb(255 255 255 / .65) 46%,transparent 66%); }
+.decision-object .object-label { color:#4b6064; justify-content:space-between; gap:6px; }
+.decision-time { font-size:.85em; font-variant-numeric:tabular-nums; }
+.decision-object strong { display:flex; align-items:center; gap:8px; color:#a92f44; font-size:24px; line-height:1.2; font-weight:580; }
+.decision-object strong svg { width:20px; height:20px; flex:none; stroke:currentColor; stroke-width:1.7; fill:none; }
+.decision-rule { padding-left:28px; font:clamp(13px,calc(9px / var(--checkpoint-scale,1)),18px)/1.25 var(--mono); color:#52656b; }
+.checkpoint-caption { position:absolute; top:312px; left:192px; font-size:clamp(13px,calc(10px / var(--checkpoint-scale,1)),20px); color:var(--muted); white-space:nowrap; }
 html:not(.js) .checkpoint-geometry { width:100%; height:100%; left:0; top:0; transform:none; }
 html:not(.js) .checkpoint-shield { left:50%; top:0; width:56%; height:90%; transform:translateX(-50%); }
-html:not(.js) .request-object { left:0; top:8%; transform:scale(.72) rotateZ(-7deg); transform-origin:left top; }
-html:not(.js) .decision-object { right:0; top:auto; bottom:2%; transform:scale(.72) rotateZ(5deg); transform-origin:right bottom; }
-html:not(.js) .checkpoint-caption { top:auto; bottom:1%; left:36%; }
-.js .how-intro.is-in .request-object { animation:request-arrives 1.3s var(--ease-out) both; }
-.js .how-intro.is-in .route-in { animation:route-check 1.4s var(--ease-out) both; }
-.js .how-intro.is-in .route-out { animation:route-check .8s 1.1s var(--ease-out) both; }
-.js .how-intro.is-in .decision-object { animation:decision-lands .85s 1.25s var(--ease-out) both; }
-@keyframes request-arrives { from { opacity:.3; transform:translate3d(-44px,-8px,-45px) rotateY(32deg) rotateZ(-12deg); } to { opacity:1; transform:rotateY(18deg) rotateZ(-7deg); } }
-@keyframes route-check { from { stroke-dashoffset:220; opacity:.2; } to { stroke-dashoffset:0; opacity:1; } }
-@keyframes decision-lands { from { opacity:.2; transform:translate3d(-22px,-18px,-50px) rotateY(-24deg) rotateZ(0); } to { opacity:1; transform:rotateY(-14deg) rotateZ(5deg); } }
+html:not(.js) .request-object { left:0; top:8%; transform:scale(.72) rotateZ(-6deg); transform-origin:left top; }
+html:not(.js) .decision-object { right:8px; top:auto; bottom:2%; transform:scale(.72) rotateZ(5deg); transform-origin:right bottom; }
+html:not(.js) .checkpoint-caption { top:auto; bottom:2%; left:0; font-size:11px; }
+.checkpoint:is([data-checkpoint-motion="playing"],[data-checkpoint-motion="paused"]) .request-object { animation:request-arrives .48s var(--ease-out) both; }
+.checkpoint:is([data-checkpoint-motion="playing"],[data-checkpoint-motion="paused"]) .route-in { animation:route-check .5s .18s var(--ease-out) both; }
+.checkpoint:is([data-checkpoint-motion="playing"],[data-checkpoint-motion="paused"]) .route-out { animation:route-check .34s .68s var(--ease-out) both; }
+.checkpoint:is([data-checkpoint-motion="playing"],[data-checkpoint-motion="paused"]) .decision-object { animation:decision-lands .44s .76s var(--ease-out) both; }
+.checkpoint:is([data-checkpoint-motion="playing"],[data-checkpoint-motion="paused"]) .request-object::before { animation:plate-reflection .56s .12s var(--ease-out) both; }
+.checkpoint:is([data-checkpoint-motion="playing"],[data-checkpoint-motion="paused"]) .decision-object::before { animation:plate-reflection .44s .76s var(--ease-out) both; }
+.checkpoint[data-checkpoint-motion="paused"] *, .checkpoint[data-checkpoint-motion="paused"] *::before { animation-play-state:paused!important; }
+@keyframes request-arrives { from { transform:translate3d(22px,7px,-24px) rotateY(30deg) rotateZ(-10deg); } to { transform:rotateY(18deg) rotateZ(-6deg); } }
+@keyframes route-check { from { stroke-dashoffset:220; opacity:.25; } to { stroke-dashoffset:0; opacity:1; } }
+@keyframes decision-lands { from { transform:translate3d(-18px,-13px,-22px) rotateY(-23deg) rotateZ(0); } to { transform:rotateY(-14deg) rotateZ(5deg); } }
+@keyframes plate-reflection { from { background-position:130% 0; } to { background-position:-30% 0; } }
 
 /* Put the narration beside the product, so the action stays in view. */
 @media(min-width:1100px) {

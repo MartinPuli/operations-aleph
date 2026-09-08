@@ -116,8 +116,6 @@ void main(){
   col += (hash(gl_FragCoord.xy * 1.37 + fract(T * .7) * 53.) - .5) * .012 * (1. - clamp(line, 0., 1.)); // grain, barely
   o = vec4(col, 1.); }`;
 
-const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 /* a CSS hex colour → linear RGB, which is what the shader adds in */
 function linear(hex) {
   const h = hex.trim().replace('#', '');
@@ -127,11 +125,14 @@ function linear(hex) {
 
 /**
  * @param host    the element the canvas fills
- * @param opts    { vertical } — false draws the gate across the hero, true
- *                draws the spine down §how. Everything else is shared.
+ * @param opts    { vertical, onVerdictSettled, onUnavailable } — vertical
+ *                draws the spine. The gate reports its first settled verdict;
+ *                onUnavailable reports a later WebGL context loss.
  */
 export function mountLight(host, opts = {}) {
   if (!host) return null;
+  const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let reduced = motionPreference.matches;
   const vertical = !!opts.vertical;
   const canvas = host.querySelector('canvas.scene');
   const gate = host.querySelector('.gate');
@@ -194,6 +195,17 @@ export function mountLight(host, opts = {}) {
     // spine only: how far the light has run, and where the refusal sits
     lit: reduced ? 1 : 0, litWant: reduced ? 1 : 0, bpos: .5, bw: .10,
   };
+  let verdictReported = false;
+  function reportVerdictSettled(now) {
+    if (verdictReported || vertical || !state.want || state.verdictAt === null
+      || state.W <= 0 || state.H <= 0 || Math.abs(state.want - state.glow) > .001
+      || (!reduced && now - state.verdictAt < 500)) return;
+    // Pointer light may keep moving after the verdict. Report only the gate,
+    // and never re-arm this hook after another request, resize or hover.
+    verdictReported = true;
+    try { if (typeof opts.onVerdictSettled === 'function') opts.onVerdictSettled(); }
+    catch { /* A presentation callback must not stop the renderer. */ }
+  }
 
   const resize = () => {
     // The canvas's own box, not the host's: in the hero the canvas runs past
@@ -260,6 +272,7 @@ export function mountLight(host, opts = {}) {
     gl.uniform1f(u.LIT, vertical ? state.lit : 1);
     gl.uniform1f(u.BPOS, state.bpos); gl.uniform1f(u.BW, state.bw);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    reportVerdictSettled(now);
   };
 
   const stop = () => {
@@ -303,10 +316,27 @@ export function mountLight(host, opts = {}) {
   intersectionObserver?.observe(host);
 
   const visibilityChanged = () => { if (document.hidden) stop(); else loop(); };
+  const preferenceChanged = () => {
+    reduced = motionPreference.matches;
+    if (reduced) {
+      stop();
+      state.hover = state.hoverWant = 0;
+      state.glow = state.want;
+      state.front = state.want ? 1.3 : 0;
+      state.lit = state.litWant;
+    }
+    loop();
+  };
   const contextLost = () => {
+    const firstLoss = !state.stopped;
     state.stopped = true; stop(); host.classList.add('nogl');
+    if (firstLoss) {
+      try { if (typeof opts.onUnavailable === 'function') opts.onUnavailable(); }
+      catch { /* The CSS fallback remains available if its callback fails. */ }
+    }
   };
   document.addEventListener('visibilitychange', visibilityChanged);
+  motionPreference.addEventListener('change', preferenceChanged);
   canvas.addEventListener('webglcontextlost', contextLost);
 
   resize();
@@ -333,6 +363,7 @@ export function mountLight(host, opts = {}) {
       resizeObserver?.disconnect(); intersectionObserver?.disconnect();
       window.removeEventListener('resize', resized);
       document.removeEventListener('visibilitychange', visibilityChanged);
+      motionPreference.removeEventListener('change', preferenceChanged);
       canvas.removeEventListener('webglcontextlost', contextLost);
       host.removeEventListener('pointermove', pointerMove);
       host.removeEventListener('pointerleave', pointerLeave);
