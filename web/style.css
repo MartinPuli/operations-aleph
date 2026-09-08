@@ -1451,32 +1451,47 @@ select.mini {
 .models-page .note.bad, .model-status.bad { color: var(--block); }
 .models-page .note.warn, .model-status.warn, .model-metadata .warn, .document-record .note.warn { color: var(--escalate); }
 #compilerFeedback:not(:empty) { margin-top: var(--s-4); }
-.models-section { padding-top: var(--s-8); }
+/* Library: the inventory, as one table. Local weights and endpoint
+   connections share the rows because the question an administrator brings here
+   — what have I saved, what may it do, can I use it — has the same shape for
+   both. The built-in analyzer choices are not duplicated in it: they are
+   options of the Request judge editor on Active, and two lists claiming to be
+   the same catalogue with different activation rules is the stacking this
+   redesign is undoing. */
+.library-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); padding: var(--s-6) var(--s-3) var(--s-5); }
+.library-head .note { max-width: var(--prose); }
+.library-head .btn { flex: none; }
+.tbl.models .thead, .tbl.models .trow { grid-template-columns: minmax(0, 1fr) 150px 120px 190px 72px; }
+.c-model { display: grid; gap: 2px; min-width: 0; padding: var(--s-3) 0; }
+.c-model b { font-weight: var(--fw-medium); color: var(--ink); overflow-wrap: anywhere; }
+.c-model .mono { font-size: var(--fs-1); color: var(--muted); overflow-wrap: anywhere; }
+.c-format { font-size: var(--fs-2); color: var(--muted); }
+.c-status { font-size: var(--fs-2); color: var(--muted); }
+.c-model-act { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+.c-model-act .btn { flex: none; }
+/* A row's own feedback belongs under that row, inside the table, not in a
+   column that would have to be as wide as the longest error in the list. */
+.trow-note { padding: var(--s-3) var(--s-5) var(--s-4); border-bottom: 1px solid var(--line); }
+.trow-note .note { max-width: var(--prose); }
+.tbl > .trow-note:last-child { border-bottom: none; }
+.library .model-editor, .library .model-transfers, .library > .banner, .library > .note { margin: 0 var(--s-3) var(--s-5); }
+.library .empty { margin: 0 var(--s-3); }
+
 .model-section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-5); margin-bottom: var(--s-3); }
 .model-section-head > div { min-width: 0; }
 .model-section-head .note { margin-top: var(--s-2); max-width: var(--prose); }
 .model-section-head .btn { flex: none; }
 .model-form-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--s-4); }
-.models-page .library-editor { margin-top: var(--s-5); }
+.models-page .library-editor { margin-top: 0; }
 .model-role-fields { min-width: 0; padding: 0; border: 0; margin: 0 0 var(--s-5); }
 .models-page .model-role-fields .check { margin: var(--s-2) 0; font-size: var(--fs-3); }
 .models-page .model-file-input { width: 100%; font: inherit; color: var(--ink-2); }
 .model-file-input::file-selector-button { font: inherit; color: var(--ink-2); background: var(--bg); border: 1px solid var(--line-firm); padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin-right: var(--s-3); cursor: pointer; }
 .model-file-input::file-selector-button:hover { background: var(--hover); }
-.model-library, .analyzer-options { padding: 0; list-style: none; margin: var(--s-5) 0 0; }
-.library-row { padding: var(--s-6) 0; border-bottom: 1px solid var(--line); }
-.library-row:first-child { border-top: 1px solid var(--line); }
+.analyzer-options { padding: 0; list-style: none; margin: var(--s-5) 0 0; }
 .library-model-name { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s-3); }
 .model-status { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--fs-2); font-weight: var(--fw-medium); color: var(--muted); }
-.model-description { color: var(--ink-2); overflow-wrap: anywhere; font-size: var(--fs-2); margin-top: var(--s-2) !important; }
 .model-metadata { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: var(--s-4); row-gap: var(--s-1); margin-top: var(--s-2); color: var(--muted); font-size: var(--fs-2); font-variant-numeric: tabular-nums; }
-.library-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); margin-top: var(--s-4); }
-.role-action { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.library-manage { display: flex; margin-left: auto; }
-.library-row > .note { margin-top: var(--s-3); }
-.model-library-empty { margin-top: var(--s-5); padding: var(--s-6) 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.model-library-empty > p { font-weight: var(--fw-medium); }
-.model-library-empty .note { display: block; margin-top: var(--s-2); max-width: var(--prose); }
 .model-delete-confirm { margin-top: var(--s-4); padding: var(--s-4); background: var(--block-bg); border-radius: var(--r-md); }
 .model-delete-confirm .actions { margin-top: var(--s-3); }
 .analyzer-option { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-5); padding: var(--s-5) 0; border-top: 1px solid var(--line-firm); }
@@ -1575,7 +1590,6 @@ select.mini {
   .model-transfer progress { width: 100%; order: 3; }
   .models-page .btn { min-height: 40px; }
   .models-page input[type="text"], .models-page input[type="password"], .models-page select, #prompt { font-size: var(--fs-4); }
-  .library-manage { margin-left: 0; }
   .document-formats { margin-left: var(--s-3); }
   .document-selection { max-height: 140px; }
   .row .who { flex-basis: 70px; }

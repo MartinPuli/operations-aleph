@@ -9,6 +9,7 @@ let jobs = [];
 let timer;
 let generation = 0;
 const roleLabel = (role) => role === 'adjudicator' ? 'analyzer' : 'compiler';
+const jobLabel = (role) => role === 'adjudicator' ? 'Analysis' : 'Compilation';
 const activePage = () => ['models', 'compiler'].includes(state.view);
 const safeError = (j, fallback) => typeof j?.error === 'string' ? j.error : fallback;
 
@@ -79,37 +80,55 @@ function feedback(note) {
   return `<p class="note ${note.ok ? 'good' : 'bad'}" role="${note.ok ? 'status' : 'alert'}">${esc(note.text)}</p>`;
 }
 
+/**
+ * One saved model, one row.
+ *
+ * The list used to be a stack of three-line cards with every action for every
+ * role spelled out as a button, which meant four buttons on a row whose usual
+ * answer is "nothing, it is fine". The row now says what an administrator
+ * sweeps a library for — what it is, what it may do, what shape its answers
+ * are, and whether it is usable — and the actions move into the menu Team
+ * already uses, with the one that is contextually next promoted out of it.
+ */
 function modelRow(model) {
   const id = attr(model.id);
   const active = model.activeRoles ?? [];
   const assigned = active.length > 0 || Object.values(library.catalog?.selections ?? {}).includes(model.id);
   const tested = model.testedRoles ?? [];
+  const roles = model.roles ?? [];
   const pending = editor.busy.startsWith(`${model.id}:`);
-  return `<li class="library-row" data-model-id="${esc(model.id)}">
-    <div class="library-row-main">
-      <div class="library-model-name"><h3>${esc(model.name)}</h3>${active.map((role) => `<span class="model-status good">Active ${roleLabel(role)}</span>`).join('')}</div>
-      <p class="model-description">${model.kind === 'endpoint' ? `${esc(model.model)} · ${esc(model.baseUrl)}` : `${esc(model.filename ?? 'GGUF model')} · ${fileSize(model.bytes ?? 0)}`}</p>
-      <div class="model-metadata"><span>${model.kind === 'endpoint' ? 'API endpoint' : 'On this gateway'}</span>${model.roles.map((role) => `<span>${roleLabel(role)}${tested.includes(role) ? ' · tested' : ' · test required'}</span>`).join('')}${model.hasKey ? '<span>Key saved</span>' : ''}</div>
-    </div>
-    <div class="library-actions">
-      ${(model.roles ?? []).map((role) => roleActions(model, role)).join('')}
-      <div class="library-manage"><button type="button" class="btn quiet" data-model-edit="${id}"${editor.busy || assigned ? ' disabled' : ''} title="${assigned ? 'Choose another model before editing this selection.' : 'Edit this saved model'}">Edit<span class="sr-only"> ${esc(model.name)}</span></button><button type="button" class="btn quiet danger" data-model-remove="${id}"${editor.busy || assigned ? ' disabled' : ''} title="${assigned ? 'Choose another model for each assigned role before removing this one.' : 'Remove this saved model'}">Remove<span class="sr-only"> ${esc(model.name)}</span></button></div>
-    </div>
-    ${assigned ? '<p class="note">To edit or remove this model, choose another model for each assigned role first.</p>' : ''}
-    ${pending ? '<p class="note" role="status">Checking compatibility may take a minute while the model loads.</p>' : ''}
-    ${editor.note?.scope === model.id ? feedback(editor.note) : ''}
-    ${editor.confirmDelete === model.id ? `<div class="model-delete-confirm" role="group" aria-label="Confirm model removal"><p>Remove <b>${esc(model.name)}</b> from this installation? Imported weights will be deleted.</p><div class="actions"><button type="button" class="btn danger" data-model-delete="${id}">Remove model</button><button type="button" class="btn" id="cancelModelDelete">Keep model</button></div></div>` : ''}
-  </li>`;
+  const overrides = library.catalog?.overrides ?? {};
+  // The one role that is ready to be put to work, if there is exactly one:
+  // more than that is a choice, and a choice belongs in the menu.
+  const usable = roles.filter((role) => tested.includes(role) && !active.includes(role) && !overrides[role]);
+  const promoted = usable.length === 1 ? usable[0] : null;
+  const items = [
+    ...roles.map((role) => `<button type="button" class="menu-item" id="test-${id}-${role}" data-model-test="${id}" data-role="${role}"${editor.busy ? ' disabled' : ''}>${editor.busy === `${model.id}:test:${role}` ? 'Testing…' : `Test as ${jobLabel(role)}`}</button>`),
+    ...roles.filter((role) => !active.includes(role) && role !== promoted).map((role) => `<button type="button" class="menu-item" id="activate-${id}-${role}" data-model-use="${id}" data-role="${role}"${editor.busy || !tested.includes(role) || overrides[role] ? ' disabled' : ''} title="${overrides[role] ? 'The environment controls this role. Remove its override to apply a saved model.' : tested.includes(role) ? `Use this model as the ${roleLabel(role)}` : `Test this model as the ${roleLabel(role)} first`}">${editor.busy === `${model.id}:use:${role}` ? 'Applying…' : `Use as ${jobLabel(role)}`}</button>`),
+    `<button type="button" class="menu-item" data-model-edit="${id}"${editor.busy || assigned ? ' disabled' : ''} title="${assigned ? 'Choose another model before editing this selection.' : 'Edit this saved model'}">Edit</button>`,
+    `<button type="button" class="menu-item danger" data-model-remove="${id}"${editor.busy || assigned ? ' disabled' : ''} title="${assigned ? 'Choose another model for each assigned role before removing this one.' : 'Remove this saved model'}">Remove</button>`
+  ];
+  return `<div class="trow" data-model-id="${esc(model.id)}">
+    <span class="c-model"><b>${esc(model.name)}</b><span class="mono">${model.kind === 'endpoint' ? `${esc(model.model)} · ${esc(model.baseUrl)}` : `${esc(model.filename ?? 'GGUF model')} · ${fileSize(model.bytes ?? 0)}`}</span></span>
+    <span>${roles.map(jobLabel).join(', ') || '—'}</span>
+    <span class="c-format mono">${model.kind === 'endpoint' ? 'endpoint' : esc(model.format ?? 'compliance')}</span>
+    <span>${statusCell(model, active, tested, roles)}</span>
+    <span class="c-model-act">
+      ${promoted ? `<button type="button" class="btn" id="activate-${id}-${promoted}" data-model-use="${id}" data-role="${promoted}"${editor.busy ? ' disabled' : ''}>${editor.busy === `${model.id}:use:${promoted}` ? 'Applying…' : 'Use'}</button>` : ''}
+      <details class="menu"><summary aria-label="More actions for ${esc(model.name)}">···</summary><div class="menu-list">${items.join('')}</div></details>
+    </span>
+  </div>
+  ${assigned ? '<p class="trow-note note">To edit or remove this model, choose another model for each assigned role first.</p>' : ''}
+  ${pending ? '<p class="trow-note note" role="status">Checking compatibility may take a minute while the model loads.</p>' : ''}
+  ${editor.note?.scope === model.id ? `<div class="trow-note">${feedback(editor.note)}</div>` : ''}
+  ${editor.confirmDelete === model.id ? `<div class="trow-note model-delete-confirm" role="group" aria-label="Confirm model removal"><p>Remove <b>${esc(model.name)}</b> from this installation? Imported weights will be deleted.</p><div class="actions"><button type="button" class="btn danger" data-model-delete="${id}">Remove model</button><button type="button" class="btn" id="cancelModelDelete">Keep model</button></div></div>` : ''}`;
 }
 
-function roleActions(model, role) {
-  const id = attr(model.id);
-  const tested = model.testedRoles?.includes(role);
-  const override = library.catalog?.overrides?.[role];
-  const active = model.activeRoles?.includes(role);
-  const help = override ? 'The environment controls this role. Remove its override to apply a saved model.'
-    : tested ? `Use this model as the ${roleLabel(role)}` : `Test this model as the ${roleLabel(role)} first`;
-  return `<div class="role-action"><button type="button" class="btn" id="test-${id}-${role}" data-model-test="${id}" data-role="${role}"${editor.busy ? ' disabled' : ''}>${editor.busy === `${model.id}:test:${role}` ? 'Testing…' : `Test ${roleLabel(role)}`}</button>${active ? '' : `<button type="button" class="btn${tested && !override ? ' primary' : ''}" id="activate-${id}-${role}" data-model-use="${id}" data-role="${role}"${editor.busy || !tested || override ? ' disabled' : ''} title="${help}">${editor.busy === `${model.id}:use:${role}` ? 'Applying…' : `Use as ${roleLabel(role)}`}</button>`}</div>`;
+/** What the row says about whether this model can be put to work. */
+function statusCell(model, active, tested, roles) {
+  if (active.length) return `<span class="chip good">Active · ${esc(active.map(jobLabel).join(', ').toLowerCase())}</span>`;
+  if (roles.some((role) => !tested.includes(role))) return '<span class="chip warn">Needs test</span>';
+  return `<span class="c-status">${model.kind === 'endpoint' ? 'Connection saved · tested' : 'Downloaded · tested'}</span>`;
 }
 
 function transferMarkup() {
@@ -121,12 +140,21 @@ function transferMarkup() {
 }
 
 export function libraryMarkup() {
-  return `<section class="models-section" aria-labelledby="modelLibraryTitle"><div class="model-section-head"><div><h2 id="modelLibraryTitle">Your models</h2><p class="note">Save a connection or import your own weights. Test each role before applying it.</p></div><button type="button" class="btn" id="addCustomModel"${editor.draft || editor.busy || !library.catalog ? ' disabled' : ''}>Add model</button></div>
-    <p class="note">These settings are shared by administrators of this Warden installation.</p>
+  const models = library.catalog?.models ?? [];
+  return `<section class="library" aria-label="Model library">
+    <div class="library-head">
+      <p class="note">Saved weights and connections, shared by every administrator of this installation.</p>
+      <button type="button" class="btn primary" id="addCustomModel"${editor.draft || editor.busy || !library.catalog ? ' disabled' : ''}>Add model</button>
+    </div>
     ${library.error ? `<div class="banner bad" role="alert">${esc(library.error)} <button type="button" class="linkbtn" id="retryModelLibrary">Try again</button></div>` : ''}
     ${editorMarkup()}
     ${transferMarkup()}
-    ${library.loading && !library.catalog ? '<div class="model-loading" role="status"><span class="skeleton-line"></span><span class="skeleton-line short"></span><span class="sr-only">Loading your models…</span></div>' : library.catalog?.models?.length ? `<ul class="model-library">${library.catalog.models.map(modelRow).join('')}</ul>` : library.catalog && !editor.draft ? '<div class="model-library-empty"><p>No custom models yet.</p><span class="note">Built-in models above are ready to configure. Add your own to keep reusable connections and local weights here.</span></div>' : ''}
+    ${library.loading && !library.catalog ? '<div class="model-loading" role="status"><span class="skeleton-line"></span><span class="skeleton-line short"></span><span class="sr-only">Loading your models…</span></div>'
+      : models.length ? `<div class="tbl models">
+          <div class="thead"><span>Model</span><span>Roles</span><span>Format</span><span>Status</span><span></span></div>
+          ${models.map(modelRow).join('')}
+        </div>`
+      : library.catalog && !editor.draft ? '<div class="empty"><b>No models of your own yet</b><span>The built-in analyzer choices live on the Active tab. Add a model here to keep a reusable connection or your own local weights.</span></div>' : ''}
     ${editor.note?.scope === 'library' ? feedback(editor.note) : ''}
   </section>`;
 }
