@@ -1,0 +1,17 @@
+# V5 product copy and claim scope — retained in v7
+
+Current v7 revision: roomier prompt and rule-panel spacing only. Rows use an 86px pitch with a 56px badge-to-name gap; the footer and activation cursor move together. Timing, Derek narration, native effects and the v6 3D outro remain unchanged. Delivery: `renders/warden-launch-28s-v7.mp4`; layout record: `production/v7-spacing.json`.
+
+The manager describes a business goal: **Help our team write client emails without exposing confidential information.** Warden proposes specific protections from that request. The illustrated rows are **Client contact details — BLOCK**, **Bank account details — BLOCK**, and **Non-public pricing — REVIEW**.
+
+The current headings say **Describe what to protect.**, **Warden drafts your rules.**, and **Review. Then activate.** The list says **Rules drafted from your request**, **Not active** and **Draft**. The distinct button is **Activate rules**; the resulting state is **Rules active**. Three examples are shown, but no fixed rule count or generation time is promised.
+
+This is an illustrative outcome, not a recorded compiler run of this exact prompt. `web/js/draft.js` (`writeRule` / `sendRuleSet`) supports a broad request producing several drafts when the configured compiler is capable, followed by review and explicit activation. The local 1.7B fallback may produce one rule. `web/js/draft-set.js` and `web/style.css` inform the reconstructed controls and status language.
+
+The email-writing example describes work through **connected AI tools**. It does not imply interception of every Gmail, Outlook or unconnected workflow. The proposed labels protect confidential information rather than prohibiting all client-email work. Claude Code, Codex CLI and compatible tools need their appropriate connection/configuration; ordinary Claude chat/web is not implied.
+
+The opening depicts fictional contact, bank and pricing information crossing **Company → External AI** in an outgoing request. **Confidential data shared** states the illustrated event; it does not imply public disclosure, model training, financial loss or a recorded customer incident. Later blocked/reviewed/allowed outcomes illustrate configured rules, not proof of universal detection.
+
+The ending conveys the owner-confirmed **Free for everyone. Open source.** positioning, with **macOS**, **Windows** and **Linux** named. The visual CTA is **Download for free**; narration is **Get Warden. Free for everyone. Open source.** V6 presents that same copy with a single extruded official shield-ring-and-W symbol, a letters-only wordmark and a continuous dark outro. The 3D treatment adds no product claim. This production does not verify current published installers, particularly Linux. See `../BRIEF.md` for release and enforcement evidence limits.
+
+Current delivery: **v6, 28 seconds, 840 Full HD frames at 30 fps**, using the unchanged 70-word Derek / Eleven v3 narration and v5 story. Only the outro from 24.10 seconds is revised. Source proof captures remain in `../snapshots/v5-product-intent/`; story timing remains in `v5-timing.json`. The current source check passes with zero errors/warnings and 12/12 text-contrast checks. The v6 master, silent companion, poster at 27.45 seconds and standalone outro clip are exported; encoded media verification passes and 21 encoded-frame samples were reviewed. Prior v5 source is preserved in `28s-v5-before-outro/`. `FINAL-QA.md` records current verification; earlier source captures remain separate evidence.

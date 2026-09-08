@@ -1,0 +1,153 @@
+{
+	"systeminfo": "WHISPER : COREML = 0 | OPENVINO = 0 | MTL : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | DOTPROD = 1 | ACCELERATE = 1 | OPENMP = 1 | REPACK = 1 | ",
+	"model": {
+		"type": "small",
+		"multilingual": false,
+		"vocab": 51864,
+		"audio": {
+			"ctx": 1500,
+			"state": 768,
+			"head": 12,
+			"layer": 12
+		},
+		"text": {
+			"ctx": 448,
+			"state": 768,
+			"head": 12,
+			"layer": 12
+		},
+		"mels": 80,
+		"ftype": 1
+	},
+	"params": {
+		"model": "/Users/martinezequielpulitano/.cache/hyperframes/whisper/models/ggml-small.en.bin",
+		"language": "en",
+		"translate": false
+	},
+	"result": {
+		"language": "en"
+	},
+	"transcription": [
+		{
+			"timestamps": {
+				"from": "00:00:00,000",
+				"to": "00:00:00,440"
+			},
+			"offsets": {
+				"from": 0,
+				"to": 440
+			},
+			"text": ""
+		},
+		{
+			"timestamps": {
+				"from": "00:00:00,440",
+				"to": "00:00:01,000"
+			},
+			"offsets": {
+				"from": 440,
+				"to": 1000
+			},
+			"text": " connect"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:01,000",
+				"to": "00:00:01,290"
+			},
+			"offsets": {
+				"from": 1000,
+				"to": 1290
+			},
+			"text": " cloud"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:01,290",
+				"to": "00:00:01,810"
+			},
+			"offsets": {
+				"from": 1290,
+				"to": 1810
+			},
+			"text": " code,"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:01,810",
+				"to": "00:00:02,500"
+			},
+			"offsets": {
+				"from": 1810,
+				"to": 2500
+			},
+			"text": " codecs,"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:02,500",
+				"to": "00:00:02,520"
+			},
+			"offsets": {
+				"from": 2500,
+				"to": 2520
+			},
+			"text": " or"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:02,520",
+				"to": "00:00:03,000"
+			},
+			"offsets": {
+				"from": 2520,
+				"to": 3000
+			},
+			"text": " compatible"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:03,000",
+				"to": "00:00:03,520"
+			},
+			"offsets": {
+				"from": 3000,
+				"to": 3520
+			},
+			"text": " tools"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:03,520",
+				"to": "00:00:03,750"
+			},
+			"offsets": {
+				"from": 3520,
+				"to": 3750
+			},
+			"text": " across"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:03,750",
+				"to": "00:00:03,920"
+			},
+			"offsets": {
+				"from": 3750,
+				"to": 3920
+			},
+			"text": " your"
+		},
+		{
+			"timestamps": {
+				"from": "00:00:03,920",
+				"to": "00:00:06,160"
+			},
+			"offsets": {
+				"from": 3920,
+				"to": 6160
+			},
+			"text": " teams."
+		}
+	]
+}

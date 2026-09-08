@@ -1,0 +1,39 @@
+{
+  "version": 10,
+  "clock": "Original paced v5 mono voice / original28s output seconds",
+  "source": "assets/audio/warden-derek-v5-mix.wav",
+  "full_original_audio_cuts": [
+    [
+      6.615,
+      6.865
+    ],
+    [
+      8.605,
+      8.775
+    ],
+    [
+      10.7,
+      10.78
+    ],
+    [
+      11.365,
+      11.665
+    ],
+    [
+      21.0,
+      22.1
+    ]
+  ],
+  "cut_purposes": [
+    "Shorten pause before Describe",
+    "Shorten pause before Warden drafts",
+    "Shorten pause before Activate",
+    "Shorten pause before Connected requests",
+    "Remove spoken CLI and its adjacent pause, preserving Codex and or"
+  ],
+  "total_removed_seconds": 1.9,
+  "final_duration_seconds": 26.1,
+  "final_frames": 783,
+  "fps": 30,
+  "mapping": "oldToNew(t) = t - sum(max(0, min(t, end) - start) for each [start,end]); cuts are applied to narration only. Native SFX are independently re-anchored."
+}

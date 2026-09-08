@@ -1,0 +1,891 @@
+{
+  "source": "assets/audio/warden-derek-v5.mp3",
+  "output": "assets/audio/warden-derek-v5-paced.wav",
+  "alignment_source": "production/voice-v5-words.json",
+  "transform": {
+    "raw_start": 0.0,
+    "raw_end": 30.0,
+    "tempo": 1.1,
+    "formula": "raw_seconds / 1.10"
+  },
+  "duration": 27.272729,
+  "word_count": 70,
+  "asr_differences": [],
+  "limitations": "Automatic Whisper recognition and mapped timing, not continuous listening, emotional-delivery or pronunciation approval. Pitch-preserving atempo is nominally linear; small local timing differences remain possible.",
+  "phrases": [
+    {
+      "id": "hook",
+      "text": "One quick AI task",
+      "first_word_index": 0,
+      "last_word_index": 3,
+      "raw_start": 0.11,
+      "raw_end": 1.57,
+      "start": 0.1,
+      "end": 1.427273
+    },
+    {
+      "id": "client_bank_details",
+      "text": "Your client\u2019s bank details",
+      "first_word_index": 4,
+      "last_word_index": 7,
+      "raw_start": 1.57,
+      "raw_end": 2.93,
+      "start": 1.427273,
+      "end": 2.663636
+    },
+    {
+      "id": "sent_outside",
+      "text": "sent outside the company",
+      "first_word_index": 8,
+      "last_word_index": 11,
+      "raw_start": 2.93,
+      "raw_end": 4.41,
+      "start": 2.663636,
+      "end": 4.009091
+    },
+    {
+      "id": "data_leak",
+      "text": "That\u2019s a data leak",
+      "first_word_index": 12,
+      "last_word_index": 15,
+      "raw_start": 4.41,
+      "raw_end": 5.84,
+      "start": 4.009091,
+      "end": 5.309091
+    },
+    {
+      "id": "take_control",
+      "text": "Take control with Warden",
+      "first_word_index": 16,
+      "last_word_index": 19,
+      "raw_start": 5.84,
+      "raw_end": 7.44,
+      "start": 5.309091,
+      "end": 6.763636,
+      "following_waveform_onset_raw": 5.9722,
+      "following_waveform_onset": 5.429273,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "describe_protection",
+      "text": "Describe what your team needs to protect",
+      "first_word_index": 20,
+      "last_word_index": 26,
+      "raw_start": 7.44,
+      "raw_end": 9.59,
+      "start": 6.763636,
+      "end": 8.718182,
+      "following_waveform_onset_raw": 7.639955,
+      "following_waveform_onset": 6.945414,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "draft_rules",
+      "text": "Warden drafts the rules",
+      "first_word_index": 27,
+      "last_word_index": 30,
+      "raw_start": 9.59,
+      "raw_end": 11.12,
+      "start": 8.718182,
+      "end": 10.109091,
+      "following_waveform_onset_raw": 9.703129,
+      "following_waveform_onset": 8.821026,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "review",
+      "text": "Review",
+      "first_word_index": 31,
+      "last_word_index": 31,
+      "raw_start": 11.12,
+      "raw_end": 11.7,
+      "start": 10.109091,
+      "end": 10.636364,
+      "following_waveform_onset_raw": 11.212381,
+      "following_waveform_onset": 10.193074,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "activate",
+      "text": "Activate",
+      "first_word_index": 32,
+      "last_word_index": 32,
+      "raw_start": 11.7,
+      "raw_end": 12.4,
+      "start": 10.636364,
+      "end": 11.272727,
+      "following_waveform_onset_raw": 11.930612,
+      "following_waveform_onset": 10.846011,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "connected_requests",
+      "text": "Connected requests get checked before they reach the model",
+      "first_word_index": 33,
+      "last_word_index": 41,
+      "raw_start": 12.4,
+      "raw_end": 15.84,
+      "start": 11.272727,
+      "end": 14.4,
+      "following_waveform_onset_raw": 12.886621,
+      "following_waveform_onset": 11.71511,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "block_private_data",
+      "text": "Block private data",
+      "first_word_index": 42,
+      "last_word_index": 44,
+      "raw_start": 15.84,
+      "raw_end": 17.36,
+      "start": 14.4,
+      "end": 15.781818,
+      "following_waveform_onset_raw": 15.993333,
+      "following_waveform_onset": 14.539394,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "review_sensitive_requests",
+      "text": "Review sensitive requests",
+      "first_word_index": 45,
+      "last_word_index": 47,
+      "raw_start": 17.36,
+      "raw_end": 19.12,
+      "start": 15.781818,
+      "end": 17.381818,
+      "following_waveform_onset_raw": 17.371791,
+      "following_waveform_onset": 15.792537,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "public_work",
+      "text": "Keep public work moving",
+      "first_word_index": 48,
+      "last_word_index": 51,
+      "raw_start": 19.12,
+      "raw_end": 20.8,
+      "start": 17.381818,
+      "end": 18.909091,
+      "following_waveform_onset_raw": 19.22195,
+      "following_waveform_onset": 17.4745,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "connect_claude_code",
+      "text": "Connect Claude Code",
+      "first_word_index": 52,
+      "last_word_index": 54,
+      "raw_start": 20.8,
+      "raw_end": 22.32,
+      "start": 18.909091,
+      "end": 20.290909,
+      "following_waveform_onset_raw": 20.902971,
+      "following_waveform_onset": 19.002701,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "codex_cli",
+      "text": "Codex CLI",
+      "first_word_index": 55,
+      "last_word_index": 56,
+      "raw_start": 22.32,
+      "raw_end": 23.58,
+      "start": 20.290909,
+      "end": 21.436364,
+      "following_waveform_onset_raw": 22.442948,
+      "following_waveform_onset": 20.40268,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "compatible_tools",
+      "text": "or compatible tools",
+      "first_word_index": 57,
+      "last_word_index": 59,
+      "raw_start": 23.58,
+      "raw_end": 25.25,
+      "start": 21.436364,
+      "end": 22.954545
+    },
+    {
+      "id": "across_teams",
+      "text": "across your teams",
+      "first_word_index": 60,
+      "last_word_index": 62,
+      "raw_start": 25.25,
+      "raw_end": 26.8,
+      "start": 22.954545,
+      "end": 24.363636
+    },
+    {
+      "id": "get_warden",
+      "text": "Get Warden",
+      "first_word_index": 63,
+      "last_word_index": 64,
+      "raw_start": 26.8,
+      "raw_end": 27.81,
+      "start": 24.363636,
+      "end": 25.281818,
+      "following_waveform_onset_raw": 26.935601,
+      "following_waveform_onset": 24.48691,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "free_for_everyone",
+      "text": "Free for everyone",
+      "first_word_index": 65,
+      "last_word_index": 67,
+      "raw_start": 27.81,
+      "raw_end": 28.96,
+      "start": 25.281818,
+      "end": 26.327273,
+      "following_waveform_onset_raw": 27.922812,
+      "following_waveform_onset": 25.384375,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "open_source",
+      "text": "Open source",
+      "first_word_index": 68,
+      "last_word_index": 69,
+      "raw_start": 28.96,
+      "raw_end": 29.68,
+      "start": 26.327273,
+      "end": 26.981818,
+      "following_waveform_onset_raw": 29.072313,
+      "following_waveform_onset": 26.429375,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    }
+  ],
+  "words": [
+    {
+      "index": 0,
+      "script": "One",
+      "asr": "One",
+      "raw_start": 0.11,
+      "raw_end": 0.3,
+      "start": 0.1,
+      "end": 0.272727
+    },
+    {
+      "index": 1,
+      "script": "quick",
+      "asr": "quick",
+      "raw_start": 0.3,
+      "raw_end": 0.81,
+      "start": 0.272727,
+      "end": 0.736364
+    },
+    {
+      "index": 2,
+      "script": "AI",
+      "asr": "AI",
+      "raw_start": 0.81,
+      "raw_end": 1.01,
+      "start": 0.736364,
+      "end": 0.918182
+    },
+    {
+      "index": 3,
+      "script": "task",
+      "asr": "task.",
+      "raw_start": 1.01,
+      "raw_end": 1.57,
+      "start": 0.918182,
+      "end": 1.427273
+    },
+    {
+      "index": 4,
+      "script": "Your",
+      "asr": "Your",
+      "raw_start": 1.57,
+      "raw_end": 1.75,
+      "start": 1.427273,
+      "end": 1.590909
+    },
+    {
+      "index": 5,
+      "script": "client\u2019s",
+      "asr": "clients",
+      "raw_start": 1.75,
+      "raw_end": 2.11,
+      "start": 1.590909,
+      "end": 1.918182
+    },
+    {
+      "index": 6,
+      "script": "bank",
+      "asr": "bank",
+      "raw_start": 2.11,
+      "raw_end": 2.28,
+      "start": 1.918182,
+      "end": 2.072727
+    },
+    {
+      "index": 7,
+      "script": "details",
+      "asr": "details",
+      "raw_start": 2.28,
+      "raw_end": 2.93,
+      "start": 2.072727,
+      "end": 2.663636
+    },
+    {
+      "index": 8,
+      "script": "sent",
+      "asr": "sent",
+      "raw_start": 2.93,
+      "raw_end": 3.2,
+      "start": 2.663636,
+      "end": 2.909091
+    },
+    {
+      "index": 9,
+      "script": "outside",
+      "asr": "outside",
+      "raw_start": 3.2,
+      "raw_end": 3.6,
+      "start": 2.909091,
+      "end": 3.272727
+    },
+    {
+      "index": 10,
+      "script": "the",
+      "asr": "the",
+      "raw_start": 3.6,
+      "raw_end": 3.69,
+      "start": 3.272727,
+      "end": 3.354545
+    },
+    {
+      "index": 11,
+      "script": "company",
+      "asr": "company.",
+      "raw_start": 3.69,
+      "raw_end": 4.41,
+      "start": 3.354545,
+      "end": 4.009091
+    },
+    {
+      "index": 12,
+      "script": "That\u2019s",
+      "asr": "That's",
+      "raw_start": 4.41,
+      "raw_end": 4.87,
+      "start": 4.009091,
+      "end": 4.427273
+    },
+    {
+      "index": 13,
+      "script": "a",
+      "asr": "a",
+      "raw_start": 4.87,
+      "raw_end": 4.96,
+      "start": 4.427273,
+      "end": 4.509091
+    },
+    {
+      "index": 14,
+      "script": "data",
+      "asr": "data",
+      "raw_start": 4.96,
+      "raw_end": 5.2,
+      "start": 4.509091,
+      "end": 4.727273
+    },
+    {
+      "index": 15,
+      "script": "leak",
+      "asr": "leak.",
+      "raw_start": 5.2,
+      "raw_end": 5.84,
+      "start": 4.727273,
+      "end": 5.309091
+    },
+    {
+      "index": 16,
+      "script": "Take",
+      "asr": "Take",
+      "raw_start": 5.84,
+      "raw_end": 6.1,
+      "start": 5.309091,
+      "end": 5.545455
+    },
+    {
+      "index": 17,
+      "script": "control",
+      "asr": "control",
+      "raw_start": 6.1,
+      "raw_end": 6.56,
+      "start": 5.545455,
+      "end": 5.963636
+    },
+    {
+      "index": 18,
+      "script": "with",
+      "asr": "with",
+      "raw_start": 6.56,
+      "raw_end": 6.8,
+      "start": 5.963636,
+      "end": 6.181818
+    },
+    {
+      "index": 19,
+      "script": "Warden",
+      "asr": "Warden.",
+      "raw_start": 6.8,
+      "raw_end": 7.44,
+      "start": 6.181818,
+      "end": 6.763636
+    },
+    {
+      "index": 20,
+      "script": "Describe",
+      "asr": "Describe",
+      "raw_start": 7.44,
+      "raw_end": 7.95,
+      "start": 6.763636,
+      "end": 7.227273
+    },
+    {
+      "index": 21,
+      "script": "what",
+      "asr": "what",
+      "raw_start": 7.95,
+      "raw_end": 8.13,
+      "start": 7.227273,
+      "end": 7.390909
+    },
+    {
+      "index": 22,
+      "script": "your",
+      "asr": "your",
+      "raw_start": 8.13,
+      "raw_end": 8.35,
+      "start": 7.390909,
+      "end": 7.590909
+    },
+    {
+      "index": 23,
+      "script": "team",
+      "asr": "team",
+      "raw_start": 8.35,
+      "raw_end": 8.59,
+      "start": 7.590909,
+      "end": 7.809091
+    },
+    {
+      "index": 24,
+      "script": "needs",
+      "asr": "needs",
+      "raw_start": 8.59,
+      "raw_end": 8.88,
+      "start": 7.809091,
+      "end": 8.072727
+    },
+    {
+      "index": 25,
+      "script": "to",
+      "asr": "to",
+      "raw_start": 8.88,
+      "raw_end": 9.04,
+      "start": 8.072727,
+      "end": 8.218182
+    },
+    {
+      "index": 26,
+      "script": "protect",
+      "asr": "protect.",
+      "raw_start": 9.04,
+      "raw_end": 9.59,
+      "start": 8.218182,
+      "end": 8.718182
+    },
+    {
+      "index": 27,
+      "script": "Warden",
+      "asr": "Warden",
+      "raw_start": 9.59,
+      "raw_end": 10.23,
+      "start": 8.718182,
+      "end": 9.3
+    },
+    {
+      "index": 28,
+      "script": "drafts",
+      "asr": "drafts",
+      "raw_start": 10.23,
+      "raw_end": 10.32,
+      "start": 9.3,
+      "end": 9.381818
+    },
+    {
+      "index": 29,
+      "script": "the",
+      "asr": "the",
+      "raw_start": 10.32,
+      "raw_end": 10.48,
+      "start": 9.381818,
+      "end": 9.527273
+    },
+    {
+      "index": 30,
+      "script": "rules",
+      "asr": "rules.",
+      "raw_start": 10.48,
+      "raw_end": 11.12,
+      "start": 9.527273,
+      "end": 10.109091
+    },
+    {
+      "index": 31,
+      "script": "Review",
+      "asr": "Review.",
+      "raw_start": 11.12,
+      "raw_end": 11.7,
+      "start": 10.109091,
+      "end": 10.636364
+    },
+    {
+      "index": 32,
+      "script": "Activate",
+      "asr": "Activate.",
+      "raw_start": 11.7,
+      "raw_end": 12.4,
+      "start": 10.636364,
+      "end": 11.272727
+    },
+    {
+      "index": 33,
+      "script": "Connected",
+      "asr": "Connected",
+      "raw_start": 12.4,
+      "raw_end": 12.96,
+      "start": 11.272727,
+      "end": 11.781818
+    },
+    {
+      "index": 34,
+      "script": "requests",
+      "asr": "requests",
+      "raw_start": 12.96,
+      "raw_end": 13.49,
+      "start": 11.781818,
+      "end": 12.263636
+    },
+    {
+      "index": 35,
+      "script": "get",
+      "asr": "get",
+      "raw_start": 13.49,
+      "raw_end": 13.66,
+      "start": 12.263636,
+      "end": 12.418182
+    },
+    {
+      "index": 36,
+      "script": "checked",
+      "asr": "checked",
+      "raw_start": 13.66,
+      "raw_end": 14.11,
+      "start": 12.418182,
+      "end": 12.827273
+    },
+    {
+      "index": 37,
+      "script": "before",
+      "asr": "before",
+      "raw_start": 14.11,
+      "raw_end": 14.56,
+      "start": 12.827273,
+      "end": 13.236364
+    },
+    {
+      "index": 38,
+      "script": "they",
+      "asr": "they",
+      "raw_start": 14.56,
+      "raw_end": 14.74,
+      "start": 13.236364,
+      "end": 13.4
+    },
+    {
+      "index": 39,
+      "script": "reach",
+      "asr": "reach",
+      "raw_start": 14.74,
+      "raw_end": 15.06,
+      "start": 13.4,
+      "end": 13.690909
+    },
+    {
+      "index": 40,
+      "script": "the",
+      "asr": "the",
+      "raw_start": 15.06,
+      "raw_end": 15.51,
+      "start": 13.690909,
+      "end": 14.1
+    },
+    {
+      "index": 41,
+      "script": "model",
+      "asr": "model.",
+      "raw_start": 15.51,
+      "raw_end": 15.84,
+      "start": 14.1,
+      "end": 14.4
+    },
+    {
+      "index": 42,
+      "script": "Block",
+      "asr": "Block",
+      "raw_start": 15.84,
+      "raw_end": 16.2,
+      "start": 14.4,
+      "end": 14.727273
+    },
+    {
+      "index": 43,
+      "script": "private",
+      "asr": "private",
+      "raw_start": 16.2,
+      "raw_end": 16.71,
+      "start": 14.727273,
+      "end": 15.190909
+    },
+    {
+      "index": 44,
+      "script": "data",
+      "asr": "data.",
+      "raw_start": 16.71,
+      "raw_end": 17.36,
+      "start": 15.190909,
+      "end": 15.781818
+    },
+    {
+      "index": 45,
+      "script": "Review",
+      "asr": "Review",
+      "raw_start": 17.36,
+      "raw_end": 17.64,
+      "start": 15.781818,
+      "end": 16.036364
+    },
+    {
+      "index": 46,
+      "script": "sensitive",
+      "asr": "sensitive",
+      "raw_start": 17.64,
+      "raw_end": 18.29,
+      "start": 16.036364,
+      "end": 16.627273
+    },
+    {
+      "index": 47,
+      "script": "requests",
+      "asr": "requests.",
+      "raw_start": 18.29,
+      "raw_end": 19.12,
+      "start": 16.627273,
+      "end": 17.381818
+    },
+    {
+      "index": 48,
+      "script": "Keep",
+      "asr": "Keep",
+      "raw_start": 19.12,
+      "raw_end": 19.41,
+      "start": 17.381818,
+      "end": 17.645455
+    },
+    {
+      "index": 49,
+      "script": "public",
+      "asr": "public",
+      "raw_start": 19.41,
+      "raw_end": 19.84,
+      "start": 17.645455,
+      "end": 18.036364
+    },
+    {
+      "index": 50,
+      "script": "work",
+      "asr": "work",
+      "raw_start": 19.84,
+      "raw_end": 20.23,
+      "start": 18.036364,
+      "end": 18.390909
+    },
+    {
+      "index": 51,
+      "script": "moving",
+      "asr": "moving.",
+      "raw_start": 20.23,
+      "raw_end": 20.8,
+      "start": 18.390909,
+      "end": 18.909091
+    },
+    {
+      "index": 52,
+      "script": "Connect",
+      "asr": "Connect",
+      "raw_start": 20.8,
+      "raw_end": 21.2,
+      "start": 18.909091,
+      "end": 19.272727
+    },
+    {
+      "index": 53,
+      "script": "Claude",
+      "asr": "Claude",
+      "raw_start": 21.2,
+      "raw_end": 21.87,
+      "start": 19.272727,
+      "end": 19.881818
+    },
+    {
+      "index": 54,
+      "script": "Code",
+      "asr": "code.",
+      "raw_start": 21.87,
+      "raw_end": 22.32,
+      "start": 19.881818,
+      "end": 20.290909
+    },
+    {
+      "index": 55,
+      "script": "Codex",
+      "asr": "Codex.",
+      "raw_start": 22.32,
+      "raw_end": 23.04,
+      "start": 20.290909,
+      "end": 20.945455
+    },
+    {
+      "index": 56,
+      "script": "CLI",
+      "asr": "CLI.",
+      "raw_start": 23.04,
+      "raw_end": 23.58,
+      "start": 20.945455,
+      "end": 21.436364
+    },
+    {
+      "index": 57,
+      "script": "or",
+      "asr": "Or",
+      "raw_start": 23.58,
+      "raw_end": 23.84,
+      "start": 21.436364,
+      "end": 21.672727
+    },
+    {
+      "index": 58,
+      "script": "compatible",
+      "asr": "compatible",
+      "raw_start": 23.84,
+      "raw_end": 24.69,
+      "start": 21.672727,
+      "end": 22.445455
+    },
+    {
+      "index": 59,
+      "script": "tools",
+      "asr": "tools",
+      "raw_start": 24.69,
+      "raw_end": 25.25,
+      "start": 22.445455,
+      "end": 22.954545
+    },
+    {
+      "index": 60,
+      "script": "across",
+      "asr": "across",
+      "raw_start": 25.25,
+      "raw_end": 25.76,
+      "start": 22.954545,
+      "end": 23.418182
+    },
+    {
+      "index": 61,
+      "script": "your",
+      "asr": "your",
+      "raw_start": 25.76,
+      "raw_end": 26.01,
+      "start": 23.418182,
+      "end": 23.645455
+    },
+    {
+      "index": 62,
+      "script": "teams",
+      "asr": "teams.",
+      "raw_start": 26.01,
+      "raw_end": 26.8,
+      "start": 23.645455,
+      "end": 24.363636
+    },
+    {
+      "index": 63,
+      "script": "Get",
+      "asr": "Get",
+      "raw_start": 26.8,
+      "raw_end": 27.11,
+      "start": 24.363636,
+      "end": 24.645455
+    },
+    {
+      "index": 64,
+      "script": "Warden",
+      "asr": "Warden.",
+      "raw_start": 27.11,
+      "raw_end": 27.81,
+      "start": 24.645455,
+      "end": 25.281818
+    },
+    {
+      "index": 65,
+      "script": "Free",
+      "asr": "Free",
+      "raw_start": 27.81,
+      "raw_end": 28.29,
+      "start": 25.281818,
+      "end": 25.718182
+    },
+    {
+      "index": 66,
+      "script": "for",
+      "asr": "for",
+      "raw_start": 28.29,
+      "raw_end": 28.33,
+      "start": 25.718182,
+      "end": 25.754545
+    },
+    {
+      "index": 67,
+      "script": "everyone",
+      "asr": "everyone.",
+      "raw_start": 28.33,
+      "raw_end": 28.96,
+      "start": 25.754545,
+      "end": 26.327273
+    },
+    {
+      "index": 68,
+      "script": "Open",
+      "asr": "Open",
+      "raw_start": 28.96,
+      "raw_end": 29.28,
+      "start": 26.327273,
+      "end": 26.618182
+    },
+    {
+      "index": 69,
+      "script": "source",
+      "asr": "source.",
+      "raw_start": 29.28,
+      "raw_end": 29.68,
+      "start": 26.618182,
+      "end": 26.981818
+    }
+  ]
+}

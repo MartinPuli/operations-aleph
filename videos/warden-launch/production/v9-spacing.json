@@ -1,0 +1,22 @@
+{
+  "version": 9,
+  "scope": "16px more top padding for You and prompt copy in both states",
+  "text_shift_y": 16,
+  "expanded_baselines": {
+    "you": 442,
+    "prompt": [
+      501,
+      564
+    ]
+  },
+  "collapsed_baselines": {
+    "you": 298,
+    "prompt": [
+      355,
+      413
+    ]
+  },
+  "card_geometry_unchanged": true,
+  "outro": "v8 preserved",
+  "audio": "assets/audio/warden-launch-v6-mix.wav"
+}

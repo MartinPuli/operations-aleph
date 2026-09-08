@@ -1,0 +1,45 @@
+{
+  "intent": "Maintain the opening momentum through a causal submit, draft, review and activation sequence.",
+  "motion_language": {
+    "timing_unit": 0.1,
+    "entrance_ease": "power4.out",
+    "travel_ease": "smoothstep",
+    "row_stagger": 0.11,
+    "whole_phrases_only": true,
+    "purpose": "The submitted prompt becomes proposals, a person reviews them, activation reaches the team."
+  },
+  "beats_output": {
+    "prompt": [
+      5.43,
+      5.83
+    ],
+    "send": 6.98,
+    "dock": [
+      7.05,
+      7.27
+    ],
+    "draft_panel": [
+      7.26,
+      7.47
+    ],
+    "row_arrivals": [
+      7.42,
+      7.53,
+      7.64
+    ],
+    "review": [
+      8.52,
+      8.82,
+      9.12
+    ],
+    "activate_press": 10.35,
+    "active": 10.44,
+    "team_handoff": [
+      10.697,
+      11.035
+    ]
+  },
+  "outro": "Approved v8 geometry/material/motion retained on original internal clock; begins22.2 in finalvideo",
+  "preserved": "v9 top padding and rule-panel geometry",
+  "voice_label": "Codex"
+}

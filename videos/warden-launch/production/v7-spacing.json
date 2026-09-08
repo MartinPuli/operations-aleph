@@ -1,0 +1,49 @@
+{
+  "scope": "manager prompt / draft rules screen only",
+  "unchanged": [
+    "28-second timing",
+    "Derek narration",
+    "all sound effects",
+    "v6 3D outro",
+    "other scenes"
+  ],
+  "collapsed_prompt": {
+    "top_before": 300,
+    "top_after": 244,
+    "height_before": 166,
+    "height_after": 212,
+    "text_baselines": [
+      282,
+      339,
+      397
+    ]
+  },
+  "draft_panel": {
+    "top": 526,
+    "height_before": 422,
+    "height_after": 480,
+    "bottom": 1006
+  },
+  "rows": {
+    "pitch_before": 73,
+    "pitch_after": 86,
+    "badge_height_before": 56,
+    "badge_height_after": 60,
+    "badge_to_name_gap_before": 36,
+    "badge_to_name_gap_after": 56
+  },
+  "footer": {
+    "separator_y": 886,
+    "button": [
+      1218,
+      914,
+      416,
+      72
+    ],
+    "click_point": [
+      1590,
+      954
+    ]
+  },
+  "output": "renders/warden-launch-28s-v7.mp4"
+}

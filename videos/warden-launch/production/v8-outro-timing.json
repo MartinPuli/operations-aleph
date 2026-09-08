@@ -1,0 +1,49 @@
+{
+  "duration": 28,
+  "scope": "outro only; v7 rule spacing and all audio preserved",
+  "transition": [
+    24.1,
+    24.47
+  ],
+  "logo_target": {
+    "center": [
+      500,
+      368
+    ],
+    "height": 460
+  },
+  "wordmark": [
+    24.46,
+    24.71
+  ],
+  "action": [
+    25.16,
+    25.41
+  ],
+  "action_label_and_arrow": [
+    25.21,
+    25.41
+  ],
+  "platforms": [
+    25.78,
+    26
+  ],
+  "support": [
+    26.2,
+    26.44
+  ],
+  "url": [
+    25.21,
+    25.44
+  ],
+  "specular_travel": [
+    25.25,
+    26.55
+  ],
+  "full_readable_hold": [
+    26.55,
+    28
+  ],
+  "audio": "assets/audio/warden-launch-v6-mix.wav",
+  "note": "Existing effect peaks align to logo arrival24.58, CTA25.36, platforms25.95 and source26.4. No new voice or audio generation."
+}

@@ -1,0 +1,7 @@
+One quick AI task. Your client’s bank details—sent outside the company. That’s a data leak.
+Take control with Warden. Describe what your team needs to protect. Warden drafts the rules.
+Review. Activate.
+Connected requests get checked before they reach the model.
+Block private data. Review sensitive requests. Keep public work moving.
+Connect Claude Code, Codex, or compatible tools across your teams.
+Get Warden. Free for everyone. Open source.

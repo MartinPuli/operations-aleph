@@ -1,0 +1,641 @@
+{
+  "version": 5,
+  "duration": 28,
+  "sample_rate": 48000,
+  "channels": 2,
+  "sources": {
+    "transfer": {
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "duration": 0.48,
+      "sample_rate": 48000,
+      "channels": 2,
+      "codec": "pcm_s16le",
+      "raw_peak_time": 0.25214583333333335,
+      "raw_sample_peak_dbfs": -5.023979055454966,
+      "provider_provenance": "production/elevenlabs-sfx-v4-provenance.json",
+      "provider_metadata_note": "Exact native prompts, UI settings and unused third generation are recorded in the provenance file."
+    },
+    "latch": {
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "duration": 0.48,
+      "sample_rate": 48000,
+      "channels": 2,
+      "codec": "pcm_s16le",
+      "raw_peak_time": 0.17964583333333334,
+      "raw_sample_peak_dbfs": -4.638451401960485,
+      "provider_provenance": "production/elevenlabs-sfx-v4-provenance.json",
+      "provider_metadata_note": "Exact native prompts, UI settings and unused third generation are recorded in the provenance file."
+    }
+  },
+  "cues": [
+    {
+      "id": "attachment_drop",
+      "event_clock": "source",
+      "event_anchor": 0.32,
+      "source_event_time": 0.32,
+      "output_event_time": 0.32,
+      "source_key": "transfer",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "native_trim_start": 0.14,
+      "native_trim_end": 0.23,
+      "output_start": 0.3091041666666667,
+      "output_duration": 0.09,
+      "processed_peak_offset": 0.010895833333333334,
+      "actual_peak_time": 0.32,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -18.333188563932058,
+      "gain_db": 2.333188563932057,
+      "target_sample_peak_dbfs": -16,
+      "filter": "atrim=start=0.14:end=0.23,asetpts=PTS-STARTPTS,highpass=f=200,lowpass=f=7800,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.06300000:d=0.02700000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.027,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "send_press",
+      "event_clock": "source",
+      "event_anchor": 0.72,
+      "source_event_time": 0.72,
+      "output_event_time": 0.72,
+      "source_key": "transfer",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "native_trim_start": 0.238,
+      "native_trim_end": 0.335,
+      "output_start": 0.7058333333333333,
+      "output_duration": 0.097,
+      "processed_peak_offset": 0.014166666666666666,
+      "actual_peak_time": 0.72,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -5.959319814916233,
+      "gain_db": -7.040680185083767,
+      "target_sample_peak_dbfs": -13,
+      "filter": "atrim=start=0.238:end=0.335,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=8200,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.06790000:d=0.02910000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.029100000000000008,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "client_contact_crosses",
+      "event_clock": "source",
+      "event_anchor": 2.8,
+      "source_event_time": 2.8,
+      "output_event_time": 2.52,
+      "source_key": "transfer",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "native_trim_start": 0.095,
+      "native_trim_end": 0.16,
+      "output_start": 2.4641041666666665,
+      "output_duration": 0.065,
+      "processed_peak_offset": 0.05589583333333333,
+      "actual_peak_time": 2.52,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -25.256791887846898,
+      "gain_db": 9.256791887846898,
+      "target_sample_peak_dbfs": -16,
+      "filter": "atrim=start=0.095:end=0.16,asetpts=PTS-STARTPTS,highpass=f=250,lowpass=f=7600,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.04550000:d=0.01950000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.0195,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "bank_details_cross",
+      "event_clock": "source",
+      "event_anchor": 3.22,
+      "source_event_time": 3.22,
+      "output_event_time": 2.94,
+      "source_key": "transfer",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "native_trim_start": 0.14,
+      "native_trim_end": 0.23,
+      "output_start": 2.929104166666667,
+      "output_duration": 0.09,
+      "processed_peak_offset": 0.010895833333333334,
+      "actual_peak_time": 2.9400000000000004,
+      "peak_alignment_error_seconds": 4.440892098500626e-16,
+      "post_filter_peak_dbfs_before_gain": -18.196434259041986,
+      "gain_db": 2.196434259041986,
+      "target_sample_peak_dbfs": -16,
+      "filter": "atrim=start=0.14:end=0.23,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=8000,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.06300000:d=0.02700000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.027,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "private_pricing_crosses",
+      "event_clock": "source",
+      "event_anchor": 3.54,
+      "source_event_time": 3.54,
+      "output_event_time": 3.45,
+      "source_key": "transfer",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "native_trim_start": 0.235,
+      "native_trim_end": 0.34,
+      "output_start": 3.4328333333333334,
+      "output_duration": 0.105,
+      "processed_peak_offset": 0.017166666666666667,
+      "actual_peak_time": 3.45,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -6.304578175356832,
+      "gain_db": -9.695421824643168,
+      "target_sample_peak_dbfs": -16,
+      "filter": "atrim=start=0.235:end=0.34,asetpts=PTS-STARTPTS,highpass=f=200,lowpass=f=7400,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.07350000:d=0.03150000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.03150000000000001,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "private_pricing_transfer",
+      "event_clock": "source",
+      "event_anchor": 4.6,
+      "source_event_time": 4.6,
+      "output_event_time": 4.372,
+      "source_key": "transfer",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "native_trim_start": 0.09,
+      "native_trim_end": 0.44,
+      "output_start": 4.209833333333333,
+      "output_duration": 0.35,
+      "processed_peak_offset": 0.16216666666666665,
+      "actual_peak_time": 4.372,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -6.020599913279624,
+      "gain_db": -6.979400086720377,
+      "target_sample_peak_dbfs": -13,
+      "filter": "atrim=start=0.09:end=0.44,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=8000,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.27000000:d=0.08000000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.08,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "rule_boundary",
+      "event_clock": "source",
+      "event_anchor": 5.9428,
+      "source_event_time": 5.9428,
+      "output_event_time": 5.385956,
+      "source_key": "latch",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "native_trim_start": 0.05,
+      "native_trim_end": 0.42,
+      "output_start": 5.238833333333333,
+      "output_duration": 0.37,
+      "processed_peak_offset": 0.147125,
+      "actual_peak_time": 5.385958333333333,
+      "peak_alignment_error_seconds": 2.3333333327713035e-06,
+      "post_filter_peak_dbfs_before_gain": -4.576277124866007,
+      "gain_db": -6.423722875133995,
+      "target_sample_peak_dbfs": -11,
+      "filter": "atrim=start=0.05:end=0.42,asetpts=PTS-STARTPTS,highpass=f=190,lowpass=f=7200,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.29000000:d=0.08000000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.08,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "draft_assembly",
+      "event_clock": "source",
+      "event_anchor": 7.95,
+      "source_event_time": 7.95,
+      "output_event_time": 8.84,
+      "source_key": "transfer",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "native_trim_start": 0.0,
+      "native_trim_end": 0.23,
+      "output_start": 8.689104166666667,
+      "output_duration": 0.23,
+      "processed_peak_offset": 0.15089583333333334,
+      "actual_peak_time": 8.84,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -18.241780212226747,
+      "gain_db": 5.241780212226748,
+      "target_sample_peak_dbfs": -13,
+      "filter": "atrim=start=0.0:end=0.23,asetpts=PTS-STARTPTS,highpass=f=240,lowpass=f=8000,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.16100000:d=0.06900000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.069,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "activate_rule",
+      "event_clock": "source",
+      "event_anchor": 10.82,
+      "source_event_time": 10.82,
+      "output_event_time": 10.98,
+      "source_key": "latch",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "native_trim_start": 0.05,
+      "native_trim_end": 0.4,
+      "output_start": 10.832875,
+      "output_duration": 0.35,
+      "processed_peak_offset": 0.147125,
+      "actual_peak_time": 10.98,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -4.589305849449378,
+      "gain_db": -6.410694150550623,
+      "target_sample_peak_dbfs": -11,
+      "filter": "atrim=start=0.05:end=0.4,asetpts=PTS-STARTPTS,highpass=f=200,lowpass=f=7600,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.27000000:d=0.08000000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.08,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "blocked_request",
+      "event_clock": "source",
+      "event_anchor": 16.18,
+      "source_event_time": 16.18,
+      "output_event_time": 14.55,
+      "source_key": "latch",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "native_trim_start": 0.135,
+      "native_trim_end": 0.43,
+      "output_start": 14.487875,
+      "output_duration": 0.295,
+      "processed_peak_offset": 0.062125,
+      "actual_peak_time": 14.55,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -4.592453644128879,
+      "gain_db": -6.407546355871122,
+      "target_sample_peak_dbfs": -11,
+      "filter": "atrim=start=0.135:end=0.43,asetpts=PTS-STARTPTS,highpass=f=190,lowpass=f=7100,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.21500000:d=0.08000000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.08,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "public_request_passes",
+      "event_clock": "source",
+      "event_anchor": 20.2,
+      "source_event_time": 20.2,
+      "output_event_time": 17.549999999999997,
+      "source_key": "transfer",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "native_trim_start": 0.09,
+      "native_trim_end": 0.44,
+      "output_start": 17.387833333333333,
+      "output_duration": 0.35,
+      "processed_peak_offset": 0.16216666666666665,
+      "actual_peak_time": 17.55,
+      "peak_alignment_error_seconds": 3.552713678800501e-15,
+      "post_filter_peak_dbfs_before_gain": -5.995718786225406,
+      "gain_db": -7.004281213774595,
+      "target_sample_peak_dbfs": -13,
+      "filter": "atrim=start=0.09:end=0.44,asetpts=PTS-STARTPTS,highpass=f=260,lowpass=f=8200,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.27000000:d=0.08000000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.08,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "team_ports",
+      "event_clock": "output",
+      "event_anchor": 19.0,
+      "source_event_time": 22.098765432098766,
+      "output_event_time": 19.0,
+      "source_key": "transfer",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "native_trim_start": 0.19,
+      "native_trim_end": 0.445,
+      "output_start": 18.937833333333334,
+      "output_duration": 0.255,
+      "processed_peak_offset": 0.06216666666666667,
+      "actual_peak_time": 19.0,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -6.062049939434123,
+      "gain_db": -6.9379500605658775,
+      "target_sample_peak_dbfs": -13,
+      "filter": "atrim=start=0.19:end=0.445,asetpts=PTS-STARTPTS,highpass=f=270,lowpass=f=8000,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.17850000:d=0.07650000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.0765,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "product_connection",
+      "event_clock": "output",
+      "event_anchor": 19.55,
+      "source_event_time": 22.641975308641978,
+      "output_event_time": 19.55,
+      "source_key": "latch",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "native_trim_start": 0.06,
+      "native_trim_end": 0.16,
+      "output_start": 19.53933333333333,
+      "output_duration": 0.1,
+      "processed_peak_offset": 0.010666666666666666,
+      "actual_peak_time": 19.549999999999997,
+      "peak_alignment_error_seconds": -3.552713678800501e-15,
+      "post_filter_peak_dbfs_before_gain": -9.787326283174613,
+      "gain_db": -6.212673716825389,
+      "target_sample_peak_dbfs": -16,
+      "filter": "atrim=start=0.06:end=0.16,asetpts=PTS-STARTPTS,highpass=f=270,lowpass=f=7800,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.07000000:d=0.03000000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.03,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "engineering_connection",
+      "event_clock": "output",
+      "event_anchor": 20.5,
+      "source_event_time": 23.580246913580247,
+      "output_event_time": 20.5,
+      "source_key": "latch",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "native_trim_start": 0.155,
+      "native_trim_end": 0.27,
+      "output_start": 20.457875,
+      "output_duration": 0.115,
+      "processed_peak_offset": 0.042125,
+      "actual_peak_time": 20.5,
+      "peak_alignment_error_seconds": 0.0,
+      "post_filter_peak_dbfs_before_gain": -5.027288416086451,
+      "gain_db": -10.97271158391355,
+      "target_sample_peak_dbfs": -16,
+      "filter": "atrim=start=0.155:end=0.27,asetpts=PTS-STARTPTS,highpass=f=260,lowpass=f=8200,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.08050000:d=0.03450000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.0345,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "operations_connection",
+      "event_clock": "output",
+      "event_anchor": 21.7,
+      "source_event_time": 24.765432098765434,
+      "output_event_time": 21.7,
+      "source_key": "latch",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "native_trim_start": 0.055,
+      "native_trim_end": 0.165,
+      "output_start": 21.684333333333335,
+      "output_duration": 0.11,
+      "processed_peak_offset": 0.015666666666666666,
+      "actual_peak_time": 21.700000000000003,
+      "peak_alignment_error_seconds": 3.552713678800501e-15,
+      "post_filter_peak_dbfs_before_gain": -9.760375543856286,
+      "gain_db": -6.239624456143714,
+      "target_sample_peak_dbfs": -16,
+      "filter": "atrim=start=0.055:end=0.165,asetpts=PTS-STARTPTS,highpass=f=300,lowpass=f=7600,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.07700000:d=0.03300000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.033,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    },
+    {
+      "id": "final_latch",
+      "event_clock": "output",
+      "event_anchor": 27.45,
+      "source_event_time": 31.376770538243626,
+      "output_event_time": 27.45,
+      "source_key": "latch",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "native_trim_start": 0.15,
+      "native_trim_end": 0.41,
+      "output_start": 27.402875,
+      "output_duration": 0.26,
+      "processed_peak_offset": 0.047125,
+      "actual_peak_time": 27.450000000000003,
+      "peak_alignment_error_seconds": 3.552713678800501e-15,
+      "post_filter_peak_dbfs_before_gain": -4.654744238489027,
+      "gain_db": -8.345255761510973,
+      "target_sample_peak_dbfs": -13,
+      "filter": "atrim=start=0.15:end=0.41,asetpts=PTS-STARTPTS,highpass=f=210,lowpass=f=7600,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.18200000:d=0.07800000",
+      "fade_in_seconds": 0.005,
+      "fade_out_seconds": 0.078,
+      "stereo": "Native stereo retained; no synthesized spatial audio."
+    }
+  ],
+  "provider_provenance": "production/elevenlabs-sfx-v4-provenance.json",
+  "pace_map": {
+    "path": "assets/js/pace-map.js",
+    "sha256": "9f345d768be213c292a880562553a165a3c9199582c020b92fd9cb1ef9ab9b12",
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        0.28,
+        0.28
+      ],
+      [
+        0.72,
+        0.72
+      ],
+      [
+        1.15,
+        1.17
+      ],
+      [
+        1.46,
+        1.46
+      ],
+      [
+        2,
+        1.95
+      ],
+      [
+        2.25,
+        2.12
+      ],
+      [
+        2.8,
+        2.52
+      ],
+      [
+        3.22,
+        2.94
+      ],
+      [
+        3.54,
+        3.45
+      ],
+      [
+        4,
+        3.94
+      ],
+      [
+        5,
+        4.66
+      ],
+      [
+        6,
+        5.43
+      ],
+      [
+        6.58,
+        6.78
+      ],
+      [
+        7.3,
+        8.15
+      ],
+      [
+        7.7,
+        8.55
+      ],
+      [
+        7.9,
+        8.78
+      ],
+      [
+        8,
+        8.9
+      ],
+      [
+        10,
+        10.15
+      ],
+      [
+        10.06,
+        10.25
+      ],
+      [
+        10.7,
+        10.85
+      ],
+      [
+        10.82,
+        10.98
+      ],
+      [
+        11.26,
+        11.18
+      ],
+      [
+        11.7,
+        11.5
+      ],
+      [
+        12,
+        11.7
+      ],
+      [
+        14,
+        12.6
+      ],
+      [
+        16,
+        14.4
+      ],
+      [
+        16.18,
+        14.55
+      ],
+      [
+        18,
+        15.8
+      ],
+      [
+        20,
+        17.4
+      ],
+      [
+        22,
+        18.9
+      ],
+      [
+        26,
+        22.95
+      ],
+      [
+        26.15,
+        23.1
+      ],
+      [
+        26.51,
+        23.4
+      ],
+      [
+        27.48,
+        24.1
+      ],
+      [
+        28,
+        24.47
+      ],
+      [
+        32,
+        28
+      ]
+    ],
+    "mapping": "Piecewise linear; pairs are [source pose seconds, output seconds].",
+    "retime": "Recompute source-clock output times from the new pace-map. Output-clock cues retain reverse-mapped source anchors here for the editor to choose remapping."
+  },
+  "output": {
+    "path": "assets/audio/warden-eleven-sfx-v5.wav",
+    "sha256": "c0f97fbd7c6e8a6713bec636494b2ebee1d86166113099e24580fd859e7fc2d8",
+    "duration": 28,
+    "codec": "pcm_s24le",
+    "sample_peak_dbfs": -10.999999854613165,
+    "full_duration_rms_dbfs": -44.60134437198298,
+    "max_20ms_block_rms_dbfs": -22.923744467203807,
+    "integrated_lufs": -33.99,
+    "true_peak_dbtp": -10.99,
+    "loudness_range_lu": 9.8
+  },
+  "mix": {
+    "path": "assets/audio/warden-launch-v5-mix.wav",
+    "sha256": "d7c1b2b2de01d744319da6cbcc49d6c0d638d7e4f918b55f1893a2d5909fafb1",
+    "duration": 28,
+    "codec": "pcm_s24le",
+    "integrated_lufs": -17.62,
+    "true_peak_dbtp": -2.05,
+    "loudness_range_lu": 2.1,
+    "sample_peak_dbfs": -2.0556660287169732,
+    "full_duration_rms_dbfs": -20.482715484403634,
+    "max_20ms_block_rms_dbfs": -10.559204808873023,
+    "safety_gain_db": 0.0,
+    "unity_sum_verification": {
+      "max_pcm24_quantization_error": 0.0,
+      "max_error_dbfs": -300.0,
+      "voice_frames_retained": 1309091,
+      "passes": true
+    }
+  },
+  "comparison_to_v4_sfx_stem": {
+    "previous_path": "assets/audio/warden-eleven-sfx-v4.wav",
+    "previous_sha256": "e2440428eaa8863055234d7a7e3b736566819c14047a4112ea54f788790cacd1",
+    "previous_duration": 31.0,
+    "current_duration": 28,
+    "previous_metrics": {
+      "sample_peak_dbfs": -17.999993239873064,
+      "full_duration_rms_dbfs": -54.239533003449694,
+      "max_20ms_block_rms_dbfs": -30.039669816033868,
+      "integrated_lufs": -41.69,
+      "true_peak_dbtp": -17.86,
+      "loudness_range_lu": 13.9
+    },
+    "delta_v5_minus_v4": {
+      "sample_peak_dbfs": 6.999993385259899,
+      "full_duration_rms_dbfs": 9.638188631466711,
+      "max_20ms_block_rms_dbfs": 7.115925348830061,
+      "integrated_lufs": 7.699999999999996,
+      "true_peak_dbtp": 6.869999999999999
+    },
+    "note": "Previous stem is read only for measurement; none of its samples enter v5. Each full-duration RMS includes its own silence and duration; integrated loudness uses gating."
+  },
+  "recipe": "production/prepare_audio_v5.py",
+  "voice": {
+    "path": "assets/audio/warden-derek-v5-mix.wav",
+    "sha256": "b7aed7145b4ab02b72c073a0213afe92593717c04b8f321de827478e3b9f765d",
+    "duration": 27.272729166666668,
+    "placement": "From0s, entire mono narration duplicated at unity into L/R; no -3dB conversion.",
+    "processing_added_here": "None before summation. Any final safety gain is recorded under mix.",
+    "complete_source_samples_retained": 1309091,
+    "padded_silence_after_voice_seconds": 0.727270833333332
+  },
+  "processing": "Native trimmed samples, 5ms attack fades, up to80ms release fades, restrained band limits and +1.5dB presence at1400Hz. Each processed native transient is peak-aligned to its picture action, then normalized to -11/-13dBFS for main actions and -16dBFS for small contacts.",
+  "policy": "Only the two imported native generated WAVs are used as effects. No stock, prior procedural sounds, synthesis, opening boom, alarm, music, or new TTS. Outputs are finite28s.",
+  "verification": "Probes, measured transient alignment, sample peak, RMS, BS.1770 loudness and true-peak checks only. No listening or subjective quality claim."
+}

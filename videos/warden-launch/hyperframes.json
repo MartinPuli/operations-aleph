@@ -1,0 +1,30 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/hyperframes.json",
+  "registry": "https://raw.githubusercontent.com/heygen-com/hyperframes/main/registry",
+  "paths": {
+    "blocks": "compositions",
+    "components": "compositions/components",
+    "assets": "assets"
+  },
+  "media": {
+    "autoProxy": true
+  },
+  "authoringSkill": "product-launch-video",
+  "registryItems": [
+    {
+      "name": "per-word-rise",
+      "type": "hyperframes:component",
+      "target": "compositions/components/per-word-rise.html"
+    },
+    {
+      "name": "type-match-cut",
+      "type": "hyperframes:component",
+      "target": "compositions/components/type-match-cut.html"
+    },
+    {
+      "name": "zoom-through-transition",
+      "type": "hyperframes:component",
+      "target": "compositions/components/zoom-through-transition.html"
+    }
+  ]
+}

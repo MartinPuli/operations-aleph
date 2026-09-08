@@ -1,0 +1,296 @@
+{
+  "duration": 25.372729166666666,
+  "source_alignment": "production/voice-v5-phrase-onsets.json",
+  "mapping": "production/v10-audio-cuts.json",
+  "phrases": [
+    {
+      "id": "hook",
+      "text": "One quick AI task",
+      "first_word_index": 0,
+      "last_word_index": 3,
+      "raw_start": 0.11,
+      "raw_end": 1.57,
+      "start": 0.1,
+      "end": 1.427273
+    },
+    {
+      "id": "client_bank_details",
+      "text": "Your client\u2019s bank details",
+      "first_word_index": 4,
+      "last_word_index": 7,
+      "raw_start": 1.57,
+      "raw_end": 2.93,
+      "start": 1.427273,
+      "end": 2.663636
+    },
+    {
+      "id": "sent_outside",
+      "text": "sent outside the company",
+      "first_word_index": 8,
+      "last_word_index": 11,
+      "raw_start": 2.93,
+      "raw_end": 4.41,
+      "start": 2.663636,
+      "end": 4.009091
+    },
+    {
+      "id": "data_leak",
+      "text": "That\u2019s a data leak",
+      "first_word_index": 12,
+      "last_word_index": 15,
+      "raw_start": 4.41,
+      "raw_end": 5.84,
+      "start": 4.009091,
+      "end": 5.309091
+    },
+    {
+      "id": "take_control",
+      "text": "Take control with Warden",
+      "first_word_index": 16,
+      "last_word_index": 19,
+      "raw_start": 5.84,
+      "raw_end": 7.44,
+      "start": 5.309091,
+      "end": 6.615,
+      "following_waveform_onset_raw": 5.9722,
+      "following_waveform_onset": 5.429273,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "describe_protection",
+      "text": "Describe what your team needs to protect",
+      "first_word_index": 20,
+      "last_word_index": 26,
+      "raw_start": 7.44,
+      "raw_end": 9.59,
+      "start": 6.615,
+      "end": 8.355,
+      "following_waveform_onset_raw": 7.639955,
+      "following_waveform_onset": 6.695414,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "draft_rules",
+      "text": "Warden drafts the rules",
+      "first_word_index": 27,
+      "last_word_index": 30,
+      "raw_start": 9.59,
+      "raw_end": 11.12,
+      "start": 8.355,
+      "end": 9.689091,
+      "following_waveform_onset_raw": 9.703129,
+      "following_waveform_onset": 8.401026,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "review",
+      "text": "Review",
+      "first_word_index": 31,
+      "last_word_index": 31,
+      "raw_start": 11.12,
+      "raw_end": 11.7,
+      "start": 9.689091,
+      "end": 10.216364,
+      "following_waveform_onset_raw": 11.212381,
+      "following_waveform_onset": 9.773074,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "activate",
+      "text": "Activate",
+      "first_word_index": 32,
+      "last_word_index": 32,
+      "raw_start": 11.7,
+      "raw_end": 12.4,
+      "start": 10.216364,
+      "end": 10.772727,
+      "following_waveform_onset_raw": 11.930612,
+      "following_waveform_onset": 10.346011,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "connected_requests",
+      "text": "Connected requests get checked before they reach the model",
+      "first_word_index": 33,
+      "last_word_index": 41,
+      "raw_start": 12.4,
+      "raw_end": 15.84,
+      "start": 10.772727,
+      "end": 13.600000000000001,
+      "following_waveform_onset_raw": 12.886621,
+      "following_waveform_onset": 10.91511,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "block_private_data",
+      "text": "Block private data",
+      "first_word_index": 42,
+      "last_word_index": 44,
+      "raw_start": 15.84,
+      "raw_end": 17.36,
+      "start": 13.600000000000001,
+      "end": 14.981818,
+      "following_waveform_onset_raw": 15.993333,
+      "following_waveform_onset": 13.739394,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "review_sensitive_requests",
+      "text": "Review sensitive requests",
+      "first_word_index": 45,
+      "last_word_index": 47,
+      "raw_start": 17.36,
+      "raw_end": 19.12,
+      "start": 14.981818,
+      "end": 16.581818,
+      "following_waveform_onset_raw": 17.371791,
+      "following_waveform_onset": 14.992537,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "public_work",
+      "text": "Keep public work moving",
+      "first_word_index": 48,
+      "last_word_index": 51,
+      "raw_start": 19.12,
+      "raw_end": 20.8,
+      "start": 16.581818,
+      "end": 18.109091,
+      "following_waveform_onset_raw": 19.22195,
+      "following_waveform_onset": 16.674500000000002,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "connect_claude_code",
+      "text": "Connect Claude Code",
+      "first_word_index": 52,
+      "last_word_index": 54,
+      "raw_start": 20.8,
+      "raw_end": 22.32,
+      "start": 18.109091,
+      "end": 19.490909000000002,
+      "following_waveform_onset_raw": 20.902971,
+      "following_waveform_onset": 18.202700999999998,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "codex_cli",
+      "text": "Codex",
+      "first_word_index": 55,
+      "last_word_index": 56,
+      "raw_start": 22.32,
+      "raw_end": 23.58,
+      "start": 19.490909000000002,
+      "end": 20.200000000000003,
+      "following_waveform_onset_raw": 22.442948,
+      "following_waveform_onset": 19.60268,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "compatible_tools",
+      "text": "or compatible tools",
+      "first_word_index": 57,
+      "last_word_index": 59,
+      "raw_start": 23.58,
+      "raw_end": 25.25,
+      "start": 20.200000000000003,
+      "end": 21.054544999999997
+    },
+    {
+      "id": "across_teams",
+      "text": "across your teams",
+      "first_word_index": 60,
+      "last_word_index": 62,
+      "raw_start": 25.25,
+      "raw_end": 26.8,
+      "start": 21.054544999999997,
+      "end": 22.463636
+    },
+    {
+      "id": "get_warden",
+      "text": "Get Warden",
+      "first_word_index": 63,
+      "last_word_index": 64,
+      "raw_start": 26.8,
+      "raw_end": 27.81,
+      "start": 22.463636,
+      "end": 23.381818000000003,
+      "following_waveform_onset_raw": 26.935601,
+      "following_waveform_onset": 22.586910000000003,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "free_for_everyone",
+      "text": "Free for everyone",
+      "first_word_index": 65,
+      "last_word_index": 67,
+      "raw_start": 27.81,
+      "raw_end": 28.96,
+      "start": 23.381818000000003,
+      "end": 24.427273,
+      "following_waveform_onset_raw": 27.922812,
+      "following_waveform_onset": 23.484375,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    },
+    {
+      "id": "open_source",
+      "text": "Open source",
+      "first_word_index": 68,
+      "last_word_index": 69,
+      "raw_start": 28.96,
+      "raw_end": 29.68,
+      "start": 24.427273,
+      "end": 25.081818,
+      "following_waveform_onset_raw": 29.072313,
+      "following_waveform_onset": 24.529375,
+      "onset_note": "Measured silence endpoint near automatic phrase start; boundary aid, not a listened-to semantic onset."
+    }
+  ],
+  "fresh_waveform_onset_aids": {
+    "take_control": {
+      "original": 5.432375,
+      "output": 5.432375
+    },
+    "describe_protection": {
+      "original": 6.949792,
+      "output": 6.699792
+    },
+    "draft_rules": {
+      "original": 8.826042,
+      "output": 8.406042
+    },
+    "review": {
+      "original": 10.191417,
+      "output": 9.771417
+    },
+    "activate": {
+      "original": 10.852458,
+      "output": 10.352458
+    },
+    "connected_requests": {
+      "original": 11.70975,
+      "output": 10.90975
+    },
+    "codex": {
+      "original": 20.411375,
+      "output": 19.611375000000002
+    },
+    "or_compatible_tools": {
+      "original": 22.197792,
+      "output": 20.297792
+    },
+    "get_warden": {
+      "original": 24.488833,
+      "output": 22.588833
+    },
+    "free_for_everyone": {
+      "original": 25.406792,
+      "output": 23.506791999999997
+    },
+    "open_source": {
+      "original": 26.427687,
+      "output": 24.527687
+    }
+  },
+  "limits": "Mapped ASR timing plus measured silence endpoints. Fresh waveform endpoints are boundary aids, not semantic listening. Original CLI-region ASR timing was inaccurate; use fresh onset aids there."
+}

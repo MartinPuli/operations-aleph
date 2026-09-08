@@ -1,0 +1,488 @@
+{
+  "version": 10,
+  "duration": 26.1,
+  "video_frames": 783,
+  "fps": 30,
+  "sample_rate": 48000,
+  "channels": 2,
+  "cut_mapping": "production/v10-audio-cuts.json",
+  "full_original_audio_cuts": [
+    [
+      6.615,
+      6.865
+    ],
+    [
+      8.605,
+      8.775
+    ],
+    [
+      10.7,
+      10.78
+    ],
+    [
+      11.365,
+      11.665
+    ],
+    [
+      21.0,
+      22.1
+    ]
+  ],
+  "removed_duration": 1.9,
+  "voice_source": {
+    "path": "assets/audio/warden-derek-v5-mix.wav",
+    "sha256": "b7aed7145b4ab02b72c073a0213afe92593717c04b8f321de827478e3b9f765d",
+    "prior_provenance": "production/voice-v5-edit.json",
+    "provider": "ElevenLabs Derek / eleven_v3; existing single take"
+  },
+  "voice_edits": [
+    {
+      "original_start": 6.615,
+      "original_end": 6.865,
+      "removed_frames": 12000,
+      "new_join": 6.615,
+      "left_fade_peak_dbfs": -72.32387724716709,
+      "right_fade_peak_dbfs": -71.73660158709517,
+      "purpose": "Shorten pause before Describe"
+    },
+    {
+      "original_start": 8.605,
+      "original_end": 8.775,
+      "removed_frames": 8160,
+      "new_join": 8.355,
+      "left_fade_peak_dbfs": -61.785383931800695,
+      "right_fade_peak_dbfs": -71.11178097124431,
+      "purpose": "Shorten pause before Warden drafts"
+    },
+    {
+      "original_start": 10.7,
+      "original_end": 10.78,
+      "removed_frames": 3840,
+      "new_join": 10.280000000000001,
+      "left_fade_peak_dbfs": -62.28933957164291,
+      "right_fade_peak_dbfs": -68.96037423894276,
+      "purpose": "Shorten pause before Activate"
+    },
+    {
+      "original_start": 11.365,
+      "original_end": 11.665,
+      "removed_frames": 14400,
+      "new_join": 10.864999999999998,
+      "left_fade_peak_dbfs": -59.65649848609692,
+      "right_fade_peak_dbfs": -61.3187075642425,
+      "purpose": "Shorten pause before Connected requests"
+    },
+    {
+      "original_start": 21.0,
+      "original_end": 22.1,
+      "removed_frames": 52800,
+      "new_join": 20.200000000000003,
+      "left_fade_peak_dbfs": -64.58169402675998,
+      "right_fade_peak_dbfs": -61.988677252837704,
+      "purpose": "Remove spoken CLI and its adjacent pause, preserving Codex and or"
+    }
+  ],
+  "boundary_fades_seconds": 0.004,
+  "additional_tempo_change": 1.0,
+  "additional_voice_gain_db": 0,
+  "voice_script": "production/voiceover-v10-en.txt",
+  "voice_script_sha256": "8af24f2ebaa4ab2dfe2ae29e98c38fddc1ae68e1b0870cc07b5b8cb0c05f3ce5",
+  "cli_validation": {
+    "raw_asr": "production/voice-v10-cli-cut-check.json",
+    "recognized_text": "connect cloud code, codecs, or compatible tools across your teams.",
+    "result": "CLI absent; Codex (ASR homophone codecs), or, compatible tools and following words retained.",
+    "boundary_gaps_original_seconds": [
+      [
+        20.932646,
+        21.044333
+      ],
+      [
+        21.814312,
+        22.197792
+      ]
+    ],
+    "remaining_join_gap_seconds": 0.165146
+  },
+  "native_sources_provenance": "production/elevenlabs-sfx-v4-provenance.json",
+  "native_recipe_sources": [
+    "production/sound-design-v5.json",
+    "production/sound-design-v6.json"
+  ],
+  "cues": [
+    {
+      "id": "attachment_drop",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.14:end=0.23,asetpts=PTS-STARTPTS,highpass=f=200,lowpass=f=7800,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.06300000:d=0.02700000",
+      "gain_db": 2.333188563932057,
+      "output_anchor": 0.32,
+      "placement_mode": "peak",
+      "output_start": 0.3091041666666667,
+      "output_duration": 0.09,
+      "actual_peak_time": 0.32,
+      "target_peak_dbfs": -16.0
+    },
+    {
+      "id": "send_press",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.238:end=0.335,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=8200,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.06790000:d=0.02910000",
+      "gain_db": -7.040680185083767,
+      "output_anchor": 0.72,
+      "placement_mode": "peak",
+      "output_start": 0.7058333333333333,
+      "output_duration": 0.097,
+      "actual_peak_time": 0.72,
+      "target_peak_dbfs": -13.0
+    },
+    {
+      "id": "client_contact_crosses",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.095:end=0.16,asetpts=PTS-STARTPTS,highpass=f=250,lowpass=f=7600,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.04550000:d=0.01950000",
+      "gain_db": 9.256791887846898,
+      "output_anchor": 2.52,
+      "placement_mode": "peak",
+      "output_start": 2.4641041666666665,
+      "output_duration": 0.065,
+      "actual_peak_time": 2.52,
+      "target_peak_dbfs": -16.0
+    },
+    {
+      "id": "bank_details_cross",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.14:end=0.23,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=8000,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.06300000:d=0.02700000",
+      "gain_db": 2.196434259041986,
+      "output_anchor": 2.94,
+      "placement_mode": "peak",
+      "output_start": 2.929104166666667,
+      "output_duration": 0.09,
+      "actual_peak_time": 2.9400000000000004,
+      "target_peak_dbfs": -16.0
+    },
+    {
+      "id": "private_pricing_crosses",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.235:end=0.34,asetpts=PTS-STARTPTS,highpass=f=200,lowpass=f=7400,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.07350000:d=0.03150000",
+      "gain_db": -9.695421824643168,
+      "output_anchor": 3.45,
+      "placement_mode": "peak",
+      "output_start": 3.4328333333333334,
+      "output_duration": 0.105,
+      "actual_peak_time": 3.45,
+      "target_peak_dbfs": -16.0
+    },
+    {
+      "id": "private_pricing_transfer",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.09:end=0.44,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=8000,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.27000000:d=0.08000000",
+      "gain_db": -6.979400086720377,
+      "output_anchor": 4.372,
+      "placement_mode": "peak",
+      "output_start": 4.209833333333333,
+      "output_duration": 0.35,
+      "actual_peak_time": 4.372,
+      "target_peak_dbfs": -13.0
+    },
+    {
+      "id": "rule_boundary",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "filter": "atrim=start=0.05:end=0.42,asetpts=PTS-STARTPTS,highpass=f=190,lowpass=f=7200,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.29000000:d=0.08000000",
+      "gain_db": -6.423722875133995,
+      "output_anchor": 5.385956,
+      "placement_mode": "peak",
+      "output_start": 5.238833333333333,
+      "output_duration": 0.37,
+      "actual_peak_time": 5.385958333333333,
+      "target_peak_dbfs": -11.000000000000004
+    },
+    {
+      "id": "manager_send",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.238:end=0.335,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=8200,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.06790000:d=0.02910000",
+      "gain_db": -7.040680185083767,
+      "output_anchor": 6.98,
+      "placement_mode": "peak",
+      "output_start": 6.965833333333333,
+      "output_duration": 0.097,
+      "actual_peak_time": 6.98,
+      "target_peak_dbfs": -13.0
+    },
+    {
+      "id": "draft_assembly",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.0:end=0.23,asetpts=PTS-STARTPTS,highpass=f=240,lowpass=f=8000,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.16100000:d=0.06900000",
+      "gain_db": 5.241780212226748,
+      "output_anchor": 7.47,
+      "placement_mode": "peak",
+      "output_start": 7.3191041666666665,
+      "output_duration": 0.23,
+      "actual_peak_time": 7.47,
+      "target_peak_dbfs": -13.0
+    },
+    {
+      "id": "activate_rule",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "filter": "atrim=start=0.05:end=0.4,asetpts=PTS-STARTPTS,highpass=f=200,lowpass=f=7600,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.27000000:d=0.08000000",
+      "gain_db": -6.410694150550623,
+      "output_anchor": 10.44,
+      "placement_mode": "peak",
+      "output_start": 10.292875,
+      "output_duration": 0.35,
+      "actual_peak_time": 10.440000000000001,
+      "target_peak_dbfs": -11.0
+    },
+    {
+      "id": "blocked_request",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "filter": "atrim=start=0.135:end=0.43,asetpts=PTS-STARTPTS,highpass=f=190,lowpass=f=7100,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.21500000:d=0.08000000",
+      "gain_db": -6.407546355871122,
+      "output_anchor": 13.750000000000002,
+      "placement_mode": "peak",
+      "output_start": 13.687875,
+      "output_duration": 0.295,
+      "actual_peak_time": 13.75,
+      "target_peak_dbfs": -11.0
+    },
+    {
+      "id": "public_request_passes",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.09:end=0.44,asetpts=PTS-STARTPTS,highpass=f=260,lowpass=f=8200,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.27000000:d=0.08000000",
+      "gain_db": -7.004281213774595,
+      "output_anchor": 16.75,
+      "placement_mode": "peak",
+      "output_start": 16.587833333333332,
+      "output_duration": 0.35,
+      "actual_peak_time": 16.75,
+      "target_peak_dbfs": -13.0
+    },
+    {
+      "id": "team_ports",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.19:end=0.445,asetpts=PTS-STARTPTS,highpass=f=270,lowpass=f=8000,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.17850000:d=0.07650000",
+      "gain_db": -6.9379500605658775,
+      "output_anchor": 18.200000000000003,
+      "placement_mode": "peak",
+      "output_start": 18.137833333333333,
+      "output_duration": 0.255,
+      "actual_peak_time": 18.2,
+      "target_peak_dbfs": -13.0
+    },
+    {
+      "id": "product_connection",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "filter": "atrim=start=0.06:end=0.16,asetpts=PTS-STARTPTS,highpass=f=270,lowpass=f=7800,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.07000000:d=0.03000000",
+      "gain_db": -6.212673716825389,
+      "output_anchor": 18.75,
+      "placement_mode": "peak",
+      "output_start": 18.739333333333335,
+      "output_duration": 0.1,
+      "actual_peak_time": 18.75,
+      "target_peak_dbfs": -16.0
+    },
+    {
+      "id": "engineering_connection",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "filter": "atrim=start=0.155:end=0.27,asetpts=PTS-STARTPTS,highpass=f=260,lowpass=f=8200,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.08050000:d=0.03450000",
+      "gain_db": -10.97271158391355,
+      "output_anchor": 19.700000000000003,
+      "placement_mode": "peak",
+      "output_start": 19.657875,
+      "output_duration": 0.115,
+      "actual_peak_time": 19.7,
+      "target_peak_dbfs": -16.0
+    },
+    {
+      "id": "operations_connection",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "filter": "atrim=start=0.055:end=0.165,asetpts=PTS-STARTPTS,highpass=f=300,lowpass=f=7600,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.07700000:d=0.03300000",
+      "gain_db": -6.239624456143714,
+      "output_anchor": 20.200000000000003,
+      "placement_mode": "peak",
+      "output_start": 20.184333333333335,
+      "output_duration": 0.11,
+      "actual_peak_time": 20.200000000000003,
+      "target_peak_dbfs": -16.0
+    },
+    {
+      "id": "logo_turn_air",
+      "recipe_version": "v6",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.09:end=0.4,asetpts=PTS-STARTPTS,highpass=f=1150,lowpass=f=8500,afade=t=in:st=0:d=0.005,afade=t=out:st=0.25000000:d=0.06000000",
+      "gain_db": -10.343858663652233,
+      "output_anchor": 22.33,
+      "placement_mode": "start",
+      "output_start": 22.33,
+      "output_duration": 0.31,
+      "actual_peak_time": 22.492229166666664,
+      "target_peak_dbfs": -17.0
+    },
+    {
+      "id": "logo_landing",
+      "recipe_version": "v6",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "filter": "atrim=start=0.055:end=0.235,asetpts=PTS-STARTPTS,highpass=f=450,lowpass=f=8000,afade=t=in:st=0:d=0.005,afade=t=out:st=0.13500000:d=0.04500000",
+      "gain_db": -8.511964314238528,
+      "output_anchor": 22.68,
+      "placement_mode": "peak",
+      "output_start": 22.554020833333333,
+      "output_duration": 0.18,
+      "actual_peak_time": 22.68,
+      "target_peak_dbfs": -14.0
+    },
+    {
+      "id": "free_cta_reveal",
+      "recipe_version": "v6",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.238:end=0.335,asetpts=PTS-STARTPTS,highpass=f=600,lowpass=f=8400,afade=t=in:st=0:d=0.005,afade=t=out:st=0.07275000:d=0.02425000",
+      "gain_db": -8.252689958389876,
+      "output_anchor": 23.46,
+      "placement_mode": "peak",
+      "output_start": 23.445833333333333,
+      "output_duration": 0.097,
+      "actual_peak_time": 23.46,
+      "target_peak_dbfs": -15.0
+    },
+    {
+      "id": "platforms_detail",
+      "recipe_version": "v6",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "filter": "atrim=start=0.055:end=0.155,asetpts=PTS-STARTPTS,highpass=f=700,lowpass=f=7800,afade=t=in:st=0:d=0.005,afade=t=out:st=0.07500000:d=0.02500000",
+      "gain_db": -5.920372407821367,
+      "output_anchor": 24.049999999999997,
+      "placement_mode": "peak",
+      "output_start": 24.034354166666667,
+      "output_duration": 0.1,
+      "actual_peak_time": 24.05,
+      "target_peak_dbfs": -17.0
+    },
+    {
+      "id": "open_source_detail",
+      "recipe_version": "v6",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "filter": "atrim=start=0.145:end=0.225,asetpts=PTS-STARTPTS,highpass=f=800,lowpass=f=8300,afade=t=in:st=0:d=0.005,afade=t=out:st=0.06000000:d=0.02000000",
+      "gain_db": 0.9710901711791606,
+      "output_anchor": 24.5,
+      "placement_mode": "peak",
+      "output_start": 24.494041666666668,
+      "output_duration": 0.08,
+      "actual_peak_time": 24.5,
+      "target_peak_dbfs": -17.0
+    },
+    {
+      "id": "final_latch",
+      "recipe_version": "v5",
+      "source_path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "filter": "atrim=start=0.15:end=0.41,asetpts=PTS-STARTPTS,highpass=f=210,lowpass=f=7600,equalizer=f=1400:t=q:w=0.9:g=1.5,afade=t=in:st=0:d=0.00500000,afade=t=out:st=0.18200000:d=0.07800000",
+      "gain_db": -8.345255761510973,
+      "output_anchor": 25.549999999999997,
+      "placement_mode": "peak",
+      "output_start": 25.502875,
+      "output_duration": 0.26,
+      "actual_peak_time": 25.55,
+      "target_peak_dbfs": -13.0
+    }
+  ],
+  "cue_count": 22,
+  "added_manager_send_anchor": 6.98,
+  "voice": {
+    "path": "assets/audio/warden-derek-v10-mix.wav",
+    "sha256": "b854262482bb51895102444bf0942b3ed9dcbbcadf2f06ae9bb0caa840ba195a",
+    "duration": 25.372729166666666,
+    "sample_rate": 48000,
+    "channels": 1,
+    "codec": "pcm_s24le",
+    "sample_peak_dbfs": -3.049788302787033,
+    "integrated_lufs": -20.55,
+    "true_peak_dbtp": -3.05,
+    "loudness_range_lu": 2.1
+  },
+  "sfx": {
+    "path": "assets/audio/warden-eleven-sfx-v10.wav",
+    "sha256": "c6c78c73aadf079e4ada0fcacbe874a8d432dff10fc22f4e955a89aa8fbbd112",
+    "duration": 26.1,
+    "sample_rate": 48000,
+    "channels": 2,
+    "codec": "pcm_s24le",
+    "sample_peak_dbfs": -10.999999854613165,
+    "integrated_lufs": -34.85,
+    "true_peak_dbtp": -10.99,
+    "loudness_range_lu": 5.2
+  },
+  "mix": {
+    "path": "assets/audio/warden-launch-v10-mix.wav",
+    "sha256": "6606ab2f1c11920dbed1a4810718a7803dc6269bbb8e5968fe97b068ebcbdb78",
+    "duration": 26.1,
+    "sample_rate": 48000,
+    "channels": 2,
+    "codec": "pcm_s24le",
+    "sample_peak_dbfs": -2.0556660287169732,
+    "integrated_lufs": -17.52,
+    "true_peak_dbtp": -2.05,
+    "loudness_range_lu": 3.6
+  },
+  "verification": {
+    "duration_exact": true,
+    "pcm24_48khz_stereo": true,
+    "opening_through_5_43_bit_exact": true,
+    "opening_reconstructed_max_error_before_exact_copy": 0.0,
+    "source_and_previous_outputs_unchanged": true,
+    "full_voice_content_asr": {
+      "status": "pass",
+      "artifact": "production/voice-v10-words.json",
+      "recognized_text": "One quick AI task, your client's bank details sent outside the company. That's a data leak. Take control with Warden. Describe what your team needs to protect. Warden drafts the rules. Review, activate. Connected requests get checked before they reach the model. Block private data. Review sensitive requests. Keep public work moving. Connect cloud code, codecs, or compatible tools across your teams. Get Warden. Free for everyone. Open source.",
+      "expected_word_count": 69,
+      "asr_word_count": 69,
+      "all_expected_words_present_in_order_with_brand_homophones_normalized": true,
+      "brand_spelling_differences": [
+        {
+          "expected": "claude",
+          "recognized": "cloud"
+        },
+        {
+          "expected": "codex",
+          "recognized": "codecs"
+        }
+      ],
+      "cli_absent": true,
+      "limits": "ASR recognizes Claude as cloud and Codex as codecs. This is a content-preservation check, not an auditory pronunciation or delivery judgment."
+    },
+    "limits": "No new generation or resynthesis. Automated waveform, phrase ASR and level measurements only; no continuous listening claim."
+  },
+  "recipe": "production/prepare_audio_v10.py"
+}

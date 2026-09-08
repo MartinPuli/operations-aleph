@@ -1,0 +1,52 @@
+{
+  "recorded_at_utc": "2026-09-08 06:05:18 UTC",
+  "provider": "ElevenLabs native MCP",
+  "model_id": "eleven_v3",
+  "voice_id": "Q0Et7LOU7VpeoeCRQAVS",
+  "voice_name": "Derek - Fun & Energetic",
+  "voice_verified_by": "creative_list_voices search Derek",
+  "script_file": "production/voiceover-v5-en.txt",
+  "prompt_sent": "[urgent] One quick AI task. Your client\u2019s bank details\u2014sent outside the company. That\u2019s a data leak.\n[excited] Take control with Warden. Describe what your team needs to protect. Warden drafts the rules.\nReview. Activate.\nConnected requests get checked before they reach the model.\nBlock private data. Review sensitive requests. Keep public work moving.\nConnect Claude Code, Codex CLI, or compatible tools across your teams.\nGet Warden. Free for everyone. Open source.",
+  "requested_generations": 1,
+  "estimate": {
+    "credits": 468.00000000000006,
+    "price_cents": 4.680000000000001,
+    "generations_count": 1,
+    "currency": "usd",
+    "estimated_runtime_seconds": 3
+  },
+  "flow_id": "xFrDvdgGoeHNrkEZGxVj",
+  "node_id": "sbzYOg3t55T3MpGkwsv5",
+  "session_ids": [
+    "a7ETDswQXkIILyb1152H"
+  ],
+  "generation_ids": [
+    "g0KPhN5xTJaTpOwyQ9pq"
+  ],
+  "flow_url": "https://elevenlabs.io/app/flows/xFrDvdgGoeHNrkEZGxVj",
+  "view_url": "https://elevenlabs.io/app/flows/xFrDvdgGoeHNrkEZGxVj?vs=viewstate_01m1zstmewfv8ty9v5734ev6q6",
+  "status": "Generated take retrieved through authenticated browser UI by root; local asset probed and processed",
+  "retrieval_block": {
+    "code": 403,
+    "error": "insufficient_permissions",
+    "required_permission": "flows",
+    "tools": [
+      "creative_get_flow_run_status",
+      "creative_show_flow_results"
+    ],
+    "library_asset_search": "No matching generation in the existing upload library"
+  },
+  "local_audio_path": "assets/audio/warden-derek-v5.mp3",
+  "notes": [
+    "Exactly one generation call was made after one successful estimate; no retry was issued.",
+    "Model schema and guide tools also returned missing-Flows 403; direct creative_generate_speech itself succeeded.",
+    "MCP discovery and generation read no OAuth tokens or browser profiles. Root later retrieved this existing take through the authenticated visible UI.",
+    "Root resolved the MCP Flows-read restriction by downloading this same take in the authenticated UI. The prior retrieval_block remains historical evidence."
+  ],
+  "local_audio_sha256": "c1984bfd469b65479179cabe2b38e5445dce7533149be97a16857763e008e313",
+  "local_audio_probe_duration": 30.0,
+  "retrieval_method": "Root downloaded the existing MCP generation through its visible ElevenLabs Flow canvas; no regeneration.",
+  "voice_edit": "production/voice-v5-edit.json",
+  "paced_audio_path": "assets/audio/warden-derek-v5-paced.wav",
+  "mix_audio_path": "assets/audio/warden-derek-v5-mix.wav"
+}

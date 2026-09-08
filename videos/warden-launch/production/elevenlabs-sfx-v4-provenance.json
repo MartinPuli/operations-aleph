@@ -1,0 +1,32 @@
+{
+  "provider": "ElevenLabs native Sound Effects web application",
+  "ui_duration_seconds": 0.5,
+  "measured_duration_seconds": 0.48,
+  "prompt_influence_ui": 1,
+  "auto_improve_prompt_ui": true,
+  "loop_ui": false,
+  "auto_share_explore_ui": false,
+  "format": "WAV 48kHz stereo PCM16",
+  "model_id": null,
+  "model_note": "Native Sound Effects UI did not expose a model selector or verified model ID. Do not infer the exact model from the SDK skill default.",
+  "selected_variant": 1,
+  "sources": [
+    {
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "prompt": "A tight burst of granular digital ticks accelerating left to right, ending in a crisp dry cutoff. Tiny glassy texture over a warm low body. One fast electronic data transfer. Close, precise, tactile. No alarm, music, voice, cinematic boom or long whoosh.",
+      "sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "bytes": 92238
+    },
+    {
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "prompt": "A compact magnetic latch closing: a brief rising servo motion resolves into one muted ceramic clack with a warm low punch. Dry close studio foley, precise mechanical closure, very short controlled tail. No metal ringing, alarm, melody, speech or whoosh.",
+      "sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "bytes": 92238
+    }
+  ],
+  "unused_generation": {
+    "prompt": "Three fast tactile glass contacts fuse into a short warm electronic resonance, like small optical connectors locking into place. A quick rising gesture with a soft rounded finish. Clean studio detail, compact and satisfying. No notification bell, keyboard typing, alarm, long whoosh, music or speech.",
+    "status": "Visible in generation history; not downloaded or used. Native browser download interaction stopped responding."
+  },
+  "review_limit": "Generated-source identity, duration and encoding verified; no listening quality judgment claimed."
+}

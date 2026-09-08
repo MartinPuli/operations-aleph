@@ -1,0 +1,154 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=1920, height=1080"><title>Warden — your team, your rules</title>
+<script src="assets/vendor/gsap.min.js"></script><script src="assets/js/pace-map.js"></script><script src="assets/js/brand-paths.js"></script><script src="assets/js/client-dossier.js"></script><script src="assets/js/client-data-scene.js"></script><script src="assets/js/team-work-scene.js"></script><script src="assets/js/manager-prompt-scene.js"></script><script src="assets/js/risk-sequence.js"></script><script src="assets/js/transition-director.js"></script><script src="assets/js/end-card.js"></script><script src="assets/js/end-logo-3d.js"></script>
+<style>
+@font-face{font-family:WardenDisplay;src:url('assets/fonts/Inter-Variable.ttf') format('truetype');font-weight:100 900;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}html,body,#root{width:1920px;height:1080px;overflow:hidden;background:#101522}
+body{font-family:WardenDisplay,Arial,sans-serif;color:#f4f2eb;-webkit-font-smoothing:antialiased}#root{position:relative;isolation:isolate}
+#picture{position:absolute;inset:0;width:1920px;height:1080px;z-index:2}#sources{opacity:0;pointer-events:none;position:absolute;inset:0}#world{position:absolute;inset:0;z-index:1;width:1920px;height:1080px}.shot{position:absolute;inset:0;z-index:3;opacity:0;pointer-events:none}.ink{color:#141a2b}
+#people{position:absolute;inset:0;z-index:2;width:1920px;height:1080px;opacity:0;background:#f1ede3}
+#manager-prompt,#risk{position:absolute;inset:0;z-index:2;width:1920px;height:1080px;opacity:0;background:#f1ede3}
+h1,h2{font-size:122px;line-height:1.08;font-weight:630;letter-spacing:-.043em}.headline{position:absolute;left:94px;top:72px;width:1732px;text-align:center}
+.support{position:absolute;left:103px;bottom:54px;width:1714px;font-size:45px;font-weight:470;line-height:1.18;letter-spacing:-.025em;text-align:center}
+#enforce .headline,#prompt .headline,#private .headline{font-size:110px}#block .headline{font-size:151px;top:66px}#choose .headline{font-size:119px}
+#trust .headline{font-size:125px}#team .headline{font-size:111px}#rules .headline{font-size:151px}#control .headline{font-size:110px}
+#end-logo{position:absolute;left:101px;top:177px;width:651px;height:214px;object-fit:contain;opacity:0;z-index:5}
+#end .headline{left:104px;top:470px;width:865px;text-align:left;font-size:129px;line-height:1.01;font-weight:660;letter-spacing:-.045em}#end .headline span{display:block}
+#end .support{left:108px;bottom:90px;width:875px;text-align:left;font-size:37px}
+#trust,#team,#rules{color:#f4f2eb}#trust .headline{font-size:109px}#team .headline{font-size:103px}#team .support{display:none}
+#end-logo{left:108px;top:178px;width:590px;height:174px}#end .headline{left:104px;top:430px;width:1000px;font-size:147px}#end .support{left:108px;bottom:180px;width:1000px;font-size:44px}
+
+/* v8: one sculpted brand lockup and one anchored download action. */
+#end-logo{left:780px;top:267px;width:830px;height:199px}
+#end{color:#f4f2eb}
+#end .headline{left:450px;top:728px;width:1020px;height:126px;text-align:left;font-size:64px;line-height:1.15;letter-spacing:-.035em;font-weight:620}
+#end-action{position:absolute;overflow:hidden;border-radius:16px}
+#end-action-fill{position:absolute;inset:0;background:#9ce9c6;transform-origin:50% 100%}
+#end-action-label{position:absolute;left:65px;top:25px;width:810px;height:80px;color:#081119;overflow:hidden}
+#end-action-label>span{display:block;height:80px}
+#end-action-icon{position:absolute;right:55px;top:31px;width:64px;height:64px;color:#081119}
+.end-detail{position:absolute;font-weight:500;line-height:1.2;letter-spacing:-.02em}
+#end-open{left:780px;top:494px;width:850px;color:#cbd8d1;font-size:38px}
+#end-platforms{left:460px;top:895px;width:1000px;display:flex;align-items:center;justify-content:center;gap:26px;color:#d1dbd6;font-size:36px}
+#end-platforms i{display:block;width:4px;height:4px;border-radius:50%;background:#9ce9c6}
+#end-url{left:250px;top:982px;width:1420px;text-align:center;font-size:32px;color:#aebdb5}
+</style></head><body><div id="root" data-composition-id="main" data-duration="26.1" data-width="1920" data-height="1080"><canvas id="picture" width="1920" height="1080" aria-hidden="true"></canvas><div id="sources" aria-hidden="true"><canvas id="world" width="1920" height="1080" aria-hidden="true"></canvas><canvas id="people" width="1920" height="1080" aria-hidden="true"></canvas><canvas id="manager-prompt" width="1920" height="1080" aria-hidden="true"></canvas><canvas id="risk" width="1920" height="1080" aria-hidden="true"></canvas><canvas id="end-logo-3d" width="1920" height="1080" aria-hidden="true"></canvas><canvas id="end-card" width="1920" height="1080" aria-hidden="true"></canvas>
+</div>
+<audio id="launch-mix" src="assets/audio/warden-launch-v10-mix.wav" data-start="0" data-duration="26.1" data-volume="1" data-audio-group="voiceover"></audio>
+<section id="trust" class="shot ink" aria-label="One click can leak client data."><h2 class="headline">One click can leak client data.</h2></section>
+<section id="team" class="shot ink" aria-label="Here’s what leaves your company."><h2 class="headline">Here’s what leaves your company.</h2><p class="support">Shared with an external AI tool.</p></section>
+<section id="rules" class="shot ink" aria-label="Private pricing leaves, too."><h2 class="headline" style="font-size:109px">Private pricing leaves, too.</h2></section>
+<section id="private" class="shot ink" aria-label="Describe what to protect."><h2 class="headline">Describe what to protect.</h2></section>
+<section id="review-rule" class="shot ink" aria-label="Describe what to protect."><h2 class="headline">Describe what to protect.</h2></section>
+<section id="allow-rule" class="shot ink" aria-label="Review. Then activate."><h2 class="headline">Review. Then activate.</h2></section>
+<section id="enforce" class="shot ink" aria-label="Warden enforces your rules."><h2 class="headline">Warden enforces your rules.</h2></section>
+<section id="prompt" class="shot " aria-label="“Include the client’s details.”"><h2 class="headline">“Include the client’s details.”</h2><p class="support">A request to share private information.</p></section>
+<section id="block" class="shot ink" aria-label="Blocked by your rule."><h2 class="headline">Blocked by your rule.</h2><p class="support">Before it reaches the model.</p></section>
+<section id="review" class="shot ink" aria-label="You make the call."><h2 class="headline">You make the call.</h2></section>
+<section id="allow" class="shot ink" aria-label="Public work goes through."><h2 class="headline">Public work goes through.</h2><p class="support">Public information. Allowed.</p></section>
+<section id="choose" class="shot ink" aria-label="Choose your protections."><h2 class="headline">Choose your protections.</h2></section>
+<section id="tools" class="shot ink" aria-label="Connect their AI tools."><h2 class="headline">Connect their AI tools.</h2></section>
+<section id="control" class="shot ink" aria-label="One policy across your teams."><h2 class="headline">One policy across your teams.</h2></section>
+<img id="end-logo" src="assets/warden-wordmark-light.svg" alt="Warden"><section id="end" class="shot" aria-label="Download Warden for free"><h2 id="end-action" class="headline"><span id="end-action-fill" aria-hidden="true"></span><span id="end-action-label"><span id="end-download">Download for free</span></span><svg id="end-action-icon" viewBox="0 0 64 64" fill="none" aria-hidden="true"><g id="end-arrow"><path d="M32 8V39M19 27L32 40L45 27" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></g><path d="M10 43V55H54V43" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></h2><p class="end-detail" id="end-open">Open source. Free for everyone.</p><p class="end-detail" id="end-platforms"><span>macOS</span><i></i><span>Windows</span><i></i><span>Linux</span></p><p class="end-detail" id="end-url">github.com/Wardenlabs/warden</p></section></div>
+<script type="module">
+import * as THREE from './assets/vendor/three.module.js';
+await document.fonts.load('600 120px WardenDisplay');
+const film=window.createWardenClientFilm({THREE,canvas:document.getElementById('world'),width:1920,height:1080});window.__wardenScene=film;
+const peopleCanvas=document.getElementById('people'),teamFilm=window.createWardenTeamScene({canvas:peopleCanvas,width:1920,height:1080});
+const managerCanvas=document.getElementById('manager-prompt'),managerFilm=window.createWardenPromptScene({canvas:managerCanvas,width:1920,height:1080});
+const riskCanvas=document.getElementById('risk'),riskFilm=window.createWardenRiskScene({canvas:riskCanvas,width:1920,height:1080});
+const endCanvas=document.getElementById('end-card'),endLogoCanvas=document.getElementById('end-logo-3d');
+const endLogoFilm=window.createWardenEndLogo({THREE,canvas:endLogoCanvas,width:1920,height:1080});
+const endFilm=window.createWardenEndScene({canvas:endCanvas,logoCanvas:endLogoCanvas,logoFilm:endLogoFilm,width:1920,height:1080});
+const tl=gsap.timeline({paused:true});
+const cuts=['trust', 'team', 'rules', 'private', 'review-rule', 'allow-rule', 'enforce', 'prompt', 'block', 'review', 'allow', 'choose', 'tools', 'control'];
+const shotNodes=cuts.map(id=>document.getElementById(id));
+const end=document.getElementById('end'),endLogo=document.getElementById('end-logo');
+const worldCanvas=document.getElementById('world');
+function paintPicture(t,ctx,options={}){
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.filter='none';
+  ctx.fillStyle='#f1ede3';ctx.fillRect(0,0,1920,1080);
+  if(options.endOutputTime!==undefined){endFilm.renderAt(options.endOutputTime);ctx.drawImage(endCanvas,0,0);return;}
+  const mode=t>=12&&t<14?'team':t>=18&&t<20?'review':t>=22&&t<26?'tools':t>=26&&t<28?'control':null;
+  if(mode){teamFilm.renderAt(t>=22&&t<26?24+(t-22)*.5:t,mode);ctx.drawImage(peopleCanvas,0,0)}
+  else if(t>=6&&t<12){managerFilm.renderAt(t,window.wardenPace.toOutput(t));ctx.drawImage(managerCanvas,0,0)}
+  else if(t<6){riskFilm.renderAt(t);ctx.drawImage(riskCanvas,0,0)}
+  else if(t>=28){endFilm.renderAt(window.wardenPace.toLegacyOutput(t));ctx.drawImage(endCanvas,0,0)}
+  else{film.renderAt(t);ctx.drawImage(worldCanvas,0,0)}
+}
+const director=window.createWardenTransitionDirector({canvas:document.getElementById('picture'),renderPicture:paintPicture});
+const clamp=n=>Math.max(0,Math.min(1,n));
+const ease=n=>{n=clamp(n);return n*n*(3-2*n)};
+function renderFrame(seconds){
+  const outputTime=Math.min(window.wardenPace.duration,Math.max(0,Number(seconds)||0));
+  const t=window.wardenPace.toSource(outputTime);
+  const transition=director.renderAt(t);
+  window.__wardenTransitionState=transition;
+  shotNodes.forEach((node,i)=>{
+    node.style.opacity=t>=i*2&&t<i*2+2?'1':'0';node.style.clipPath='none';
+  });
+  // Whole headlines follow the submitted prompt, generated drafts and human review.
+  document.getElementById('private').style.opacity=t>=6&&t<12?'1':'0';
+  document.getElementById('allow-rule').style.opacity='0';
+  document.getElementById('review-rule').style.opacity='0';
+  document.getElementById('private').querySelector('h2').textContent=outputTime<6.55?"Take control with Warden.":outputTime<7.28?'Describe what to protect.':outputTime<8.52?'Warden drafts your rules.':'Review. Then activate.';
+  // Tool compatibility follows public work directly; the repeated rule board is cut.
+  document.getElementById('choose').style.opacity='0';
+  document.getElementById('tools').style.opacity=t>=22&&t<26?'1':'0';
+  // Headings travel with the scene on directional cuts; whole phrases stay intact.
+  shotNodes.forEach(node=>gsap.set(node,{x:0,y:0,scale:1,transformOrigin:'960px 540px'}));
+  if(transition&&transition.kind==='track'){
+    const p=ease(transition.progress),prev=shotNodes[Math.floor(transition.cut/2)-1],next=transition.cut===22?document.getElementById('tools'):shotNodes[Math.floor(transition.cut/2)];
+    if(prev){prev.style.opacity='1';gsap.set(prev,{x:-1920*p})}
+    if(next){next.style.opacity='1';gsap.set(next,{x:1920*(1-p)})}
+  }
+  if(transition&&transition.intactHeadlines){
+    // The handoff owns the change; whole phrases briefly pass focus without slicing type.
+    const prev=shotNodes[Math.floor(transition.cut/2)-1];
+    const next=transition.cut===22?document.getElementById('tools'):shotNodes[Math.floor(transition.cut/2)];
+    const ports=transition.kind==='ports',gate=transition.kind==='boundary';
+    const outStart=ports ? .02 : gate ? 0 : .12,outDuration=ports ? .15 : gate ? .16 : .18;
+    const inStart=ports ? .25 : gate ? .72 : .52,inDuration=ports ? .12 : gate ? .18 : .16;
+    if(prev)prev.style.opacity=String(1-ease((transition.progress-outStart)/outDuration));
+    // Whole phrases enter only after the background or policy gate has resolved.
+    if(next)next.style.opacity=String(ease((transition.progress-inStart)/inDuration));
+  }
+  // Finish the whole headline before the camera crosses the employee screens.
+  if(t>=13.60&&t<14)document.getElementById('enforce').style.opacity=String(1-ease((t-13.60)/.12));
+  if(t>=14&&t<14.24)document.getElementById('prompt').style.opacity='0';
+  const block=document.getElementById('block');
+  block.style.color=t<16.18?'#f4f2eb':'#141a2b';
+  if(t>=16&&t<16.18){block.style.opacity='0';document.getElementById('prompt').style.opacity='1'}
+  block.style.filter=t>=16.18&&t<16.36?`blur(${(1-ease((t-16.18)/.18))*3}px)`:'none';
+  // Retain the approved outro on its original internal clock after the editorial cuts.
+  const outroTime=window.wardenPace.toLegacyOutput(t);
+  // The logo and wordmark form one lockup before the download action lands.
+  end.style.opacity=outroTime>=24.1?'1':'0';
+  end.style.clipPath='none';end.style.color='#f4f2eb';
+  const outroOut=n=>1-Math.pow(1-clamp(n),4);
+  const wordmark=outroOut((outroTime-24.46)/.25);
+  endLogo.style.opacity=String(wordmark);endLogo.style.clipPath='none';endLogo.style.filter='none';
+  gsap.set(endLogo,{x:30*(1-wordmark),y:0,scale:1});
+  const action=outroOut((outroTime-25.16)/.25);
+  gsap.set('#end-action',{y:16*(1-action),scale:1,opacity:outroTime>=25.16?1:0,transformOrigin:'960px 854px'});
+  gsap.set('#end-action-fill',{scaleY:action,transformOrigin:'50% 100%'});
+  const actionText=outroOut((outroTime-25.21)/.20);
+  gsap.set('#end-download',{y:80*(1-actionText),opacity:1});
+  gsap.set('#end-action-icon',{opacity:actionText});
+  const arrowTravel=outroOut((outroTime-25.21)/.20);
+  gsap.set('#end-arrow',{y:-13*(1-arrowTravel)});
+  const platform=outroOut((outroTime-25.78)/.22);
+  gsap.set('#end-platforms',{y:12*(1-platform),opacity:platform});
+  const source=outroOut((outroTime-26.20)/.24);
+  gsap.set('#end-open',{x:0,y:9*(1-source),opacity:source});
+  const link=outroOut((outroTime-25.21)/.23);
+  gsap.set('#end-url',{y:0,opacity:link});
+  if(t>=27.48)document.getElementById('control').style.opacity=String(1-ease((outroTime-24.1)/.12));
+
+}
+window.__wardenTransitions=director.transitions;
+
+tl.to({time:0},{time:window.wardenPace.duration,duration:window.wardenPace.duration,ease:'none'},0);
+tl.eventCallback('onUpdate',()=>renderFrame(tl.time()));window.addEventListener('hf-seek',event=>renderFrame(event.detail.time));
+window.__wardenBeatTimes=window.wardenPace.points.map(p=>p[1]);window.__timelines=window.__timelines||{};window.__timelines.main=tl;
+renderFrame(0);
+</script></body></html>
