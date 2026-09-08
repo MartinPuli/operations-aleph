@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, win32 } from 'node:path';
 import { documentCapabilities, DOCUMENT_LIMITS, DocumentInputError, extractDocuments, parseDocumentAttachments, withoutDocumentText } from '../src/documents/index.js';
 import type { InlineDocument } from '../src/documents/types.js';
+import { pdfAssetPaths } from '../src/documents/pdf-assets.js';
 import type { CompleteRequest, QvacAdapter } from '../src/qvac/types.js';
 import type { PolicySpec, Rule } from '../src/policy/types.js';
 import { docxFixture, imageFixture, pdfFixture, zipFixture } from './fixtures/documents.js';
@@ -41,6 +42,19 @@ try {
   assert.equal((await first(inline('unsupported.xls', 'unknown format'))).report.reason, 'unsupported-document-format');
   console.log('✓ Real TXT, Markdown, CSV and UTF-16 extraction; empty, invalid and oversized text is held');
 
+  // Reproduce Windows' native separators on every CI host. The real PDF.js
+  // constructor used to throw synchronously before it even read the PDF.
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const windowsRoot = 'C:\\Program Files\\Warden #1\\resources\\app\\node_modules\\pdfjs-dist';
+  const pathFixture = pdfFixture([{ text: 'Windows PDF asset path contract' }]);
+  for (const [key, directory] of [['cMapUrl', 'cmaps'], ['standardFontDataUrl', 'standard_fonts'], ['wasmUrl', 'wasm']] as const) {
+    assert.throws(() => pdfjs.getDocument({ data: Uint8Array.from(pathFixture), [key]: win32.join(windowsRoot, `${directory}/`) }), /must include trailing slash/);
+  }
+  const windowsAssets = pdfAssetPaths(windowsRoot, win32.join);
+  const windowsLoad = pdfjs.getDocument({ data: Uint8Array.from(pathFixture), useWorkerFetch: false, ...windowsAssets });
+  try { assert.equal((await windowsLoad.promise).numPages, 1); }
+  finally { await windowsLoad.destroy(); }
+
   const nativePdf = await first(inline('two-pages.pdf', pdfFixture([{ text: 'FIRST PAGE business report' }, { text: 'LAST PAGE payment instruction' }])));
   assert.equal(nativePdf.report.status, 'read', JSON.stringify(nativePdf.report));
   assert.equal(nativePdf.report.pages, 2); assert.match(nativePdf.text, /FIRST PAGE/); assert.match(nativePdf.text, /LAST PAGE/);
@@ -68,7 +82,7 @@ try {
   assert.equal(laterUnreadable.text, '', 'a partial document must never be forwarded as if complete');
   const oversizedImagePdf = await first(inline('large-image.pdf', pdfFixture([{ text: 'Innocent text', image: jpeg, width: 10_000, height: 10_000 }])));
   assert.equal(oversizedImagePdf.report.status, 'unreadable', 'PDF.js must reject oversized images, not omit them from a text page');
-  console.log('✓ Real multipage PDF, image OCR, scanned PDF and mixed PDF; blank OCR/oversized images cannot pass');
+  console.log('✓ Windows PDF asset paths, real multipage/scanned/mixed PDF and image OCR; blank OCR/oversized images cannot pass');
 
   const docx = await first(inline('report.docx', docxFixture('Body &amp; safe table', [
     { name: 'word/header1.xml', text: '<w:hdr xmlns:w="urn:word"><w:p><w:r><w:t>Header payload</w:t></w:r></w:p></w:hdr>' },

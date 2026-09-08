@@ -9,6 +9,7 @@ import { fromBuffer } from 'yauzl';
 import type { Entry, ZipFile } from 'yauzl';
 import { DOCUMENT_LIMITS, DocumentReadError } from './types.js';
 import type { DocumentBytes, DocumentMethod, ExtractedDocument } from './types.js';
+import { pdfAssetPaths } from './pdf-assets.js';
 
 const require = createRequire(import.meta.url);
 const textTypes = new Set(['text/plain', 'text/markdown', 'text/csv', 'application/csv']);
@@ -93,15 +94,14 @@ async function readPdf(bytes: Buffer, ocr: OfflineOcr): Promise<ReadResult> {
   console.log = (...args: unknown[]) => { if (typeof args[0] === 'string' && args[0].startsWith('Warning:')) warned = true; };
   console.warn = () => { warned = true; };
   const packageRoot = dirname(require.resolve('pdfjs-dist/package.json'));
-  const loading = pdfjs.getDocument({
-    data: Uint8Array.from(bytes), useWorkerFetch: false,
-    disableAutoFetch: true, stopAtErrors: true, enableXfa: false,
-    maxImageSize: DOCUMENT_LIMITS.imagePixels,
-    cMapUrl: join(packageRoot, 'cmaps/'), cMapPacked: true,
-    standardFontDataUrl: join(packageRoot, 'standard_fonts/'),
-    wasmUrl: join(packageRoot, 'wasm/'), verbosity: 1
-  });
+  let loading: ReturnType<typeof pdfjs.getDocument> | undefined;
   try {
+    loading = pdfjs.getDocument({
+      data: Uint8Array.from(bytes), useWorkerFetch: false,
+      disableAutoFetch: true, stopAtErrors: true, enableXfa: false,
+      maxImageSize: DOCUMENT_LIMITS.imagePixels,
+      ...pdfAssetPaths(packageRoot), cMapPacked: true, verbosity: 1
+    });
     const pdf = await loading.promise;
     const operatorChecks = monitorPdfOperatorErrors(pdf);
     if (pdf.numPages > DOCUMENT_LIMITS.pages) fail('document-page-limit');
@@ -186,10 +186,10 @@ async function readPdf(bytes: Buffer, ocr: OfflineOcr): Promise<ReadResult> {
   } catch (error) {
     if (error instanceof DocumentReadError) throw error;
     if (error instanceof Error && error.name === 'PasswordException') fail('encrypted-document');
-    fail('invalid-pdf');
+    return fail('invalid-pdf');
   } finally {
-    await loading.destroy();
-    console.log = oldLog; console.warn = oldWarn;
+    try { await loading?.destroy(); }
+    finally { console.log = oldLog; console.warn = oldWarn; }
   }
 }
 
