@@ -9,7 +9,7 @@ import { bindLimits } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
 import { compileFailure, limitsPlan, notARuleAnswer, readable } from './answers.js';
-import { bindSweeps, composing, isExempt, rulesTabs } from './rules.js';
+import { bindSweeps, composing, isExempt, rulesHead } from './rules.js';
 import { bindSet, runSetPreviews, setCards } from './draft-set.js';
 
 // ── the conversation ─────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ export function ruleChatPane() {
   return `<div class="chatwrap">
     <div class="chat" id="ruleChat">
       <div class="sheet">
-        ${rulesTabs('<button type="button" class="btn quiet" id="cancelDraft">Start over</button>')}
+        ${rulesHead('<button type="button" class="btn quiet" id="cancelDraft">Start over</button>')}
         ${state.ruleChat.map(renderTurn).join('')}
         ${state.draft ? draftCard() : ''}
         ${state.set ? setCards() : ''}

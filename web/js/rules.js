@@ -6,7 +6,7 @@ import { modelPicker } from './compiler.js';
 import { $, attr, del, esc, post, severityMeans, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindPolicy, ruleChatPane } from './draft.js';
-import { audienceLabel, clip, isPersonal, plural, ruleName } from './format.js';
+import { audienceLabel, clip, dayKey, isPersonal, plural, ruleName } from './format.js';
 import { limitsGrid } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
@@ -15,13 +15,18 @@ import { VIEWS } from './views.js';
 // ═══ RULES ═══════════════════════════════════════════════════════════════════
 
 /**
- * Rules is two tabs, not one page.
+ * Rules is three tabs, not one page.
  *
- * Writing a rule is a conversation with Warden; the policy is a list. Those are
- * different modes of using the screen, and stacking them meant that the moment
- * you sent the first message the list underneath was orphaned — still there,
- * no longer part of what you were doing. So they became peers: the list you
- * come back to, and the conversation you start.
+ * Writing a rule is a conversation with Warden; the policy is a list; testing
+ * it is a third thing again. Stacking them meant that the moment you sent the
+ * first message the list underneath was orphaned — still there, no longer part
+ * of what you were doing — and that testing the policy lived behind a button
+ * here and a second button at the foot of Models. So they are peers: the
+ * conversation you start, the list you come back to, and the tester.
+ *
+ * New rule is a tab rather than a button, which is the declared exception to
+ * "creations open from a button": it is the daily action of this view and the
+ * top nav already lands on it.
  */
 function onNewRule() { return state.view === 'policy' && state.sel === 'new'; }
 function inConversation() { return onNewRule() && (state.ruleChat.length > 0 || Boolean(state.draft) || Boolean(state.set)); }
@@ -33,26 +38,56 @@ VIEWS.policy = {
   bind: bindPolicy
 };
 
-/** The switch between the two, at the top of the column in both. A dot on the
- *  New rule side when a draft is waiting there — leaving the tab does not
- *  throw the conversation away. */
-export function rulesTabs(right = '') {
-  const on = onNewRule();
-  return `<div class="toolbar">
-    <span class="seg">
-      <button type="button" class="${on ? 'on' : ''}" data-go="policy" data-sel="new">New rule${!on && (state.draft || state.set) ? ' •' : ''}</button>
-      <button type="button" class="${on ? '' : 'on'}" data-go="policy">Rules</button>
-    </span>
-    <span class="spacer"></span>
-    ${right}
-  </div>`;
+/**
+ * The three ways of using this screen, and the one line that says where the
+ * policy stands.
+ *
+ * Writing a rule, reading the policy and testing it are different modes, and
+ * they used to be a two-way segmented pill plus a button that led to a
+ * different view entirely. They are peers, so they are three tabs of the
+ * component Team established, under one header that does not move between
+ * them. Test is a `data-go="simulator"` — it crosses views, and the
+ * simulator's `railParent` keeps the top nav on Rules while you are there.
+ *
+ * A dot on New rule when a draft is waiting: leaving the tab does not throw
+ * the conversation away, and nothing else on the screen would say so.
+ *
+ * Exported because the simulator draws the same header. One definition, or the
+ * count of active rules is right on two tabs out of three.
+ */
+const TABS = [['new', 'New rule'], ['rules', 'Rules'], ['test', 'Test']];
+
+export function rulesTab() {
+  if (state.view === 'simulator') return 'test';
+  return onNewRule() ? 'new' : 'rules';
+}
+
+export function rulesHead(right = '') {
+  const tab = rulesTab();
+  const today = dayKey(new Date().toISOString());
+  const checks = state.audit.filter((a) => dayKey(a.ts) === today).length;
+  return `<header class="page-head">
+      <div>
+        <h1 class="page-title">Rules</h1>
+        <div class="page-status">
+          <span>${state.policy.rules.length} active</span><i>·</i>
+          <span class="muted">${plural(checks, 'check')} today</span>
+          ${tab === 'test' ? '' : '<i>·</i><button type="button" class="linkbtn strong" data-go="simulator">test anything →</button>'}
+        </div>
+      </div>
+      ${right}
+    </header>
+    <nav class="tabs" aria-label="Rules sections">
+      ${TABS.map(([id, label]) => `<button type="button" class="tab${tab === id ? ' on' : ''}" ${
+        id === 'test' ? 'data-go="simulator"' : id === 'new' ? 'data-go="policy" data-sel="new"' : 'data-go="policy"'
+      }>${label}${id === 'new' && tab !== 'new' && (state.draft || state.set) ? ' •' : ''}</button>`).join('')}
+    </nav>`;
 }
 
 /** The policy you have. */
 function rulesBody() {
   return `<div class="sheet">
-    ${rulesTabs(`
-      <button type="button" class="btn" data-go="simulator">Try a prompt</button>`)}
+    ${rulesHead()}
 
     ${state.policy.rules.length
       ? state.policy.rules.map(ruleRow).join('')
@@ -143,7 +178,7 @@ export function bindSweeps() {
  *  centred in whatever is left, the way an empty chat sits on the screen. */
 function newRulePage() {
   return `<div class="blank">
-    <div class="sheet">${rulesTabs()}</div>
+    <div class="sheet">${rulesHead()}</div>
     <div class="blank-fill">${heroComposer()}</div>
   </div>`;
 }
