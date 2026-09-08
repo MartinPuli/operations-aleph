@@ -9,7 +9,7 @@ import { bindLimits } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
 import { compileFailure, limitsPlan, notARuleAnswer, readable } from './answers.js';
-import { bindSweeps, composing, isExempt, rulesHead } from './rules.js';
+import { bindRuleFilters, bindSweeps, composing, isExempt, rulesHead } from './rules.js';
 import { bindSet, runSetPreviews, setCards } from './draft-set.js';
 
 // ── the conversation ─────────────────────────────────────────────────────────
@@ -489,6 +489,7 @@ export function bindPolicy() {
 
   bindLimits();
   bindSweeps();
+  bindRuleFilters();
   bindModelPicker();
 
   const apply = $('applyLimits');

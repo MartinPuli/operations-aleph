@@ -17,6 +17,7 @@ import { $, api, attr, del, esc, post, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindPolicy, sendRuleMessage } from './draft.js';
 import { TOOL_NAMES, avatar, copyText, personById, plural, ruleName } from './format.js';
+import { bindLimits, limitEditor } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
 import { VIEWS } from './views.js';
@@ -264,13 +265,15 @@ function rolesTab() {
     ${state.company.roles.map((r) => {
       const held = state.company.employees.filter((e) => e.role === r).length;
       const q = quotas.get(r);
+      const editing = state.quotaEdit === r;
       return `<div class="trow">
         <span class="strong">${esc(r)}</span>
         <span>${held}</span>
-        <span>${q?.maxRequestsPerDay ? `${q.maxRequestsPerDay} / day` : 'No limit'}</span>
+        <span><button type="button" class="linkbtn" data-quota="${attr(r)}" aria-expanded="${editing}">${q?.maxRequestsPerDay ? `${q.maxRequestsPerDay} / day` : 'No limit'}</button></span>
         <span>${exempt.has(r) ? '<span class="chip warn">Exempt from every rule</span>' : 'Every rule'}</span>
         ${held === 0 ? menu(r, [['remove-role', 'Remove role', 'danger']]) : '<span></span>'}
-      </div>`;
+      </div>
+      ${editing ? `<div class="trow-note">${limitEditor(r)}</div>` : ''}`;
     }).join('')}
     <div class="tfoot">
       <input type="text" id="newRoleName" class="grow" placeholder="New role">
@@ -282,6 +285,7 @@ function rolesTab() {
 }
 
 function bindRoles() {
+  bindLimits();
   const addRole = async () => {
     const role = $('newRoleName').value.trim();
     if (!role) return;

@@ -7,7 +7,6 @@ import { $, attr, del, esc, post, severityMeans, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindPolicy, ruleChatPane } from './draft.js';
 import { audienceLabel, clip, dayKey, isPersonal, plural, ruleName } from './format.js';
-import { limitsGrid } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
 import { VIEWS } from './views.js';
@@ -84,26 +83,71 @@ export function rulesHead(right = '') {
     </nav>`;
 }
 
+/**
+ * The policy you have, as a table you can sweep.
+ *
+ * It was a stack of rows three lines deep — name, the rule's whole text, then
+ * badges — which is a lot of ink for a list whose job is "which rules do I
+ * have, on whom, and what have they done". The full text belongs to the rule's
+ * own detail, which is one click away and always was.
+ *
+ * Filtering is local to the module and never touches the hash: `#/policy/<id>`
+ * means "this rule is open", and a severity filter is not a place you link
+ * somebody to.
+ */
+let severity = 'all';
+let search = '';
+
+function matches(rule) {
+  if (severity !== 'all' && rule.severity !== severity) return false;
+  const q = search.trim().toLowerCase();
+  if (!q) return true;
+  return `${ruleName(rule)} ${rule.text} ${audienceLabel(rule.appliesTo)}`.toLowerCase().includes(q);
+}
+
+function filterRow() {
+  const rules = state.policy.rules;
+  const counts = [['all', 'All', rules.length], ...['block', 'escalate', 'warn'].map((s) => [s, s.replace(/^./, (c) => c.toUpperCase()), rules.filter((r) => r.severity === s).length])];
+  return `<div class="filters">
+    <div class="filter-counts">
+      ${counts.map(([id, label, n]) => `<button type="button" class="filter-count${severity === id ? ' on' : ''}" data-severity="${id}">${label} ${n}</button>`).join('')}
+    </div>
+    <input type="text" id="ruleSearch" class="rule-search" placeholder="Search rules…" aria-label="Search rules" autocomplete="off" value="${esc(search)}">
+  </div>`;
+}
+
 /** The policy you have. */
 function rulesBody() {
+  const rules = state.policy.rules;
+  const shown = rules.filter(matches);
   return `<div class="sheet">
     ${rulesHead()}
-
-    ${state.policy.rules.length
-      ? state.policy.rules.map(ruleRow).join('')
-      : '<div class="empty"><b>No rules yet, so nothing gets stopped</b><span>Every prompt your team sends goes straight through until you write one.</span></div>'}
-
-    ${state.policy.rules.length ? `<div class="row-actions">
-      <button type="button" class="btn quiet" id="clearSample">Take out what came with Warden</button>
-      <button type="button" class="btn quiet danger" id="wipeRules">Delete every rule</button>
-    </div>` : ''}
-
-    <div class="section">
-      <div class="label">Limits by role</div>
-      ${limitsGrid()}
-      <div class="note">Token counts are reported by the tool, not measured here.</div>
-    </div>
+    ${sampleBanner()}
+    ${rules.length ? filterRow() : ''}
+    ${!rules.length
+      ? '<div class="empty"><b>No rules yet, so nothing gets stopped</b><span>Every prompt your team sends goes straight through until you write one.</span></div>'
+      : shown.length
+        ? `<div class="tbl rules">
+            <div class="thead"><span>Rule</span><span>Applies to</span><span>If it fires</span><span>Activity</span></div>
+            ${shown.map(ruleRow).join('')}
+          </div>`
+        : `<div class="empty"><b>No rule matches</b><span>Nothing here is ${severity === 'all' ? 'called that' : `a ${esc(severity)} rule that matches`}.</span><div class="actions"><button type="button" class="btn" id="clearRuleFilter">Show every rule</button></div></div>`}
+    ${rules.length ? `<div class="wipe"><button type="button" class="linkbtn danger" id="wipeRules">Delete every rule</button></div>` : ''}
   </div>`;
+}
+
+/**
+ * A seeded policy says so where the seeded rules are, and the way out of it is
+ * in the banner rather than beside the table.
+ *
+ * It used to be a permanent button — a one-time action, on screen for the
+ * whole life of the installation, next to the one that deletes everything.
+ * Most of the time it was a no-op wearing the clothes of a feature.
+ */
+function sampleBanner() {
+  if (!state.company.demo) return '';
+  return `<div class="banner warn demo"><b>Sample data.</b> These rules, and the people they judge, came with Warden.
+    <button type="button" class="linkish" id="clearSample">Take out what came with Warden</button></div>`;
 }
 
 /** Roles the policy declines to govern. Read from the policy, never guessed. */
@@ -145,6 +189,19 @@ export function sendAsOptions() {
  * not touch because naming your company cleared the flag it reads. "Delete
  * every rule" is the blunt one, and it asks first.
  */
+/** The filters are module state: they change what is on the screen and nothing
+ *  about where you are, so they stay out of the hash. */
+export function bindRuleFilters() {
+  for (const button of document.querySelectorAll('[data-severity]')) button.onclick = () => {
+    severity = button.dataset.severity;
+    render();
+  };
+  const box = $('ruleSearch');
+  if (box) box.oninput = () => { search = box.value; render(); };
+  const clear = $('clearRuleFilter');
+  if (clear) clear.onclick = () => { severity = 'all'; search = ''; render(); };
+}
+
 export function bindSweeps() {
   bindLogPeek();
   const clear = $('clearSample');
@@ -291,31 +348,47 @@ function heroComposer() {
 
 function ruleRow(r) {
   const open = state.sel === r.id;
-  return `<button type="button" class="row roomy${open ? ' on' : ''}" data-toggle="policy" data-sel="${attr(r.id)}" aria-expanded="${open}">
-      <span class="dot ${esc(r.severity)}"></span>
-      <span class="col">
-        <span class="t">${esc(ruleName(r))}</span>
-        <span class="m2">${esc(r.text)}</span>
-        <span class="m">
-          <span class="badge ${esc(r.severity)}">${esc(r.severity)}</span>
-          <span>${esc(audienceLabel(r.appliesTo))}</span>
-          ${r.pinned ? '<span class="badge">always checked</span>' : ''}
-          ${isPersonal(r) ? '<span class="badge">personal</span>' : ''}
-        </span>
-      </span>
+  return `<button type="button" class="trow rule-row${open ? ' on' : ''}" data-toggle="policy" data-sel="${attr(r.id)}" aria-expanded="${open}">
+      <span class="c-rule"><span class="nm">${esc(ruleName(r))}</span>${r.pinned ? '<span class="badge">always checked</span>' : ''}${isPersonal(r) ? '<span class="badge">personal</span>' : ''}</span>
+      <span class="c-aud">${esc(audienceLabel(r.appliesTo))}</span>
+      <span><span class="badge ${esc(r.severity)}">${esc(r.severity)}</span></span>
+      <span class="c-activity">${esc(activityPhrase(r))}</span>
     </button>
     ${open ? ruleDetail(r) : ''}`;
 }
 
-function ruleDetail(rule) {
+/**
+ * What a rule has actually done. The row and the detail read it from here
+ * rather than each counting for itself: the row is a summary of the detail,
+ * and a summary that computes its own numbers is a second implementation of
+ * them waiting to disagree.
+ *
+ * Disputes are the only false-positive signal the console has — in the audit
+ * log a correct block and an incorrect one are the same record — so a rule
+ * that has any says so in the list, not only once you open it.
+ */
+function ruleActivity(rule) {
   const hits = state.audit.filter((a) => (a.decision?.firedRules ?? []).some((r) => r.ruleId === rule.id));
+  return {
+    hits,
+    blocked: hits.filter((h) => h.decision?.verdict !== 'ALLOW').length,
+    disputed: state.appeals.filter((a) => a.ruleId === rule.id)
+  };
+}
+
+function activityPhrase(rule) {
+  const { hits, blocked, disputed } = ruleActivity(rule);
+  if (!hits.length) return 'Has not fired yet';
+  if (disputed.length) return `${blocked} of ${hits.length} · ${disputed.length} disputed`;
+  // A warn rule stops nothing by design, so "stopped 0 of 3" would read as a
+  // rule that is failing rather than one doing exactly what it was set to do.
+  if (rule.severity === 'warn') return `Noted ${plural(hits.length, 'time')}, blocked none`;
+  return `${rule.severity === 'escalate' ? 'Held' : 'Stopped'} ${blocked} of ${hits.length}`;
+}
+
+function ruleDetail(rule) {
+  const { hits, blocked, disputed } = ruleActivity(rule);
   const guidance = hits[0]?.decision.firedRules.find((r) => r.ruleId === rule.id)?.guidance;
-  const blocked = hits.filter((h) => h.decision?.verdict !== 'ALLOW').length;
-  // How many of those the person on the other end said were wrong. This is the
-  // only false-positive signal the console actually has: in the audit log a
-  // correct block and an incorrect one are the same record. Counting how much
-  // a rule catches without counting what it costs makes every rule look good.
-  const disputed = state.appeals.filter((a) => a.ruleId === rule.id);
 
   // An active rule is an object you consult, not a decision you take, so it
   // gets the property-list shape rather than the draft's decide-first one.

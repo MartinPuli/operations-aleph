@@ -452,6 +452,11 @@ input.inline.wide { min-width: 320px; flex: 1 1 320px; }
 .badge.warn { background: var(--escalate-bg); color: var(--escalate); }
 .badge.block    { background: var(--block-bg);    color: var(--block); }
 .badge.escalate { background: var(--escalate-bg); color: var(--escalate); }
+/* `.block` is also a layout class further down this file, so at equal
+   specificity it wins and hands the severity badge its `display: grid`. In a
+   flex row that went unnoticed — a flex item shrinks to its content either way
+   — but in a table cell the badge grew to the full column. */
+.badge.block, .badge.escalate, .badge.warn { display: inline-flex; }
 
 .chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .chip {
@@ -991,7 +996,6 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .section { padding: var(--s-7) var(--s-3) 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
 .section + .section { border-top: 1px solid var(--line); margin-top: var(--s-7); }
 
-.quota-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s-2); }
 .quota {
   display: flex; flex-direction: column; gap: var(--s-1);
   border: 1px solid var(--line);
@@ -1000,15 +1004,8 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: var(--fs-2);
   color: var(--muted);
 }
-.quota-role { font-weight: var(--fw-semi); color: var(--ink); }
 .quota-row { display: flex; align-items: baseline; gap: var(--s-3); }
-.quota-row b { margin-left: auto; font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: var(--fw-normal); color: var(--ink-2); }
-/* Nobody is counting is a different statement from a bar at zero. */
-.quota-row.unmetered b { color: var(--muted); }
 
-/* A card is now a button, so it has to stop looking like one: no browser
-   chrome, the same box as before, and the affordance carried by the hover
-   rather than by a border that would put six outlines on the page. */
 /* Offered, and honest about not being there. Still clickable: somebody who is
    about to install Claude Code can set it up first and have it work when they
    do, and refusing the click would only make that a puzzle. */
@@ -1017,11 +1014,10 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 /* The action a banner is about, on the banner. */
 .banner-act { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-2); flex-wrap: wrap; }
 
-button.quota { text-align: left; background: var(--bg); font: inherit; font-size: var(--fs-2); cursor: pointer; }
-button.quota:hover { border-color: var(--ink-3); }
-button.quota .quota-row b { margin-left: auto; }
-
-.quota.editing { gap: var(--s-2); }
+/* Open under the role it belongs to. Bounded, because the label and its box
+   belong beside each other: across the full width of the table they read as
+   two unrelated columns. */
+.quota.editing { gap: var(--s-2); border: none; padding: 0; max-width: 320px; }
 .quota.editing .quota-row { gap: var(--s-2); }
 .quota.editing input {
   margin-left: auto; width: 5.5rem; min-width: 0; padding: 2px var(--s-2);
@@ -1209,6 +1205,36 @@ button.quota .quota-row b { margin-left: auto; }
   padding: 0 var(--s-4) 0 var(--s-5);
 }
 .tbl.roles .thead, .tbl.roles .trow { grid-template-columns: minmax(0, 1fr) 90px 140px 220px 32px; }
+/* The rules table drops the box. A row opens its detail underneath, and a
+   detail inside a rounded, bordered container has to pretend it is a row —
+   hairlines between the rows carry the same structure and let the open one
+   breathe. */
+.tbl.rules { margin-top: var(--s-4); border: none; border-radius: 0; }
+.tbl.rules .thead, .tbl.rules .trow { grid-template-columns: minmax(0, 1fr) 150px 130px 220px; }
+.tbl.rules .thead { height: auto; padding: 0 var(--s-4) var(--s-3) var(--s-5); background: none; border-radius: 0; }
+.rule-row { width: 100%; border: none; border-bottom: 1px solid var(--line); background: none; font: inherit; text-align: left; cursor: pointer; }
+.tbl.rules > .rule-row:last-child { border-bottom: 1px solid var(--line); border-radius: 0; }
+.rule-row.on { background: var(--selected); }
+.c-rule { display: flex; align-items: baseline; gap: var(--s-3); min-width: 0; padding: var(--s-3) 0; }
+.c-rule .nm { color: var(--ink); font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-aud, .c-activity { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-activity { color: var(--muted); font-size: var(--fs-2); }
+.tbl.rules .detail { padding: var(--s-5) var(--s-5) var(--s-6); border-bottom: 1px solid var(--line); }
+
+/* The counts and the search box, between the tabs and the table. */
+.filters { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); flex-wrap: wrap; padding: var(--s-6) var(--s-3) var(--s-2); }
+.filter-counts { display: flex; align-items: center; gap: var(--s-5); flex-wrap: wrap; }
+.filter-count { border: none; background: none; padding: 0; font: inherit; font-size: var(--fs-3); color: var(--muted); cursor: pointer; white-space: nowrap; }
+.filter-count:hover { color: var(--ink); }
+.filter-count.on { color: var(--ink); font-weight: var(--fw-medium); }
+/* Scoped past `input[type="text"]`, which sets width: 100% at the same
+   specificity and would otherwise push the box onto its own line. */
+.filters .rule-search { width: 220px; flex: none; padding: var(--s-2) var(--s-3); font-size: var(--fs-2); }
+
+/* One destructive action, under a hairline, in the colour of what it does. */
+.wipe { margin: var(--s-8) var(--s-3) 0; padding-top: var(--s-6); border-top: 1px solid var(--line); }
+.linkbtn.danger { color: var(--block); text-decoration: none; }
+.linkbtn.danger:hover { text-decoration: underline; text-decoration-color: var(--block); }
 .tbl .thead {
   height: 36px;
   background: var(--sunken);
