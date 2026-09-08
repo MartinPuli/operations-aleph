@@ -7,6 +7,7 @@ import { modelLabel, plural } from './format.js';
 import { bindLibrary, library, libraryMarkup, loadLibrary } from './model-library.js';
 import { bindPromptEditor, closePromptEditor, hasPromptChanges, loadPrompts, promptEditor, promptEditorMarkup, togglePromptEditor } from './prompt-editor.js';
 import { render } from './render.js';
+import { go } from './router.js';
 import { VIEWS } from './views.js';
 
 let expanded = null;
@@ -101,7 +102,58 @@ function pageHead(tab) {
   </header>`;
 }
 
-function activeRole(role) {
+/**
+ * One job, one card.
+ *
+ * Title, the line that says what the job is, the state it is in, and one
+ * action — the editorial rule the whole page is now built on. Everything that
+ * used to be a paragraph of caveats is either said by the description (which
+ * is where the two sentences with security weight live: the rule writer sees
+ * only the administrator's own instructions, and the judge never sends what
+ * the team writes anywhere) or is small print under the model line.
+ *
+ * The editors open inline underneath, one at a time, exactly as before.
+ */
+function jobCard(role) {
+  const compiler = role === 'compiler';
+  const open = expanded === role;
+  const setup = compiler && compilerNeedsSetup();
+  return `<section class="job" aria-labelledby="${role}Title">
+    <div class="job-head">
+      <h2 id="${role}Title">${compiler ? 'Rule writer' : 'Request judge'}</h2>
+      ${jobChip(role)}
+    </div>
+    <p class="job-what">${compiler
+      ? 'Turns the policies you write into enforceable rules. It only ever sees your own instructions — never employee requests or documents.'
+      : 'Checks every employee request and document against your rules. Always runs on this machine — what your team writes never leaves it.'}</p>
+    <div class="job-body">
+      ${setup ? compilerSettings() : jobMeta(role)}
+    </div>
+    ${open && !setup ? `<div id="${role}Editor" class="job-editor">${compiler ? compilerSettings() : analyzerSettings()}</div>` : ''}
+  </section>`;
+}
+
+/** The state of the job, in the words the card has room for. */
+function jobChip(role) {
+  const chip = (kind, text) => `<span class="chip ${kind || 'static'}">${esc(text)}</span>`;
+  if (role === 'compiler') {
+    const c = state.compiler;
+    if (c?.configurationError) return chip('bad', 'Needs attention');
+    if (c?.overriddenByEnv) return chip('warn', 'Environment override');
+    if (compilerNeedsSetup()) return chip('warn', 'Needs setup');
+    const label = (c?.providers ?? []).find((p) => p.id === c.provider)?.label;
+    return chip('good', `${label ? label.replace(' on this machine', '') : 'Configured'} · connected`);
+  }
+  const m = state.models;
+  if (state.adjudicator?.overriddenByEnv) return chip('warn', 'Environment override');
+  if (!m) return chip('warn', 'Status unavailable');
+  if (m.mock) return chip('warn', 'Demo mode · nothing is judged');
+  if (m.runtime?.ok === false || m.state === 'failed') return chip('bad', 'Unavailable · requests are held');
+  return m.state === 'ready' ? chip('good', 'Ready · runs locally') : chip('static', 'Loads on demand · runs locally');
+}
+
+/** Which model is doing the job, where, and the one button that changes it. */
+function jobMeta(role) {
   const compiler = role === 'compiler';
   const active = compiler ? state.models?.drafting : state.models?.judging;
   const inForce = library.catalog?.inForce?.[role] ?? (compiler ? state.compiler?.inForce : state.adjudicator?.inForce) ?? active?.model;
@@ -110,18 +162,17 @@ function activeRole(role) {
   // remain loaded. Resolve the running file before consulting role metadata.
   const custom = library.catalog?.models.find((model) => model.kind === 'local' && (basename === `${model.id}.gguf` || basename === model.filename))
     ?? library.catalog?.models.find((model) => model.activeRoles?.includes(role));
-  const overridden = compiler ? state.compiler?.overriddenByEnv : state.adjudicator?.overriddenByEnv;
   const configurationError = compiler ? state.compiler?.configurationError : null;
-  const title = compiler ? 'Compiler' : 'Analyzer';
   const open = expanded === role;
-  return `<section class="active-model-role" aria-labelledby="${role}Title">
-    <div class="active-model-row">
-      <div class="active-role-title"><h2 id="${role}Title">${title}</h2><p>${compiler ? 'Turns your instructions into rules' : 'Checks employee requests and documents'}</p></div>
-      <div class="active-role-value"><b data-active-model="${role}">${esc(configurationError ? 'Compiler unavailable' : custom?.name || modelLabel(inForce) || 'Status unavailable')}</b>${configurationError ? `<span class="note bad">${esc(configurationError)}</span>` : `<span>${esc(active?.where ?? 'Refresh to read the current model')}</span>`}${overridden ? '<span class="model-status warn">Environment override</span>' : ''}</div>
-      <div class="active-role-actions"><button type="button" class="btn" id="edit-${role}" data-edit-role="${role}" aria-expanded="${open}" aria-controls="${role}Editor">${open ? 'Close' : 'Change model'}</button><button type="button" class="btn quiet" id="prompts-${role}" data-prompt-role="${role}" aria-expanded="${promptEditor.openRole === role}" aria-controls="${role}Prompts">${promptEditor.openRole === role ? 'Close prompts' : 'Edit prompts'}</button>${hasPromptChanges(role) ? '<span class="note warn">Unsaved prompt changes</span>' : ''}</div>
+  return `<div class="job-meta">
+      <span class="job-model"><b class="mono" data-active-model="${role}">${esc(configurationError ? 'Compiler unavailable' : custom?.name || modelLabel(inForce) || 'Status unavailable')}</b>${
+        configurationError ? `<span class="note bad">${esc(configurationError)}</span>` : `<span>· ${esc(active?.where ?? 'refresh to read the current model')}</span>`}</span>
+      <span class="job-act">
+        <button type="button" class="linkbtn" data-prompt-role="${role}">Edit prompts${hasPromptChanges(role) ? ' •' : ''}</button>
+        <button type="button" class="btn" id="edit-${role}" data-edit-role="${role}" aria-expanded="${open}" aria-controls="${role}Editor">${open ? 'Close' : 'Change model'}</button>
+      </span>
     </div>
-    ${open ? `<div id="${role}Editor" class="active-model-editor">${compiler ? compilerSettings() : analyzerSettings()}</div>` : ''}
-  </section>`;
+    ${compiler ? '' : '<span class="note job-note">PDFs, Word files, text, scans and images are read on this machine before the same rules are applied to them.</span>'}`;
 }
 
 function analyzerSettings() {
@@ -144,8 +195,7 @@ function analyzerSettings() {
 }
 
 function activeTab() {
-  return `<div class="active-models">${activeRole('compiler')}${activeRole('adjudicator')}</div>
-    <section class="models-document-note" aria-labelledby="documentsModelTitle"><div><h2 id="documentsModelTitle">Documents use the same analyzer</h2><p class="note">PDF, Word, text files, scans and images are read locally before policy checks. Try a file to inspect its reading status and verdict.</p></div><button type="button" class="btn" data-go="simulator">Try a document</button></section>`;
+  return `<div class="jobs">${jobCard('compiler')}${jobCard('adjudicator')}</div>`;
 }
 
 function promptsTab() {
@@ -170,8 +220,13 @@ function bindModels() {
   if (tab === 'prompts' && !promptEditor.openRole) { togglePromptEditor('compiler'); render(); return; }
   if ($('refreshModels')) $('refreshModels').onclick = () => { void enterModels(); render(); };
   for (const button of document.querySelectorAll('[data-edit-role]')) button.onclick = () => { clearCompilerSecret(); closePromptEditor(); expanded = expanded === button.dataset.editRole ? null : button.dataset.editRole; render(); $(button.id)?.focus(); };
-  for (const button of document.querySelectorAll('[data-prompt-role]')) button.onclick = () => { clearCompilerSecret(); expanded = null; togglePromptEditor(button.dataset.promptRole); render(); $(button.id)?.focus(); };
-  if (expanded === 'compiler') bindCompiler(loadLibrary);
+  for (const button of document.querySelectorAll('[data-prompt-role]')) button.onclick = () => {
+    const role = button.dataset.promptRole;
+    clearCompilerSecret(); expanded = null;
+    if (promptEditor.openRole !== role) togglePromptEditor(role);
+    go('models', 'prompts');
+  };
+  if (expanded === 'compiler' || compilerNeedsSetup()) bindCompiler(loadLibrary);
   for (const button of document.querySelectorAll('[data-analyzer-choice]')) button.onclick = async () => {
     if (changingAnalyzer) return;
     changingAnalyzer = button.dataset.analyzerChoice; analyzerNote = null; render();

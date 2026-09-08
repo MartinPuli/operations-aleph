@@ -1397,22 +1397,43 @@ select.mini {
 .claude-login-command { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); }
 .claude-login-command > code { padding: var(--s-3); border: 1px solid var(--line-firm); border-radius: var(--r-md); background: var(--bg); overflow-wrap: anywhere; }
 .compiler-local-missing { display: grid; justify-items: start; gap: var(--s-3); }
-.models-page-head { display: flex; align-items: flex-start; gap: var(--s-5); justify-content: space-between; padding: var(--s-5) 0 var(--s-6); }
-.models-page-head p { margin-top: var(--s-3); color: var(--ink-2); max-width: var(--prose); }
-.models-page-head .btn { flex: none; }
-.models-runtime-line { display: flex; align-items: baseline; gap: var(--s-5); justify-content: space-between; padding-bottom: var(--s-6); }
-.models-runtime-line .note { max-width: var(--prose); }
-.models-runtime-line .linkbtn { flex: none; font-size: var(--fs-2); }
-.active-models { border-top: 1px solid var(--line-firm); }
-.active-model-role { border-bottom: 1px solid var(--line-firm); }
-.active-model-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) auto; align-items: center; gap: var(--s-6); padding: var(--s-6) 0; }
-.active-role-title p { color: var(--muted); font-size: var(--fs-2); margin-top: var(--s-1); }
-.active-role-value { display: grid; gap: var(--s-1); min-width: 0; }
-.active-role-value b { font-size: var(--fs-3); font-weight: var(--fw-medium); overflow-wrap: anywhere; }
-.active-role-value > span { color: var(--muted); font-size: var(--fs-2); overflow-wrap: anywhere; }
-.active-role-actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--s-1); }
-.active-role-actions > .note { max-width: 12rem; text-align: center; }
-.active-model-editor { padding-bottom: var(--s-6); }
+/* Active is two cards, one per job: a title, the line that says what the job
+   is, the state it is in and one action. The three levels of nested grey panel
+   that used to be here had almost everything at 13px regular, so nothing on
+   the page won and the page said nothing about what to do first. */
+.jobs { display: grid; gap: var(--s-5); padding: var(--s-6) var(--s-3) 0; }
+.job { padding: var(--s-6); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.job-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); }
+.models-page .job-head h2 { font-size: var(--fs-4); font-weight: var(--fw-semi); }
+.models-page .job-what { margin: var(--s-3) 0 0; max-width: var(--prose); font-size: var(--fs-3); color: var(--ink-2); line-height: var(--lh-snug); }
+.job-body { margin-top: var(--s-5); padding-top: var(--s-5); border-top: 1px solid var(--line); }
+.job-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); flex-wrap: wrap; }
+.job-model { display: flex; align-items: baseline; gap: var(--s-2); min-width: 0; flex-wrap: wrap; }
+.job-model b { font-size: var(--fs-3); font-weight: var(--fw-medium); color: var(--ink); overflow-wrap: anywhere; }
+.job-model > span { font-size: var(--fs-2); color: var(--muted); overflow-wrap: anywhere; }
+.job-act { display: flex; align-items: center; gap: var(--s-5); flex: none; }
+.job-act .linkbtn { font-size: var(--fs-2); color: var(--ink-2); }
+.models-page .job-note { display: block; margin-top: var(--s-4); max-width: var(--prose); }
+.job-editor { margin-top: var(--s-5); }
+/* A state chip reports; it is not a button, and nothing here opens on hover. */
+.job .chip { cursor: default; font-size: var(--fs-2); }
+.chip.good, .chip.good:hover { background: var(--allow-bg); border-color: transparent; color: var(--allow); }
+.chip.bad, .chip.bad:hover { background: var(--block-bg); border-color: transparent; color: var(--block); }
+.chip.warn:hover { background: var(--escalate-bg); color: var(--escalate); }
+
+/* First run: the finished steps collapse to a tick on one line, and the next
+   thing to do is the only button with weight. */
+.job-setup { display: grid; gap: var(--s-4); justify-items: start; }
+.setup-rec { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.models-page .setup-rec h3 { font-size: var(--fs-3); font-weight: var(--fw-medium); }
+.setup-steps { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-6); margin: 0; padding: 0; list-style: none; font-size: var(--fs-2); color: var(--muted); }
+.setup-steps li { display: inline-flex; align-items: center; gap: var(--s-2); }
+.setup-steps li.done { color: var(--ink-2); }
+.setup-steps .mark { color: var(--faint); }
+.setup-steps li.done .mark { color: var(--allow); }
+.setup-steps .linkbtn { font-size: var(--fs-2); color: var(--muted); }
+.job-actions { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.job-actions > .note { margin-left: var(--s-2); max-width: var(--prose); }
 .models-page .model-editor { background: var(--sunken); padding: var(--s-6); border-radius: var(--r-lg); }
 .model-fields { min-width: 0; margin: var(--s-5) 0 0; padding: 0; border: 0; }
 .models-page .model-editor .field { max-width: none; }
@@ -1458,9 +1479,6 @@ select.mini {
 .model-library-empty .note { display: block; margin-top: var(--s-2); max-width: var(--prose); }
 .model-delete-confirm { margin-top: var(--s-4); padding: var(--s-4); background: var(--block-bg); border-radius: var(--r-md); }
 .model-delete-confirm .actions { margin-top: var(--s-3); }
-.models-document-note { display: flex; align-items: center; gap: var(--s-6); margin-top: var(--s-8); padding-top: var(--s-7); border-top: 1px solid var(--line); }
-.models-document-note .note { margin-top: var(--s-2); max-width: var(--prose); }
-.models-document-note .btn { flex: none; }
 .analyzer-option { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-5); padding: var(--s-5) 0; border-top: 1px solid var(--line-firm); }
 .analyzer-option > div > p { margin-top: var(--s-2); color: var(--ink-2); font-size: var(--fs-2); }
 .analyzer-option-action { align-self: center; }
@@ -1541,13 +1559,10 @@ select.mini {
   nav { overflow-x: auto; padding-bottom: var(--s-1); }
   .compiler-setup-nudge, .claude-setup-head { flex-direction: column; align-items: flex-start; }
   .compiler-setup-nudge > .btn { white-space: normal; }
-  .active-model-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3); }
-  .active-role-title { grid-column: 1; }
-  .active-role-value { grid-column: 1; }
-  .active-model-row > .btn { grid-column: 2; grid-row: 1 / 3; }
-  .active-role-actions { grid-column: 1 / -1; flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
-  .active-role-actions > .note { max-width: none; text-align: left; }
-  .models-runtime-line, .models-document-note { flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+  .job { padding: var(--s-5); }
+  .job-head { align-items: flex-start; }
+  .job-meta { flex-direction: column; align-items: flex-start; gap: var(--s-4); }
+  .job-act { width: 100%; justify-content: space-between; }
   .models-page .model-editor { padding: var(--s-4); }
   .prompt-editor { padding: var(--s-4); }
   .prompt-editor-heading { flex-direction: column; }

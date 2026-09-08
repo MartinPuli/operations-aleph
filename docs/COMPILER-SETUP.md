@@ -6,8 +6,9 @@ continues to check employee requests and documents with local QVAC weights.
 
 ## First configuration
 
-1. Open **Configure Claude Code** in the console, or open **Models**. The
-   compiler configuration opens automatically while setup is incomplete.
+1. Open **Set up the rule writer** in the console, or open **Models**. The
+   rule writer is the first card on the Active tab, and its setup opens
+   automatically while it is incomplete.
 2. Install the Claude Code CLI on the computer running the Warden gateway.
    Follow the [official installation guide](https://code.claude.com/docs/en/setup).
    Installing it on a remote administrator's browser computer is not enough.
@@ -17,8 +18,9 @@ continues to check employee requests and documents with local QVAC weights.
 4. Choose **Test connection**. Warden sends a fixed, synthetic question through
    the same CLI adapter used for compilation and validates its structured
    answer. This uses the account and usage limits configured in Claude Code.
-5. Choose **Apply compiler** to save the connection. Warden checks it again
-   before replacing the previous configuration.
+5. Choose **Apply the rule writer** to save the connection. Warden checks it
+   again before replacing the previous configuration. The step appears once the
+   connection has been checked for the model in the form.
 
 Leave **Model** blank to use Claude Code's own default. Enter an alias or model
 identifier only when you want to override it. A model selected in Warden does
