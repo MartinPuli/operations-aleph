@@ -1385,6 +1385,8 @@ select.mini {
 .active-role-value { display: grid; gap: var(--s-1); min-width: 0; }
 .active-role-value b { font-size: var(--fs-3); font-weight: var(--fw-medium); overflow-wrap: anywhere; }
 .active-role-value > span { color: var(--muted); font-size: var(--fs-2); overflow-wrap: anywhere; }
+.active-role-actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--s-1); }
+.active-role-actions > .note { max-width: 12rem; text-align: center; }
 .active-model-editor { padding-bottom: var(--s-6); }
 .models-page .model-editor { background: var(--sunken); padding: var(--s-6); border-radius: var(--r-lg); }
 .model-fields { min-width: 0; margin: var(--s-5) 0 0; padding: 0; border: 0; }
@@ -1449,6 +1451,44 @@ select.mini {
 .skeleton-line { display: block; width: 70%; height: 12px; background: var(--selected); border-radius: var(--r-sm); }
 .skeleton-line.short { width: 45%; }
 
+/* Prompt drafts belong to their template, so switching or refreshing never
+   substitutes another prompt's text into the editor. */
+.prompt-editor { min-width: 0; padding: var(--s-6); margin-bottom: var(--s-6); border-radius: var(--r-lg); background: var(--sunken); }
+.prompt-editor-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-5); }
+.prompt-editor-heading > div { min-width: 0; }
+.prompt-editor-heading .note { margin-top: var(--s-2); max-width: var(--prose); }
+.prompt-editor-heading > .btn { flex: none; }
+.prompt-editor .prompt-template-picker { max-width: 100%; }
+.prompt-template-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s-3); }
+.prompt-editor .prompt-description { display: block; margin: var(--s-2) 0 var(--s-5); max-width: var(--prose); }
+.prompt-editor .prompt-text-field { max-width: none; }
+.prompt-editor textarea { display: block; width: 100%; min-height: 22rem; resize: vertical; padding: var(--s-4); border: 1px solid var(--line-firm); border-radius: var(--r-md); color: var(--ink); background: var(--bg); font: var(--fs-2)/1.6 var(--mono); tab-size: 2; caret-color: var(--accent); }
+.prompt-editor textarea:focus-visible, .prompt-editor summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.prompt-editor textarea[readonly] { color: var(--muted); }
+.prompt-editor textarea[aria-invalid="true"] { border-color: var(--block); }
+.prompt-errors { padding-left: var(--s-5); margin: var(--s-2) 0 0; font-size: var(--fs-2); color: var(--block); overflow-wrap: anywhere; }
+.prompt-errors li + li { margin-top: var(--s-1); }
+.prompt-editor h4 { font-size: var(--fs-2); font-weight: var(--fw-semi); color: var(--ink); margin: 0 0 var(--s-2); }
+.prompt-variables { padding: var(--s-4) 0; }
+.prompt-variables > ul { list-style: none; padding: 0; margin: var(--s-3) 0 0; display: grid; gap: var(--s-3); }
+.prompt-variables li { display: grid; grid-template-columns: minmax(0, 12rem) minmax(0, 1fr); align-items: start; gap: var(--s-4); }
+.prompt-variables li > div { min-width: 0; font-size: var(--fs-2); }
+.prompt-variables li p { color: var(--ink-2); overflow-wrap: anywhere; }
+.prompt-variable-kind { color: var(--muted); font-size: var(--fs-1); }
+.prompt-token { justify-content: flex-start; max-width: 100%; background: var(--bg); }
+.prompt-token code { white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.prompt-reference { padding: var(--s-3) 0; border-top: 1px solid var(--line-firm); }
+.prompt-reference summary { width: fit-content; max-width: 100%; font-size: var(--fs-2); font-weight: var(--fw-medium); color: var(--ink-2); cursor: pointer; }
+.prompt-reference pre { max-height: 26rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s-4); margin: var(--s-3) 0; color: var(--ink-2); font: var(--fs-2)/1.6 var(--mono); }
+.prompt-save-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap; border-top: 1px solid var(--line-firm); padding-top: var(--s-4); margin-top: var(--s-2); }
+.prompt-save-row .actions { margin: 0; }
+.prompt-save-row > .note { font-size: var(--fs-2); }
+.prompt-conflict, .prompt-reset-confirm { margin-top: var(--s-4); padding: var(--s-4); border: 1px solid var(--line-firm); border-radius: var(--r-md); background: var(--bg); font-size: var(--fs-2); }
+.prompt-conflict > p, .prompt-reset-confirm > p { color: var(--ink-2); }
+.prompt-conflict .actions, .prompt-reset-confirm .actions { margin-top: var(--s-3); }
+.prompt-editor .prompt-feedback, .prompt-editor .prompt-draft-help { display: block; margin-top: var(--s-4); max-width: var(--prose); }
+.prompt-editor .prompt-feedback:empty { display: none; }
+
 /* Attachment preparation is separate from extraction: a ready file has not
    passed a policy check. The verdict reports the server's reading metadata. */
 .document-composer { margin-top: var(--s-3); border: 1px dashed transparent; border-radius: var(--r-lg); padding: var(--s-1); transition: border-color 180ms ease, background-color 180ms ease; }
@@ -1478,8 +1518,15 @@ select.mini {
   .active-role-title { grid-column: 1; }
   .active-role-value { grid-column: 1; }
   .active-model-row > .btn { grid-column: 2; grid-row: 1 / 3; }
+  .active-role-actions { grid-column: 1 / -1; flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
+  .active-role-actions > .note { max-width: none; text-align: left; }
   .models-runtime-line, .models-document-note { flex-direction: column; align-items: flex-start; gap: var(--s-3); }
   .models-page .model-editor { padding: var(--s-4); }
+  .prompt-editor { padding: var(--s-4); }
+  .prompt-editor-heading { flex-direction: column; }
+  .prompt-editor textarea { min-height: 20rem; font-size: var(--fs-4); }
+  .prompt-variables li { grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
+  .prompt-token { width: fit-content; }
   .model-form-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .analyzer-option { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
   .model-transfer { flex-wrap: wrap; }

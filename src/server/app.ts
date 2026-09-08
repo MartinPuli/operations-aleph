@@ -23,6 +23,7 @@ import { settingsRoutes } from './routes/settings.js';
 import { soloRoutes } from './routes/solo.js';
 import { systemRoutes } from './routes/system.js';
 import { modelRoutes } from './routes/models.js';
+import { promptRoutes } from './routes/prompts.js';
 
 export function createApp(): Express {
   const app = express();
@@ -68,6 +69,7 @@ export function createApp(): Express {
   app.use(policyRoutes);
   app.use(settingsRoutes);
   app.use(modelRoutes);
+  app.use(promptRoutes);
   app.use(peopleRoutes);
   app.use(companyRoutes);
   app.use(guardRoutes);

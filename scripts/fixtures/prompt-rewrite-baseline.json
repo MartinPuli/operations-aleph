@@ -1,0 +1,10 @@
+{
+  "marker/rewrite/no-guidance/system": "e4631865ff2f8ad583bb71eed83660bfce9416198b421faeb9f25c48bb68c6ad",
+  "marker/rewrite/no-guidance/user": "5956f4a2d7e2e1d6fdffa1fdb46fcbd1571a50c03714adb46bdac481f825c0f7",
+  "marker/rewrite/guidance/system": "e93c707d05d68343290d2ba8e54bc13276911ce5f3f187d936e2b09e17ed8f35",
+  "marker/rewrite/guidance/user": "5956f4a2d7e2e1d6fdffa1fdb46fcbd1571a50c03714adb46bdac481f825c0f7",
+  "no-marker/rewrite/no-guidance/system": "85667674613592ad0e80a5f501740c0fe88d8c770fdcf5fc11d72347929dc2cc",
+  "no-marker/rewrite/no-guidance/user": "5956f4a2d7e2e1d6fdffa1fdb46fcbd1571a50c03714adb46bdac481f825c0f7",
+  "no-marker/rewrite/guidance/system": "5def25f8d8a10f048d4ff82d36f18576a262f9594f91df3757af5319643db4b4",
+  "no-marker/rewrite/guidance/user": "5956f4a2d7e2e1d6fdffa1fdb46fcbd1571a50c03714adb46bdac481f825c0f7"
+}

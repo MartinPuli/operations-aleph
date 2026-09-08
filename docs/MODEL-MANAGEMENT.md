@@ -5,6 +5,13 @@ drafts; **analysis** judges employee requests. The saved catalogue belongs to th
 gateway installation. Administrators of the same gateway share it. It is not a
 separate catalogue per administrator account or a multi-tenant hosting service.
 
+Each role also exposes **Edit prompts**. Administrators can read and customize
+the complete compiler and analyzer templates, independently of the selected
+weights or connection. Prompt settings are shared by this installation and
+remain associated with their role and format when a model changes. See
+[prompt management](PROMPT-MANAGEMENT.md) for variables, restoration, concurrency
+and the limits of template validation.
+
 Compilation can use a local GGUF, a supported installed CLI, or an endpoint that
 implements OpenAI-style `/chat/completions` with structured JSON output. An
 endpoint on `localhost`, `127.0.0.1`, or `[::1]` may use HTTP without an API key.

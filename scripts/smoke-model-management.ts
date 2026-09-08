@@ -12,6 +12,7 @@ if (!file) throw new Error('Supply the path to an existing general-purpose GGUF'
 const temporary = mkdtempSync(join(tmpdir(), 'warden-model-smoke-'));
 process.env['WARDEN_SETTINGS_PATH'] = join(temporary, 'settings.json');
 process.env['WARDEN_MODEL_CATALOG_PATH'] = join(temporary, 'models.json');
+process.env['WARDEN_PROMPT_TEMPLATES_PATH'] = join(temporary, 'prompts.json');
 process.env['WARDEN_MODELS_DIR'] = join(temporary, 'weights');
 delete process.env['WARDEN_ADAPTER'];
 for (const name of ['WARDEN_MODEL_COMPILER', 'WARDEN_MODEL_ADJUDICATOR', 'WARDEN_COMPILER_API', 'WARDEN_COMPILER_API_KEY', 'WARDEN_COMPILER_CLI']) delete process.env[name];

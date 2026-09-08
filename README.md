@@ -290,7 +290,7 @@ the aggregator.
 
 **Rules** is where policy is drafted and activated. **Activity** explains past
 decisions, **Inbox** holds requests needing review, **Team** manages identities,
-and **Models** shows and changes the compiler and analyzer. Solo installations
+and **Models** shows and changes the compiler, analyzer, and their prompts. Solo installations
 also expose Models alongside **This device** and **Settings**.
 
 ### Read documents before deciding
@@ -370,6 +370,25 @@ not private per-user tenants. Keys are never returned to the browser.
 
 See [model management and HTTP reference](docs/MODEL-MANAGEMENT.md) for storage,
 credential handling, transfer limits, overrides, rollback and custom-model tests.
+
+### Edit compiler and analyzer prompts
+
+In **Models**, choose **Edit prompts** beside the compiler or analyzer. Read and
+edit the complete templates, including rule compilation, policy splitting, and
+the analyzer format used by the current model. The editor explains each dynamic
+variable and the response format that Warden expects. Saved customizations are
+shared by the administrators of this gateway and survive restarts.
+
+Saving validates required context and applies to new work. Existing work keeps
+its original prompt settings. You can restore a template to its shipped default;
+editing does not change policy rules or activate compiler drafts. Concurrent
+administrator edits require resolving a conflict before overwriting a newer
+version. Default prompt text remains unchanged unless an administrator edits it.
+
+A valid template is not proof of policy accuracy. Changing analyzer instructions
+can increase missed violations or false positives; use the Simulator and repeated
+benchmarks to evaluate a customization. See [prompt management](docs/PROMPT-MANAGEMENT.md)
+for the template catalogue, API, storage and verification boundaries.
 
 ### Writing a rule
 

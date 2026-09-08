@@ -1513,3 +1513,26 @@ four synthetic requests are path-comparison evidence, not a production accuracy
 estimate. The false block is retained, alongside an earlier source-changing run
 and a substantially worse optional Qwen3 0.6B result. See the
 [full protocol, per-case results, limitations and source/model hashes](measurements/2026-09-08-document-paths.md).
+
+## 2026-09-08 — editable prompts, unchanged defaults
+
+Prompt management exposes 18 compiler/analyzer/rewrite templates without changing
+the shipped instructions. Fifty hashes captured before the refactor match the
+post-refactor builders and restored defaults exactly, including conversation,
+empty-context, thinking-marker and analyzer-format variants. This is a regression
+check, not another policy-accuracy run.
+
+A temporary real-QVAC installation with `Qwen3-0.6B-Q4_0.gguf` also loaded saved
+custom compiler and analyzer instructions. The synthetic templates deliberately
+prescribed their answers: one valid RuleDraft (3,901 ms) and one COMPLIES label
+(1,171 ms). Request capture verified the custom instructions and substituted
+context; restoration recovered the original effective template hash. No employee
+content or live installation state was used. The [evidence JSON](measurements/2026-09-08-prompt-runtime.json)
+records the model digest and source hashes. This establishes execution and format
+compatibility only, with no accuracy claim.
+
+The bench now records the effective prompt hash and uses it in its cache key.
+An isolated two-cell mock probe created two cache entries for defaults, two new
+entries for a customization, and reused only the original two after restoration.
+The entire comparison keeps one template snapshot. Mock answers establish cache
+behavior only; they do not measure model performance.

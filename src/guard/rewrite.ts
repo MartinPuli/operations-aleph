@@ -26,6 +26,8 @@
  * ALLOW. The suggestion is verified, not asserted.
  */
 import { z } from 'zod';
+import { renderPrompt, withPromptSnapshot } from '../prompts/store.js';
+import { withModelRole } from '../qvac/coordination.js';
 import type { PolicySpec, Rule } from '../policy/types.js';
 import type { QvacAdapter } from '../qvac/types.js';
 import { isolate, isolationPreamble, type IsolationFlags } from './isolate.js';
@@ -149,17 +151,17 @@ type DecisionLike = Pick<Decision, 'firedRules' | 'passes'>;
  * guarantee is downstream — the suggestion is judged by the same guard as any
  * other prompt before anyone sees it.
  */
-function systemPrompt(rule: Rule, nonce: string): string {
+export function defaultRewriteSystem(rule: Rule, nonce: string, tokens = false): string {
   const allowed = rule.examples.compliant.slice(0, SHOTS).map((e) => `· ${e}`).join('\n');
 
   return [
     'A company rule blocked the request below. Rewrite it so it stays inside the rule.',
     '',
-    `RULE: ${rule.text}`,
-    ...(rule.guidance ? ['', `WHAT THE PERSON IS TOLD TO DO INSTEAD: ${rule.guidance}`] : []),
+    `RULE: ${tokens ? '{{rule}}' : rule.text}`,
+    ...(tokens ? ['{{guidance}}'] : rule.guidance ? ['', `WHAT THE PERSON IS TOLD TO DO INSTEAD: ${rule.guidance}`] : []),
     '',
     'Requests of this kind that are allowed:',
-    allowed,
+    tokens ? '{{allowed}}' : allowed,
     '',
     'Rewrite the message so it asks only for the part the rule permits.',
     '- Remove what the rule prohibits. Do not restate it in other words, do not',
@@ -170,8 +172,8 @@ function systemPrompt(rule: Rule, nonce: string): string {
     '  version of the same request.',
     '',
     'Answer with the rewritten request and nothing else.',
-    isolationPreamble(nonce),
-    thinkingMarker('adjudicator')
+    tokens ? '{{isolation}}' : isolationPreamble(nonce),
+    tokens ? '{{thinking}}' : thinkingMarker('adjudicator')
   ].join('\n');
 }
 
@@ -211,7 +213,7 @@ export function rewriteGate(args: {
  * Costs two model passes — one to write it, one to judge it — which is why the
  * caller charges quota and why this is never on the decision path.
  */
-export async function suggestRewrite(
+async function suggestRewriteBody(
   qvac: QvacAdapter,
   args: {
     actor: Actor;
@@ -243,8 +245,8 @@ export async function suggestRewrite(
     const res = await qvac.completeJSON(
       {
         role: 'adjudicator',
-        system: systemPrompt(rule, iso.nonce),
-        user: `${iso.envelope}\n\nRewrite the message.`,
+        system: rewriteSystem(rule, iso.nonce),
+        user: renderPrompt('analyzer.rewrite.user', { message: iso.envelope }, () => `${iso.envelope}\n\nRewrite the message.`),
         // A restated request, not an essay. Long enough for a sentence or two.
         maxTokens: 200,
         // No kvKey, for the reason documented in `adjudicate.ts`: the cache keys
@@ -282,4 +284,16 @@ export async function suggestRewrite(
 /** A re-check stopped by the daily ceiling is not the rewrite being refused. */
 function quotaBlocked(passes: PassTrace[]): boolean {
   return passes.some((p) => p.pass === 'quota' && p.verdict === 'BLOCK');
+}
+
+function rewriteSystem(rule: Rule, nonce: string): string {
+  return renderPrompt('analyzer.rewrite.system', { rule: rule.text,
+    guidance: rule.guidance ? `\nWHAT THE PERSON IS TOLD TO DO INSTEAD: ${rule.guidance}` : '',
+    allowed: rule.examples.compliant.slice(0, SHOTS).map((example) => `· ${example}`).join('\n'),
+    isolation: isolationPreamble(nonce), thinking: thinkingMarker('adjudicator')
+  }, () => defaultRewriteSystem(rule, nonce));
+}
+/** Generating a rewrite and checking it use the same instructions and judge. */
+export function suggestRewrite(...args: Parameters<typeof suggestRewriteBody>): ReturnType<typeof suggestRewriteBody> {
+  return withModelRole('adjudicator', () => withPromptSnapshot(() => suggestRewriteBody(...args)));
 }

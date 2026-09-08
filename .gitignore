@@ -98,6 +98,8 @@ data/audit-eval.witness.json
 # Operational settings set from the console. Holds a provider API key.
 data/settings.json
 data/models.json
+# Administrator-owned compiler/analyzer templates, distinct from retained request text.
+data/prompts.json
 data/prompts.jsonl
 # Failed administrative attempts, kept across restarts so a restart is not a
 # fresh set of guesses. Written 0600.

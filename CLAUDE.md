@@ -50,6 +50,9 @@ src/models/      per-installation model catalogue, transfers, tests and activati
   store.ts         private atomic state, fingerprints and redacted public entries
   manager.ts       role compatibility, active-entry restrictions and rollback
   transfers.ts     bounded uploads/path imports/public HTTPS downloads
+src/prompts/     administrator-owned prompt catalogue and immutable request snapshots
+  catalog.ts       full role/stage templates from the original default builders
+  store.ts         private atomic overrides, required variables and revision conflicts
 src/policy/      rules, roles, people, retrieval, the compiler
   compile.ts       the compiler's logic; prompts.ts is what it says to the model
   preview.ts       a draft judged by the real adjudicator before anyone activates it
@@ -200,6 +203,15 @@ local, and hold the role lease across the whole decision. A failed load restores
 prior settings; an edit invalidates previous compatibility tests. Read
 `docs/MODEL-MANAGEMENT.md` before changing these boundaries. Compatibility is
 not evidence of policy accuracy.
+
+**Prompt text is also administrative state.** Read `docs/PROMPT-MANAGEMENT.md`
+before changing compiler/analyzer prompt builders. Defaults must remain byte
+identical unless a measured default change is explicitly intended. Templates
+replace complete prompts with one-pass literal variables; request data is never
+re-interpolated. Hold one snapshot across a split and its rules, or an analysis
+and all its windows. Keep schema/parsing/isolation contracts in code. The bench
+cache keys on effective template hashes so editing instructions cannot reuse
+answers generated under another prompt. Never put template text in the audit.
 
 **When you add a pass with a new enum label, add that label to the mock.** Its
 `mockValue` picks from the enum by matching known benign and hostile names; a

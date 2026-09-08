@@ -57,6 +57,7 @@ import { policyFromFile, rulesForActor } from '../src/policy/store.js';
 import type { PolicySpec, Rule } from '../src/policy/types.js';
 import { adapter, adapterName, isMock } from '../src/qvac/index.js';
 import { resolvedModel } from '../src/qvac/client.js';
+import { promptMetadata, withPromptSnapshot } from '../src/prompts/store.js';
 
 /**
  * The settings under test.
@@ -251,7 +252,11 @@ function variantKey(name: string, variant: { options: AdjudicateOptions; injecti
         injection: variant.injection ?? false,
         model,
         detector,
-        adapter: adapterName()
+        adapter: adapterName(),
+        // A saved edit asks a different question with the same weights. Key
+        // on effective text so restored defaults may reuse their own answers,
+        // while a customization cannot inherit a previous prompt's scores.
+        promptHash: promptMetadata().promptHash
       })
     )
     .digest('hex')
@@ -588,6 +593,8 @@ async function main(): Promise<void> {
     ? { adapter: 'mock' }
     : { adjudicator: resolvedModel('adjudicator'), detector: resolvedModel('detector') };
   console.log(`  models: ${Object.entries(models).map(([k, v]) => `${k}=${v}`).join(' · ')}`);
+  const prompts = promptMetadata();
+  console.log(`  prompt templates: ${prompts.promptHash} (revision ${prompts.promptRevision})`);
   if (isMock()) {
     console.log(
       'WARNING: the mock adapter answers from keyword lists. This run measures the\n' +
@@ -663,6 +670,7 @@ async function main(): Promise<void> {
         policyVersion: policy.version,
         adapter: adapterName(),
         models,
+        prompts,
         concurrency,
         cells: cells.length,
         variants: bName ? [aName, bName] : [aName],
@@ -685,4 +693,9 @@ async function main(): Promise<void> {
   await adapter().dispose();
 }
 
-void main();
+// Pin both variants and every cell to the same template revision, including
+// when an administrator edits the installation while this process is running.
+void withPromptSnapshot(main).catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+});

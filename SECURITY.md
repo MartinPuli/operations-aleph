@@ -136,6 +136,23 @@ provides all attachments to that hook.
 
 ### Administrator-owned models
 
+Compiler and analyzer templates are also administrative configuration. The
+`/api/prompts` read, save and restore routes use the same authorization gate as
+model settings. Template edits can weaken model observations; structural
+validation is not a guarantee of policy accuracy. Required dynamic context,
+response schemas, isolation, ratification and verdict aggregation remain in
+code. Rewrite customizations do not remove the original-block binding, one-shot
+limit or mandatory re-check.
+
+Templates are plaintext in `data/prompts.json` (or
+`WARDEN_PROMPT_TEMPLATES_PATH`), atomically written `0600` and gitignored. They
+are not the retained employee request store. Do not put credentials in template
+text: authorized administrators can read it, and compiler instructions travel
+to the configured compiler service when compilation is offloaded. Each operation
+keeps an immutable snapshot; revision checks prevent accidental concurrent
+overwrites. The audit records revision and content hashes without copying
+template text. See [prompt management](docs/PROMPT-MANAGEMENT.md).
+
 `/api/settings/models` and its import, test, activation and deletion routes use
 the existing administrative gate. Models belong to one gateway installation;
 they are not isolated per administrator. A direct loopback request may import a
