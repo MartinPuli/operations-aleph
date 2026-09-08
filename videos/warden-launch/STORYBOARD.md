@@ -1,42 +1,31 @@
-# Warden — current 26.10-second v10 sequence
+# Warden — v11 final sequence
 
-**1920 × 1080, 30 fps, 783 frames.** V10 strengthens the prompt → drafts → human review → activation sequence and shortens the film by 1.90 seconds. Four narration gaps account for 0.80 seconds; removing spoken “CLI” and its adjacent pause accounts for 1.10 seconds. Both picture and narration now say **Codex**. No new audio is generated.
+**21.90 seconds · 657 frames · 1920 × 1080 · 30 fps.** These are the verified output dimensions and source timings. The final media review is recorded in `production/FINAL-QA.md`.
 
-V9’s prompt top padding and the rule-panel geometry remain. The approved v8 outro retains its exact choreography on the original internal clock; its current output range is **22.20–26.10 seconds**. `production/v10-audio-cuts.json`, `production/v10-motion.json` and `assets/js/pace-map.js` define this revision. The v10 master and companions are exported and media verification passes. `production/FINAL-QA.md` records the full review and verification.
+The new Liam narration runs at its original speed. The workbench’s canonical clocks are mapped linearly into the spoken sections; the approved 3D outro keeps its original internal clock. All times below are output seconds unless labeled canonical/internal.
 
-| Output time | Complete headline | Visible action |
+| Output | Headline and visible action | Scene clock |
 | --- | --- | --- |
-| 0–1.95 s | One click can leak client data. | Dark neutral Workspace. “Draft a client update.” The confidential client brief slots in, Send clicks at 0.72 s, and complete response lines follow. Attachment transition begins at 1.46 s. |
-| 1.95–3.94 s | Here’s what leaves your company. | Contact, bank details and pricing rows visibly copy from Company across the boundary to External AI. The outgoing request fills with the same information; “Confidential data shared” completes the event. |
-| 3.94–4.66 s | Private pricing leaves, too. | Private pricing code sends its illustrated price value to the external request. |
-| 4.66–5.43 s | Private pricing leaves, too. | A matching internal pricing plan continues the same action and dark visual language. |
-| 5.43–6.55 s | Take control with Warden. | The route becomes a policy boundary and opens into the manager composer. The complete prompt and lines enter from 5.43–5.83 s, retaining v9 top padding. |
-| 6.55–7.28 s | Describe what to protect. | “Help our team write client emails without exposing confidential information.” Send presses at 6.98 s. The submitted prompt docks at 7.05–7.27 s as the proposed-rules panel starts entering at 7.26 s. |
-| 7.28–8.52 s | Warden drafts your rules. | The panel settles by 7.47 s. Complete rows arrive at 7.42 / 7.53 / 7.64 s and finish by 7.84 s: BLOCK Client contact details, BLOCK Bank account details, REVIEW Non-public pricing. They remain inactive drafts; no fixed count is promised. |
-| 8.52–10.90 s | Review. Then activate. | The cursor inspects the three proposals at 8.52 / 8.82 / 9.12 s. Activate rules presses at 10.35 s; active status starts at 10.44 s. The camera begins pulling back at approximately 10.697 s. |
-| 10.90–11.80 s | Warden enforces your rules. | The pullback finishes around 11.035 s, revealing Product, Engineering and Operations holding their laptops. Narration preserves connected-request scope. |
-| 11.80–13.60 s | “Include the client’s details.” | Enter the employee’s laptop. A private-data request approaches the configured boundary before its decision. |
-| 13.60–15.00 s | Blocked by your rule. | The request stops; the whole blocked heading resolves after impact. “Before it reaches the model.” |
-| 15.00–16.60 s | You make the call. | A separate sensitive request remains pending for human review. Approve and Block are visible and neither is executed. |
-| 16.60–18.10 s | Public work goes through. | A separate public-information request passes. “Public information. Allowed.” |
-| 18.10–21.05 s | Connect their AI tools. | Whole people/laptops connect separately: Claude Code, Codex and compatible tools. The removed “CLI” does not appear in the label or narration. |
-| 21.05–22.20 s | One policy across your teams. | The same people retain their identities as tool labels become configured outcomes. |
-| 22.20–26.10 s | Download for free. | A centered brand aperture opens the dark ink stage through 22.57 s. The same 3D shield turns at center and settles larger at left beside the official letters-only wordmark. One mint download action with a drawn arrow reveals at 23.26–23.51 s; URL below it at 23.31–23.54 s. Platforms reveal at 23.88–24.10 s; Open source. Free for everyone. appears under the wordmark at 24.30–24.54 s. Static by 25.15 s through the end. |
+| 0–3.98 | **Move fast. Keep control.** A confidential client file meets an active team policy and stops at 0.78. A public document crosses at 1.62 and becomes a completed public update. “Warden checks connected requests before they reach the model” states the scope. | Hook 0–3.98 |
+| 3.98–8.82 | **Tell Warden what to protect.** The manager’s full business prompt is sent, docks above Warden’s proposed rules, and leads into complete draft rows. **You choose what goes live.** A cursor reviews the proposals before a separate Activate rules press; drafts become active. | Policy 0–7 |
+| 8.82–14.32 | **Their tools. Your rules.** An active policy stays above Claude Code/Product and Codex/Engineering workspaces. Each connection is acknowledged separately; an Operations/Compatible tools lane joins below. | Tools 0–5.8 |
+| 14.32–17.98 | **Keep the client file private.** Client contact and bank details remain in a blocked attachment on the left. **Let public work keep moving.** A public FAQ produces an update on the right. Both outcomes are examples under the active configured policy. | Proof 0–4.5 |
+| 17.98–21.90 | The approved official 3D shield turns and settles beside the letters-only wordmark. **Download for free** appears below, followed by the repository address, platform labels and **Open source. Free for everyone.** The outro remains one continuous composition through the end. | Internal 24.10–28.02 |
 
-Outro layout on the 1920 × 1080 frame remains: aperture center **(960, 450)**; settled symbol bounds **x314–686 / y138–598**; letters-only wordmark **(780, 267), 830 × 199**; mint action **(450, 728), 1020 × 126**. The original mesh, material and turn are retained, including v8’s final environment yaw of **−0.44**. Every outro event is its original output time minus 1.90 seconds.
+The exact manager prompt is **“Help our team write client emails without exposing confidential information.”** The proposed examples are Client contact details — BLOCK, Bank account details — BLOCK and Non-public pricing — REVIEW. They illustrate possible drafts, not a fixed number that Warden always creates.
 
-## Narration and sound
+## Causal motion and transitions
 
-The original Derek / Eleven v3 performance is edited, not regenerated. Original-audio intervals removed are **6.615–6.865**, **8.605–8.775**, **10.700–10.780**, **11.365–11.665** and **21.000–22.100 seconds**. `production/v10-audio-cuts.json` defines the complete mapping. The first four intervals shorten pauses; the last removes spoken “CLI” and its adjacent pause while preserving **Codex** and **or**. `production/voiceover-v10-en.txt` is the current script.
+Policy actions map from canonical seconds using `output = 3.98 + canonical × 4.84 / 7`. Send presses at **5.121**. The prompt docks at **5.238–5.480**; the rule panel enters at **5.397–5.639**. Rule arrivals begin at **5.467 / 5.598 / 5.729** and the final row settles by **6.027**. Review follows at **6.331 / 6.621 / 6.912**. Activate rules presses at **7.679**, and active status begins at **7.797**. Headline two begins at **7.022**. Whole phrases and rows move as units.
 
-Approximate phrase onsets, mapped from the original alignment aids, are: Take control **5.429 s**, Describe **6.695**, Warden drafts **8.401**, Review **9.773**, Activate **10.346**, Connected requests **10.915**, Block **13.739**, Review sensitive requests **14.993**, Public work **16.675**, Connect **18.203**, Codex **19.603**, Get Warden **22.587**, Free for everyone **23.484** and Open source **24.529**. These are editing aids, not listening approval.
+Claude Code connects at **9.342** and Codex at **10.859**. The Operations lane enters at **12.044** and reaches its connected state by **13.087**. In the proof, the private attachment stops at **15.499**, public output begins at **15.784**, and its completion state starts at **16.882**. These are authored visual timings, not product-latency claims.
 
-The existing native ElevenLabs effects are independently re-anchored to the picture rather than cut with the narration. The completed audio is `assets/audio/warden-launch-v10-mix.wav`. Encoded v10 audio measures −17.5 LUFS, −1.8 dBTP and 2.3 LU LRA, rounded. Automatic recognition verifies the edited 69-word script after brand-homophone normalization, including the ASR spelling “codecs” for Codex; that spelling does not indicate lost speech.
+The opening policy blade becomes the wipe edge into the manager’s workbench. The next two scene changes move both full surfaces in one horizontal strip. Each transition spans **0.36 seconds**, from 0.14 seconds before its boundary to 0.22 seconds after: **3.840–4.200**, **8.680–9.040** and **14.180–14.540**. This preserves the direction of the workflow rather than alternating unrelated cards. The previous cartoon figures and cream scenes are absent from the current render path.
 
-## Delivery and verification
+The outro uses `internal = output + 6.12`. The shield turn completes at **18.630**; the wordmark enters at **18.340–18.590**. Download reveals at **19.040–19.290**, the URL at **19.090–19.320**, platforms at **19.660–19.880** and open-source copy at **20.080–20.320**. The original single reflected-light pass runs **19.130–20.430**. No late scene reset is introduced.
 
-Completed exports are `renders/warden-launch-26s-v10.mp4`, matching `-silent.mp4` and `-poster.png` companions, plus `renders/warden-prompt-v10.mp4`. The poster samples **8.9 seconds**; the **6.1-second** prompt excerpt covers master time **5.1–11.2 seconds**. The file-name shorthand is 26s; verification confirms **26.100 seconds / 783 Full HD frames at 30 fps**, H.264/yuv420p, BT.709 and AAC 48 kHz stereo. Source checks pass with zero errors/warnings, zero layout issues across nine samples and 11/11 text-contrast checks. Twenty-eight encoded-frame samples were captured. `production/FINAL-QA.md` owns the full review and final verification. No new v10 outro excerpt was needed; the approved v8 outro remains visually unchanged.
+## Narration and delivery status
 
-V9 spacing, v8 outro choreography and earlier renders remain meaningful revision history. The original narration provenance is in `production/VOICEOVER.md`; older source backups remain in `production/28s-v5-before-outro/` and `production/31s-v4-before-v5/`.
+`production/voiceover-v11-en.txt` is the exact Liam / Eleven v3 script. Selected take 1 is 20.64 seconds with no retime; speech starts around 0.08 seconds. Phrase ranges used for the edit are hook **0.08–3.98**, policy **3.98–8.82**, tools **8.82–14.32**, proof **14.32–17.98** and CTA **17.98–20.64**. Automatic word timestamps are an alignment aid, not subjective listening approval.
 
-All records, prompts and decisions are illustrative. Multiple drafts require the capable compiler path; protection applies to configured connected requests. Free/open-source and platform positioning are owner-confirmed, with published installer availability unverified by this film work.
+The current mix contains eight short accents from existing native ElevenLabs sources and is documented in `production/sound-design-v11.json`. The planned master is `renders/warden-launch-22s-v11.mp4`, with matching silent and poster companions. Mix measurements and source inspection do not substitute for final encoded QA. V10 records remain history and do not certify this revision.

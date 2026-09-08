@@ -1,0 +1,1 @@
+Let your team move fast with AI, with rules YOU control. Tell Warden what to protect. It drafts the rules; you review and activate them. Connect Claude Code or Codex, and Warden checks those requests before they reach the model. The client file stays put while the public update goes through. Download Warden for FREE. It's open source.

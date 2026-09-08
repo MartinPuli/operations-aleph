@@ -1,0 +1,181 @@
+{
+  "status": "Locked to Liam take1 at original speed and v11 canonical scene events",
+  "duration": 21.9,
+  "fps": 30,
+  "output": "assets/audio/warden-launch-v11-mix.wav",
+  "report": "production/sound-design-v11.json",
+  "voice": {
+    "path": "assets/audio/warden-liam-v11-take1.mp3",
+    "start": 0,
+    "trim_start": 0,
+    "target_lufs": -17.5,
+    "ceiling_dbtp": -3.0,
+    "alignment_source": "production/voice-v11-take1-words.json",
+    "tempo": 1.0,
+    "trim_end": null
+  },
+  "phrases": [
+    {
+      "id": "hook",
+      "start": 0.08,
+      "end": 3.98
+    },
+    {
+      "id": "make_policy",
+      "start": 3.98,
+      "end": 8.82
+    },
+    {
+      "id": "connect_tools",
+      "start": 8.82,
+      "end": 14.32
+    },
+    {
+      "id": "proof",
+      "start": 14.32,
+      "end": 17.98
+    },
+    {
+      "id": "cta",
+      "start": 17.98,
+      "end": 20.64
+    }
+  ],
+  "sources": {
+    "transfer": {
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606"
+    },
+    "latch": {
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2"
+    }
+  },
+  "events": [
+    {
+      "id": "first_private_stop",
+      "source": "latch",
+      "at": 0.78,
+      "trim": [
+        0.055,
+        0.235
+      ],
+      "peak_dbfs": -14,
+      "filters": "highpass=f=180,lowpass=f=6800",
+      "fade_out": 0.035,
+      "visual_timing_basis": "hook unscaled .78 stop"
+    },
+    {
+      "id": "first_public_pass",
+      "source": "transfer",
+      "at": 1.62,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -21,
+      "filters": "highpass=f=600,lowpass=f=7200",
+      "fade_out": 0.025,
+      "visual_timing_basis": "hook unscaled1.62 public crossing"
+    },
+    {
+      "id": "submit_instruction",
+      "source": "transfer",
+      "at": 5.120857142857143,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -23,
+      "filters": "highpass=f=220,lowpass=f=6800",
+      "fade_out": 0.025,
+      "visual_timing_basis": "policy 3.98 + canonical1.65 *4.84/7"
+    },
+    {
+      "id": "activate_rules",
+      "source": "latch",
+      "at": 7.679142857142857,
+      "trim": [
+        0.045,
+        0.26
+      ],
+      "peak_dbfs": -16,
+      "filters": "highpass=f=180,lowpass=f=7000",
+      "fade_out": 0.04,
+      "visual_timing_basis": "policy 3.98 + canonical5.35 *4.84/7"
+    },
+    {
+      "id": "tools_connected",
+      "source": "transfer",
+      "at": 12.945,
+      "trim": [
+        0.145,
+        0.225
+      ],
+      "peak_dbfs": -22,
+      "filters": "highpass=f=600,lowpass=f=7000",
+      "fade_out": 0.02,
+      "visual_timing_basis": "tools 8.82 + canonical4.35 *5.5/5.8"
+    },
+    {
+      "id": "private_stays",
+      "source": "latch",
+      "at": 15.499333333333334,
+      "trim": [
+        0.055,
+        0.235
+      ],
+      "peak_dbfs": -21,
+      "filters": "highpass=f=300,lowpass=f=6200",
+      "fade_out": 0.035,
+      "visual_timing_basis": "proof 14.32 + canonical1.45 *3.66/4.5"
+    },
+    {
+      "id": "public_update_done",
+      "source": "transfer",
+      "at": 16.882,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -21,
+      "filters": "highpass=f=600,lowpass=f=7200",
+      "fade_out": 0.025,
+      "visual_timing_basis": "proof 14.32 + canonical3.15 *3.66/4.5"
+    },
+    {
+      "id": "brand_settles",
+      "source": "latch",
+      "at": 18.46,
+      "trim": [
+        0.055,
+        0.235
+      ],
+      "peak_dbfs": -18,
+      "filters": "highpass=f=260,lowpass=f=7000",
+      "fade_out": 0.035,
+      "visual_timing_basis": "outro start17.98 + landing.48"
+    }
+  ],
+  "score": {
+    "enabled": false,
+    "path": "assets/audio/warden-commercial-score.wav",
+    "note": "Disabled for this delivery: existing instrumental has baked accents that do not follow the new picture. No score in this mix.",
+    "start": 1.4,
+    "trim_start": 0,
+    "duration": 20.5,
+    "target_lufs": -30,
+    "filters": "highpass=f=70,lowpass=f=9000,equalizer=f=2200:t=q:w=0.65:g=-5",
+    "duck_db": -5,
+    "attack": 0.06,
+    "release": 0.18,
+    "fade_in": 0.25,
+    "fade_out": 0.65
+  },
+  "master": {
+    "target_lufs": -16.5,
+    "ceiling_dbtp": -1.2
+  },
+  "direction": "Eight object contacts. Only the first stop has a strong accent. No click per rule, keyboard simulation, sound per heading/platform, interface chimes, whooshes or additional closing sting. Voice leads; preserve breathing room.",
+  "review_limits": "Root selected Liam take1 after automatic recognition. This builder verifies file identity, full decoded voice duration, finite levels and exact effect alignment; no auditory quality judgment is claimed."
+}

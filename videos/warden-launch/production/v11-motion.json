@@ -1,0 +1,399 @@
+{
+  "version": 11,
+  "status": "exported_and_verified",
+  "intent": "Show the benefit first, then the manager instruction, proposed rules, human activation, connected tools and private/public outcomes.",
+  "output": {
+    "duration_seconds": 21.9,
+    "fps": 30,
+    "frames": 657,
+    "width": 1920,
+    "height": 1080,
+    "files": {
+      "master": "renders/warden-launch-22s-v11.mp4",
+      "silent": "renders/warden-launch-22s-v11-silent.mp4",
+      "poster": "renders/warden-launch-22s-v11-poster.png"
+    }
+  },
+  "renderer": {
+    "entry": "index.html",
+    "new_scene_sources": [
+      "assets/js/hook-v11.js",
+      "assets/js/product-workbench-v11.js"
+    ],
+    "retained_outro_sources": [
+      "assets/js/end-card.js",
+      "assets/js/end-logo-3d.js"
+    ],
+    "timing_authority": "index.html beats; each canonical interval is mapped linearly to its output interval"
+  },
+  "scenes": [
+    {
+      "id": "hook",
+      "output_seconds": [
+        0,
+        3.98
+      ],
+      "canonical_seconds": [
+        0,
+        3.98
+      ]
+    },
+    {
+      "id": "policy",
+      "output_seconds": [
+        3.98,
+        8.82
+      ],
+      "canonical_seconds": [
+        0,
+        7
+      ]
+    },
+    {
+      "id": "tools",
+      "output_seconds": [
+        8.82,
+        14.32
+      ],
+      "canonical_seconds": [
+        0,
+        5.8
+      ]
+    },
+    {
+      "id": "proof",
+      "output_seconds": [
+        14.32,
+        17.98
+      ],
+      "canonical_seconds": [
+        0,
+        4.5
+      ]
+    },
+    {
+      "id": "outro",
+      "output_seconds": [
+        17.98,
+        21.9
+      ],
+      "canonical_seconds": [
+        24.1,
+        28.02
+      ]
+    }
+  ],
+  "motion_language": {
+    "whole_phrases_and_rows": true,
+    "entrance_ease": "quartic ease out",
+    "travel_ease": "smoothstep",
+    "dark_workbench": true,
+    "cartoon_people_in_render_path": false,
+    "cream_product_scenes_in_render_path": false,
+    "latency_claim": false
+  },
+  "manager_prompt": "Help our team write client emails without exposing confidential information.",
+  "example_drafts": [
+    {
+      "name": "Client contact details",
+      "action": "BLOCK"
+    },
+    {
+      "name": "Bank account details",
+      "action": "BLOCK"
+    },
+    {
+      "name": "Non-public pricing",
+      "action": "REVIEW"
+    }
+  ],
+  "fixed_rule_count_claim": false,
+  "actions": {
+    "hook": {
+      "private_stop": {
+        "canonical_seconds": 0.78,
+        "output_seconds": 0.78
+      },
+      "public_crossing_start": {
+        "canonical_seconds": 1.62,
+        "output_seconds": 1.62
+      },
+      "public_complete_reveal": {
+        "canonical_seconds": [
+          2.45,
+          2.69
+        ],
+        "output_seconds": [
+          2.45,
+          2.69
+        ]
+      }
+    },
+    "policy": {
+      "send": {
+        "canonical_seconds": 1.65,
+        "output_seconds": 5.120857
+      },
+      "prompt_dock": {
+        "canonical_seconds": [
+          1.82,
+          2.17
+        ],
+        "output_seconds": [
+          5.2384,
+          5.4804
+        ]
+      },
+      "draft_panel": {
+        "canonical_seconds": [
+          2.05,
+          2.4
+        ],
+        "output_seconds": [
+          5.397429,
+          5.639429
+        ]
+      },
+      "row_arrivals": {
+        "canonical_seconds": [
+          2.15,
+          2.34,
+          2.53
+        ],
+        "output_seconds": [
+          5.466571,
+          5.597943,
+          5.729314
+        ]
+      },
+      "last_row_settles": {
+        "canonical_seconds": 2.96,
+        "output_seconds": 6.026629
+      },
+      "review": {
+        "canonical_seconds": [
+          3.4,
+          3.82,
+          4.24
+        ],
+        "output_seconds": [
+          6.330857,
+          6.621257,
+          6.911657
+        ]
+      },
+      "second_headline": {
+        "canonical_seconds": 4.4,
+        "output_seconds": 7.022286
+      },
+      "activate_press": {
+        "canonical_seconds": 5.35,
+        "output_seconds": 7.679143
+      },
+      "active": {
+        "canonical_seconds": 5.52,
+        "output_seconds": 7.796686
+      }
+    },
+    "tools": {
+      "claude_connected": {
+        "canonical_seconds": 0.55,
+        "output_seconds": 9.341552
+      },
+      "workspace_split": {
+        "canonical_seconds": [
+          1.56,
+          2.14
+        ],
+        "output_seconds": [
+          10.29931,
+          10.84931
+        ]
+      },
+      "codex_connected": {
+        "canonical_seconds": 2.15,
+        "output_seconds": 10.858793
+      },
+      "operations_enters": {
+        "canonical_seconds": 3.4,
+        "output_seconds": 12.044138
+      },
+      "operations_connected": {
+        "canonical_seconds": 4.5,
+        "output_seconds": 13.087241
+      }
+    },
+    "proof": {
+      "private_blocked": {
+        "canonical_seconds": 1.45,
+        "output_seconds": 15.499333
+      },
+      "public_output": {
+        "canonical_seconds": 1.8,
+        "output_seconds": 15.784
+      },
+      "public_headline": {
+        "canonical_seconds": 2.6,
+        "output_seconds": 16.434667
+      },
+      "public_complete": {
+        "canonical_seconds": 3.15,
+        "output_seconds": 16.882
+      }
+    },
+    "outro": {
+      "shield_turn": {
+        "canonical_seconds": [
+          24.1,
+          24.75
+        ],
+        "output_seconds": [
+          17.98,
+          18.63
+        ]
+      },
+      "wordmark": {
+        "canonical_seconds": [
+          24.46,
+          24.71
+        ],
+        "output_seconds": [
+          18.34,
+          18.59
+        ]
+      },
+      "download": {
+        "canonical_seconds": [
+          25.16,
+          25.41
+        ],
+        "output_seconds": [
+          19.04,
+          19.29
+        ]
+      },
+      "url": {
+        "canonical_seconds": [
+          25.21,
+          25.44
+        ],
+        "output_seconds": [
+          19.09,
+          19.32
+        ]
+      },
+      "platforms": {
+        "canonical_seconds": [
+          25.78,
+          26.0
+        ],
+        "output_seconds": [
+          19.66,
+          19.88
+        ]
+      },
+      "open_source": {
+        "canonical_seconds": [
+          26.2,
+          26.44
+        ],
+        "output_seconds": [
+          20.08,
+          20.32
+        ]
+      },
+      "single_reflection_pass": {
+        "canonical_seconds": [
+          25.25,
+          26.55
+        ],
+        "output_seconds": [
+          19.13,
+          20.43
+        ]
+      }
+    }
+  },
+  "transitions": [
+    {
+      "to": "policy",
+      "output_seconds": [
+        3.84,
+        4.2
+      ],
+      "method": "policy_blade_wipe",
+      "ease": "smoothstep"
+    },
+    {
+      "to": "tools",
+      "output_seconds": [
+        8.68,
+        9.04
+      ],
+      "method": "continuous_horizontal_strip",
+      "ease": "smoothstep"
+    },
+    {
+      "to": "proof",
+      "output_seconds": [
+        14.18,
+        14.54
+      ],
+      "method": "continuous_horizontal_strip",
+      "ease": "smoothstep"
+    }
+  ],
+  "outro": {
+    "mapping": "internal_seconds = output_seconds + 6.12",
+    "preserved": "Official shield geometry, silver/mint material, light rig and approved continuous choreography.",
+    "one_continuous_shot": true,
+    "late_reset": false
+  },
+  "voice": {
+    "name": "Liam",
+    "voice_id": "TX3LPaxmHKxFdv7VOQHJ",
+    "model": "eleven_v3",
+    "selected_take": 1,
+    "path": "assets/audio/warden-liam-v11-take1.mp3",
+    "raw_duration_seconds": 20.64,
+    "tempo_changed": false,
+    "pitch_changed": false,
+    "script": "production/voiceover-v11-en.txt",
+    "alignment": "production/voice-v11-take1-words.json",
+    "flow_id": "mlIvhilVFN6WUmcmE8vf",
+    "completed_takes": 2,
+    "failed_generations": 2,
+    "failed_generation_charge_status": "UI reported no charge",
+    "retrieval": "Authorized native UI downloads of already generated takes",
+    "listening_approval": false
+  },
+  "audio": {
+    "mix": "assets/audio/warden-launch-v11-mix.wav",
+    "record": "production/sound-design-v11.json",
+    "source_duration_seconds": 21.9,
+    "source_sample_rate": 48000,
+    "source_channels": 2,
+    "native_sfx_cues": 8,
+    "source_mix_lufs": -17.08,
+    "source_mix_dbtp": -1.2,
+    "encoded_measurements_pending": true
+  },
+  "scope": [
+    "Authored product examples; not a live compiler recording.",
+    "Multiple drafts require a capable configured compiler.",
+    "Drafts require human review and explicit activation.",
+    "Illustrated enforcement applies to connected requests and configured policies.",
+    "No universal interception, detection, fixed rule count or processing-speed guarantee.",
+    "Free/open-source/platform positioning is owner-confirmed; published installers are not verified by this production."
+  ],
+  "history": [
+    "production/index-v10-before-v11.html",
+    "production/v10-motion.json",
+    "production/v10-audio-cuts.json",
+    "production/voiceover-v10-en.txt"
+  ],
+  "verification": {
+    "status": "pending_parent_render_and_encoded_review",
+    "this_record_is_not_final_qa": true
+  }
+}

@@ -1,0 +1,251 @@
+{
+  "version": 11,
+  "duration": 21.9,
+  "fps": 30.0,
+  "video_frames": 657,
+  "sample_rate": 48000,
+  "channels": 2,
+  "config": "/Users/martinezequielpulitano/warden/videos/warden-launch/production/v11-sound-plan.json",
+  "config_sha256": "d8d13c6356eb9d23cea2a67ac926ae1cec24a14371bd14cff749eae1be1a8dea",
+  "phrases": [
+    {
+      "id": "hook",
+      "start": 0.08,
+      "end": 3.98
+    },
+    {
+      "id": "make_policy",
+      "start": 3.98,
+      "end": 8.82
+    },
+    {
+      "id": "connect_tools",
+      "start": 8.82,
+      "end": 14.32
+    },
+    {
+      "id": "proof",
+      "start": 14.32,
+      "end": 17.98
+    },
+    {
+      "id": "cta",
+      "start": 17.98,
+      "end": 20.64
+    }
+  ],
+  "events": [
+    {
+      "id": "first_private_stop",
+      "source": "latch",
+      "at": 0.78,
+      "trim": [
+        0.055,
+        0.235
+      ],
+      "peak_dbfs": -14,
+      "filters": "highpass=f=180,lowpass=f=6800",
+      "fade_out": 0.035,
+      "visual_timing_basis": "hook unscaled .78 stop",
+      "source_path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "effective_filter": "atrim=start=0.055:end=0.235,asetpts=PTS-STARTPTS,highpass=f=180,lowpass=f=6800",
+      "gain_db": -8.833528461257494,
+      "output_start": 0.637875,
+      "duration": 0.18,
+      "processed_peak_offset": 0.142125,
+      "actual_peak_time": 0.78
+    },
+    {
+      "id": "first_public_pass",
+      "source": "transfer",
+      "at": 1.62,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -21,
+      "filters": "highpass=f=600,lowpass=f=7200",
+      "fade_out": 0.025,
+      "visual_timing_basis": "hook unscaled1.62 public crossing",
+      "source_path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "effective_filter": "atrim=start=0.238:end=0.335,asetpts=PTS-STARTPTS,highpass=f=600,lowpass=f=7200",
+      "gain_db": -13.91896035172158,
+      "output_start": 1.6058333333333332,
+      "duration": 0.097,
+      "processed_peak_offset": 0.014166666666666666,
+      "actual_peak_time": 1.6199999999999999
+    },
+    {
+      "id": "submit_instruction",
+      "source": "transfer",
+      "at": 5.120857142857143,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -23,
+      "filters": "highpass=f=220,lowpass=f=6800",
+      "fade_out": 0.025,
+      "visual_timing_basis": "policy 3.98 + canonical1.65 *4.84/7",
+      "source_path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "effective_filter": "atrim=start=0.238:end=0.335,asetpts=PTS-STARTPTS,highpass=f=220,lowpass=f=6800",
+      "gain_db": -15.901572377840788,
+      "output_start": 5.1066875,
+      "duration": 0.097,
+      "processed_peak_offset": 0.014166666666666666,
+      "actual_peak_time": 5.120854166666667
+    },
+    {
+      "id": "activate_rules",
+      "source": "latch",
+      "at": 7.679142857142857,
+      "trim": [
+        0.045,
+        0.26
+      ],
+      "peak_dbfs": -16,
+      "filters": "highpass=f=180,lowpass=f=7000",
+      "fade_out": 0.04,
+      "visual_timing_basis": "policy 3.98 + canonical5.35 *4.84/7",
+      "source_path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "effective_filter": "atrim=start=0.045:end=0.26,asetpts=PTS-STARTPTS,highpass=f=180,lowpass=f=7000",
+      "gain_db": -10.870926365783864,
+      "output_start": 7.527020833333333,
+      "duration": 0.215,
+      "processed_peak_offset": 0.152125,
+      "actual_peak_time": 7.679145833333333
+    },
+    {
+      "id": "tools_connected",
+      "source": "transfer",
+      "at": 12.945,
+      "trim": [
+        0.145,
+        0.225
+      ],
+      "peak_dbfs": -22,
+      "filters": "highpass=f=600,lowpass=f=7000",
+      "fade_out": 0.02,
+      "visual_timing_basis": "tools 8.82 + canonical4.35 *5.5/5.8",
+      "source_path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "effective_filter": "atrim=start=0.145:end=0.225,asetpts=PTS-STARTPTS,highpass=f=600,lowpass=f=7000",
+      "gain_db": -3.1344875730668313,
+      "output_start": 12.939020833333334,
+      "duration": 0.08,
+      "processed_peak_offset": 0.0059791666666666665,
+      "actual_peak_time": 12.945
+    },
+    {
+      "id": "private_stays",
+      "source": "latch",
+      "at": 15.499333333333334,
+      "trim": [
+        0.055,
+        0.235
+      ],
+      "peak_dbfs": -21,
+      "filters": "highpass=f=300,lowpass=f=6200",
+      "fade_out": 0.035,
+      "visual_timing_basis": "proof 14.32 + canonical1.45 *3.66/4.5",
+      "source_path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "effective_filter": "atrim=start=0.055:end=0.235,asetpts=PTS-STARTPTS,highpass=f=300,lowpass=f=6200",
+      "gain_db": -14.84961005106506,
+      "output_start": 15.357208333333332,
+      "duration": 0.18,
+      "processed_peak_offset": 0.142125,
+      "actual_peak_time": 15.499333333333333
+    },
+    {
+      "id": "public_update_done",
+      "source": "transfer",
+      "at": 16.882,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -21,
+      "filters": "highpass=f=600,lowpass=f=7200",
+      "fade_out": 0.025,
+      "visual_timing_basis": "proof 14.32 + canonical3.15 *3.66/4.5",
+      "source_path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "source_sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "effective_filter": "atrim=start=0.238:end=0.335,asetpts=PTS-STARTPTS,highpass=f=600,lowpass=f=7200",
+      "gain_db": -13.91896035172158,
+      "output_start": 16.867833333333333,
+      "duration": 0.097,
+      "processed_peak_offset": 0.014166666666666666,
+      "actual_peak_time": 16.882
+    },
+    {
+      "id": "brand_settles",
+      "source": "latch",
+      "at": 18.46,
+      "trim": [
+        0.055,
+        0.235
+      ],
+      "peak_dbfs": -18,
+      "filters": "highpass=f=260,lowpass=f=7000",
+      "fade_out": 0.035,
+      "visual_timing_basis": "outro start17.98 + landing.48",
+      "source_path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "source_sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "effective_filter": "atrim=start=0.055:end=0.235,asetpts=PTS-STARTPTS,highpass=f=260,lowpass=f=7000",
+      "gain_db": -12.336180547659673,
+      "output_start": 18.317875,
+      "duration": 0.18,
+      "processed_peak_offset": 0.142125,
+      "actual_peak_time": 18.46
+    }
+  ],
+  "limits": "Analytical timing/level validation only. No voice-generation, recognition or listening approval is implied.",
+  "voice": {
+    "path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/warden-liam-v11-take1.mp3",
+    "sha256": "9858dcca72e750da9ea16f00e63d1b57c52b05e4a0e581c9164ee04a6ea5d4f8",
+    "filter": "atrim=start=0.0,asetpts=PTS-STARTPTS",
+    "output_start": 0.0,
+    "duration": 20.64,
+    "pitch_and_tempo_changed": false,
+    "normalization": {
+      "before": {
+        "integrated_lufs": -18.9,
+        "true_peak_dbtp": -3.25,
+        "lra_lu": 2.4
+      },
+      "constant_gain_db": 0.25,
+      "target_lufs": -17.5,
+      "ceiling_dbtp": -3.0,
+      "peak_limited": true
+    }
+  },
+  "master": {
+    "path": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/warden-launch-v11-mix.wav",
+    "sha256": "37453b7886c0f4de2dff14aa1fedfb226c77729913ab4eca0019b029bac4bf36",
+    "codec": "pcm_s24le",
+    "duration": 21.9,
+    "sample_rate": 48000,
+    "channels": 2,
+    "normalization": {
+      "before": {
+        "integrated_lufs": -18.88,
+        "true_peak_dbtp": -3.0,
+        "lra_lu": 4.9
+      },
+      "constant_gain_db": 1.8,
+      "target_lufs": -16.5,
+      "ceiling_dbtp": -1.2,
+      "peak_limited": true
+    },
+    "measured": {
+      "integrated_lufs": -17.08,
+      "true_peak_dbtp": -1.2,
+      "lra_lu": 4.9
+    }
+  }
+}

@@ -1,0 +1,84 @@
+/* Quiet component chrome; mint remains an action or a policy result. */
+.hero .enforce,
+#how h2.loud .ln:nth-child(3) { color:var(--ink); }
+.hero .play-mark { color:var(--muted); }
+.hero .cta>.btn-primary,
+.hero .cta>.btn-primary:hover { box-shadow:0 6px 16px #0003; }
+header .header-download:hover { box-shadow:none; }
+
+.chapter-caption>span { color:var(--muted); border-color:transparent; }
+.story-controls button::after { background:var(--muted); }
+[data-chapter="write"],
+[data-chapter="log"] { --scene-color:#8d9aa5; }
+.chapter .stage::before { background:none; }
+.chapter .term { background:#111b24; border-color:#303c46; }
+
+/* Keep the authored planes and reflections, with one graphite material. */
+.checkpoint .request-object,
+.checkpoint .decision-object {
+  background:linear-gradient(135deg,#222e38,#15212a) padding-box,
+    linear-gradient(145deg,#63717b,#2b3741 65%) border-box;
+  box-shadow:7px 14px 22px #0004;
+}
+.checkpoint .request-object::before,
+.checkpoint .decision-object::before {
+  background-image:linear-gradient(110deg,transparent 25%,#edf3f51c 46%,transparent 66%);
+}
+.checkpoint .object-label { color:#b9c5cc; }
+.checkpoint .decision-object strong { color:var(--block); }
+.checkpoint .decision-rule { color:#a6b3bc; }
+.checkpoint .request-object-line { background:#586873; }
+.checkpoint .route-out { stroke:#94a3ae; }
+
+[data-chapter="write"] .rules-scene {
+  --editor-paper:#1b2630; --editor-ground:#101a23; --editor-line:#303d47;
+  --editor-secondary:#bdc7ce; --editor-faint:#9aa8b3;
+}
+[data-chapter="write"] .rules-scene .pstick {
+  border-color:var(--editor-line);
+  box-shadow:0 14px 36px #0004;
+}
+[data-chapter="write"] .rules-scene .console .hero-box {
+  border-color:#47545f;
+  box-shadow:0 2px 6px #0002;
+}
+[data-chapter="write"] .rules-scene .ru,
+.js [data-chapter="write"] .rules-scene .ru {
+  background:#17222c;
+  box-shadow:0 2px 4px #0002;
+}
+.rules-scene .policy-location svg { color:var(--editor-secondary); }
+.rules-scene .policy-location-divider { color:var(--editor-faint); }
+.rules-scene .ru::before {
+  background-image:linear-gradient(112deg,#edf3f500 12%,#edf3f508 42%,#edf3f518 49%,#edf3f500 64%);
+}
+.rules-scene .rule-heading .badge:is(.BLOCK,.ESCALATE) { border-color:transparent; }
+
+/* Drafting is an ordinary control; activation keeps the green confirmation. */
+[data-chapter="write"] .rules-scene .send,
+.js [data-chapter="write"]:is([data-step="1"],[data-step="2"]) .rules-scene .send {
+  color:var(--editor-ink); background:#293640; border-color:#54636e; box-shadow:none;
+}
+[data-chapter="write"] .rules-scene .send:hover { background:#34434e; }
+.rules-scene .policy-activate { border-color:transparent; box-shadow:none; }
+[data-chapter="write"] .rules-scene .ru .ract,
+[data-chapter="write"][data-step="2"] .rules-scene .ru .ract:not(.off),
+[data-chapter="write"] .rules-scene .ru .ract.off {
+  border-color:transparent; background:transparent;
+}
+.rules-scene .policy-active-note { color:var(--editor-secondary); }
+.rules-scene .policy-active-note svg { color:var(--editor-green); }
+
+/* The platform ordered first by app.js remains the closing primary action. */
+#download .dl a {
+  background:#18242e; color:var(--ink); box-shadow:inset 0 0 0 1px #3b4852;
+}
+#download .dl .m { color:#b3c0c8; }
+#download .dl a:first-child {
+  background:var(--accent); color:var(--accent-ink); box-shadow:0 4px 12px #0002;
+}
+#download .dl a:first-child .m { color:#2f5e4b; }
+@media (hover:hover) and (pointer:fine) {
+  #download .dl a:hover { background:#24333e; box-shadow:inset 0 0 0 1px #52616c; }
+  #download .dl a:first-child:hover { background:var(--accent-hover); box-shadow:0 6px 16px #0003; }
+}

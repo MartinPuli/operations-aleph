@@ -1,0 +1,95 @@
+{
+  "status": "pass",
+  "master": "renders/warden-launch-22s-v11.mp4",
+  "master_sha256": "8a27509d3d240c2dfa463e3e0ad6ffe4eb77b3b9c326170193b82447391f2922",
+  "duration": 21.9,
+  "video_frames": 657,
+  "audio": {
+    "codec": "aac",
+    "sample_rate": 48000,
+    "channels": 2,
+    "start_time": 0,
+    "container_stream_duration": 21.9,
+    "decoded_samples": 1051648,
+    "decoded_duration_including_aac_padding": 21.909333333333333
+  },
+  "levels": {
+    "integrated_lufs": -17.15,
+    "true_peak_dbtp": -1.25,
+    "lra_lu": 5.0
+  },
+  "identity": {
+    "expected_mix": "assets/audio/warden-launch-v11-mix.wav",
+    "expected_mix_sha256": "37453b7886c0f4de2dff14aa1fedfb226c77729913ab4eca0019b029bac4bf36",
+    "selected_voice": "assets/audio/warden-liam-v11-take1.mp3",
+    "selected_voice_sha256": "9858dcca72e750da9ea16f00e63d1b57c52b05e4a0e581c9164ee04a6ea5d4f8",
+    "lag_samples": 0,
+    "method": "Decoded PCM comparison at matching presentation timestamps; gain-fitting accommodates AAC coding differences.",
+    "windows": [
+      {
+        "start": 0,
+        "end": 21.9,
+        "sample_count": 1051200,
+        "correlation": 0.9993650500038707,
+        "best_fit_gain_db": -0.0519875930303194,
+        "residual_rms_dbfs": -46.334662863129026
+      },
+      {
+        "start": 0.08,
+        "end": 0.6,
+        "sample_count": 24960,
+        "correlation": 0.9999098958958417,
+        "best_fit_gain_db": -0.008445266554594894,
+        "residual_rms_dbfs": -52.135267238003735
+      },
+      {
+        "start": 3.0,
+        "end": 4.8,
+        "sample_count": 86400,
+        "correlation": 0.9999452153339708,
+        "best_fit_gain_db": -0.009780934195881167,
+        "residual_rms_dbfs": -55.724019481339695
+      },
+      {
+        "start": 8.5,
+        "end": 10.5,
+        "sample_count": 96000,
+        "correlation": 0.9995463787010905,
+        "best_fit_gain_db": -0.05709944161074475,
+        "residual_rms_dbfs": -46.65086176948399
+      },
+      {
+        "start": 19.0,
+        "end": 20.64,
+        "sample_count": 78720,
+        "correlation": 0.9995521981720633,
+        "best_fit_gain_db": -0.04898116556403426,
+        "residual_rms_dbfs": -49.70153353221477
+      }
+    ],
+    "old_derek_comparison": {
+      "start": 0,
+      "end": 20.64,
+      "sample_count": 990720,
+      "correlation": 0.006403075212182353,
+      "best_fit_gain_db": -40.98890035755163,
+      "residual_rms_dbfs": -17.114182789710974
+    }
+  },
+  "speech_end": {
+    "full_selected_source_seconds": 20.64,
+    "last_active_mix_20ms_frame_end_seconds": 20.64,
+    "last_active_encode_20ms_frame_end_seconds": 20.64,
+    "activity_threshold_rms_dbfs": -55,
+    "final_voice_window": {
+      "start": 19.0,
+      "end": 20.64,
+      "sample_count": 78720,
+      "correlation": 0.9995521981720633,
+      "best_fit_gain_db": -0.04898116556403426,
+      "residual_rms_dbfs": -49.70153353221477
+    },
+    "truncated": false
+  },
+  "limits": "Analytical media, waveform, loudness and source-identity verification. No subjective listening, pronunciation or vocal-quality judgment."
+}

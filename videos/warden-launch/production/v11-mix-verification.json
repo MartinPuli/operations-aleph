@@ -1,0 +1,25 @@
+{
+  "status": "pass",
+  "source_voice_sha256": "9858dcca72e750da9ea16f00e63d1b57c52b05e4a0e581c9164ee04a6ea5d4f8",
+  "master_sha256": "37453b7886c0f4de2dff14aa1fedfb226c77729913ab4eca0019b029bac4bf36",
+  "full_voice_duration": 20.64,
+  "master_duration": 21.9,
+  "pitch_tempo_or_interior_cut": false,
+  "effective_voice_constant_gain_db": 2.05,
+  "voice_sample_frames_checked_outside_sfx": 936672,
+  "max_voice_sample_error_outside_sfx": 1.1897627510623621e-07,
+  "error_bound": "less than two PCM24 quantization steps",
+  "sfx_count": 8,
+  "score_present": false,
+  "format": {
+    "codec": "pcm_s24le",
+    "sample_rate": 48000,
+    "channels": 2
+  },
+  "measurements": {
+    "integrated_lufs": -17.08,
+    "true_peak_dbtp": -1.2,
+    "lra_lu": 4.9
+  },
+  "limits": "Full source sample duration and gain-equivalence outside the eight overlapping effects verified. No subjective listening or pronunciation claim."
+}

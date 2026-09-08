@@ -1,0 +1,14 @@
+{
+  "warden-launch-22s-v11.mp4": {
+    "bytes": 4253934,
+    "sha256": "8a27509d3d240c2dfa463e3e0ad6ffe4eb77b3b9c326170193b82447391f2922"
+  },
+  "warden-launch-22s-v11-silent.mp4": {
+    "bytes": 3734979,
+    "sha256": "84b922883a4626eb06a10663a6850c6dbe75525df2e89e705b9b22300b786001"
+  },
+  "warden-launch-22s-v11-poster.png": {
+    "bytes": 369057,
+    "sha256": "01970d1774bf8dfdece517734eb145d4cf23af7e54ececcf519157a41148622c"
+  }
+}
