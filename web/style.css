@@ -139,6 +139,8 @@ nav { display: flex; align-items: center; gap: var(--s-1); min-width: 0; }
   align-items: center;
   gap: var(--s-2);
   border: none;
+  /* Carried in both states so selecting an item cannot move the row by 2px. */
+  border-bottom: 2px solid transparent;
   border-radius: var(--r-sm);
   background: none;
   color: var(--muted);
@@ -149,7 +151,11 @@ nav { display: flex; align-items: center; gap: var(--s-1); min-width: 0; }
   white-space: nowrap;
 }
 .nav-item:hover { background: var(--hover); color: var(--ink); }
-.nav-item.on { background: var(--selected); color: var(--ink); font-weight: var(--fw-medium); }
+/* Selected is an underline, never a pill — the same mark the sub-tabs under
+   Team and Models use, so "where I am" reads the same at both levels. A filled
+   pill up here competed with the sub-tab it sat above and the two disagreed
+   about which was the stronger signal. */
+.nav-item.on { color: var(--ink); font-weight: var(--fw-medium); border-radius: 0; border-bottom-color: var(--ink); }
 .nav-count {
   font-family: var(--mono);
   font-size: var(--fs-1);

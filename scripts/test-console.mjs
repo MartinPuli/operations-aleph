@@ -130,12 +130,16 @@ test('a retained custom runtime keeps its name and edit protection while a built
   try {
     for (const actual of ['/gateway/models/model-1.gguf', 'unmapped-runtime']) {
       library.catalog.inForce.adjudicator = actual;
+      // The name is read on Active and the protection is enforced on Library,
+      // so each is asserted on the tab that shows it.
+      state.sel = null;
+      assert.match(VIEWS.models.body(), /data-active-model="adjudicator">Our analyzer<\/b>/);
+      state.sel = 'library';
       const html = VIEWS.models.body();
-      assert.match(html, /data-active-model="adjudicator">Our analyzer<\/b>/);
       assert.ok(html.match(/<button[^>]*data-model-edit="model-1"[^>]*>/)?.[0].includes(' disabled'));
       assert.ok(html.match(/<button[^>]*data-model-remove="model-1"[^>]*>/)?.[0].includes(' disabled'));
     }
-  } finally { state.models = previous; }
+  } finally { state.models = previous; state.sel = null; }
 });
 
 function promptTemplate(id, role, overrides = {}) {

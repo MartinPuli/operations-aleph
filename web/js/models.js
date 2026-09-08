@@ -3,7 +3,7 @@ import { $, esc, post, state } from './core.js';
 import { bindCompiler, clearCompilerSecret, compilerNeedsSetup, compilerSettings } from './compiler.js';
 import { refreshAdjudicator, refreshCompiler } from './data.js';
 import { bindGetModels } from './engine.js';
-import { modelLabel } from './format.js';
+import { modelLabel, plural } from './format.js';
 import { bindLibrary, library, libraryMarkup, loadLibrary } from './model-library.js';
 import { bindPromptEditor, closePromptEditor, hasPromptChanges, loadPrompts, promptEditor, promptEditorMarkup, togglePromptEditor } from './prompt-editor.js';
 import { render } from './render.js';
@@ -13,6 +13,20 @@ let expanded = null;
 let changingAnalyzer = '';
 let analyzerNote = null;
 let refreshing = false;
+
+/**
+ * Three tabs, one view.
+ *
+ * `sel` names the tab and nothing else: Models has no per-item page the way
+ * Team has a page per person — a model opens its editor where it is listed —
+ * so an unrecognised `sel` is Active rather than a fourth thing. `state.view`
+ * stays `models` across all three, which is what keeps `activePage()` in
+ * model-library.js and `repaint()` in prompt-editor.js true while an
+ * administrator is on any of them: a transfer keeps polling from the Prompts
+ * tab and its progress is fresh on the way back.
+ */
+const TABS = [['', 'Active'], ['library', 'Library'], ['prompts', 'Prompts']];
+const tabOf = () => (state.sel === 'library' || state.sel === 'prompts' ? state.sel : '');
 
 async function refreshSelections() {
   await Promise.all([refreshCompiler(), refreshAdjudicator()]);
@@ -33,12 +47,58 @@ async function enterModels() {
   }
 }
 
-function runtimeNote() {
+/**
+ * What the runtime is doing, in the two or three words a status line has room
+ * for. This is the whole of the old three-sentence runtime note: the sentences
+ * that carried weight — that analysis runs here, that an unavailable analyzer
+ * holds requests rather than passing them — are said by the Request judge card
+ * and by the error state below, so the line itself only has to say which of
+ * those is true right now.
+ */
+function runtimeWord() {
   const m = state.models;
-  if (!m) return '<p class="note bad" role="status">Model status is unavailable. Refresh to try again.</p>';
-  if (m.mock) return '<p class="note">Demo mode uses a stand-in. Apply models here to configure this installation; live model behavior must be checked with the real runtime.</p>';
-  if (m.runtime?.ok === false || m.state === 'failed') return '<p class="note bad" role="status">The analyzer is unavailable. Requests that cannot be evaluated are held for review. Open runtime details to see what needs attention.</p>';
-  return `<p class="note${m.state === 'ready' ? ' good' : ''}" role="status">${m.state === 'ready' ? 'Local analysis is running.' : 'The local analyzer will load when needed.'} Requests and documents are analyzed on this gateway.</p>`;
+  if (!m) return 'model status unavailable';
+  if (m.mock) return 'demo mode';
+  if (m.runtime?.ok === false || m.state === 'failed') return 'judge unavailable';
+  return m.state === 'ready' ? 'judge ready' : 'judge loads on demand';
+}
+
+/** The one line under the title, per tab. Each tab answers its own question,
+ *  so each says the count that belongs to it rather than a shared summary. */
+function statusLine(tab) {
+  const sep = '<i>·</i>';
+  const runtime = runtimeWord();
+  if (tab === 'library') {
+    const models = library.catalog?.models ?? [];
+    const active = models.filter((model) => (model.activeRoles ?? []).length).length;
+    const builtIn = state.adjudicator?.choices?.length ?? 0;
+    return `<span>${plural(models.length, 'model')}</span>${sep}<span class="muted">${active} active</span>${
+      builtIn ? `${sep}<button type="button" class="linkbtn strong" data-go="models">${builtIn} built-in →</button>` : ''}`;
+  }
+  if (tab === 'prompts') {
+    const templates = promptEditor.catalog?.templates ?? [];
+    const customized = templates.filter((item) => item.custom).length;
+    const inUse = templates.filter((item) => item.active).length;
+    return `<span>${plural(templates.length, 'template')}</span>${sep}<span class="muted">${
+      customized ? `${customized} customized` : 'defaults intact'}</span>${
+      inUse ? `${sep}<button type="button" class="linkbtn strong" data-go="models">${inUse} in use →</button>` : ''}`;
+  }
+  const needsSetup = compilerNeedsSetup();
+  const both = !needsSetup && !state.compiler?.configurationError;
+  return `<span>2 jobs</span>${sep}<span class="muted">${both && runtime === 'judge ready' ? 'both configured' : runtime}</span>${
+    needsSetup ? `${sep}<button type="button" class="linkbtn strong" data-go="models" data-q="setup=compiler">rule writer without setup →</button>` : ''
+  }${sep}<button type="button" class="linkbtn" data-go="engine">Runtime details</button>`;
+}
+
+/** Title, the line, and the one control that belongs to the whole page. */
+function pageHead(tab) {
+  return `<header class="page-head">
+    <div>
+      <h1 class="page-title">Models</h1>
+      <div class="page-status">${statusLine(tab)}</div>
+    </div>
+    <button type="button" class="btn quiet" id="refreshModels"${refreshing ? ' disabled' : ''}>${refreshing ? 'Refreshing…' : 'Refresh'}</button>
+  </header>`;
 }
 
 function activeRole(role) {
@@ -61,7 +121,6 @@ function activeRole(role) {
       <div class="active-role-actions"><button type="button" class="btn" id="edit-${role}" data-edit-role="${role}" aria-expanded="${open}" aria-controls="${role}Editor">${open ? 'Close' : 'Change model'}</button><button type="button" class="btn quiet" id="prompts-${role}" data-prompt-role="${role}" aria-expanded="${promptEditor.openRole === role}" aria-controls="${role}Prompts">${promptEditor.openRole === role ? 'Close prompts' : 'Edit prompts'}</button>${hasPromptChanges(role) ? '<span class="note warn">Unsaved prompt changes</span>' : ''}</div>
     </div>
     ${open ? `<div id="${role}Editor" class="active-model-editor">${compiler ? compilerSettings() : analyzerSettings()}</div>` : ''}
-    ${promptEditorMarkup(role)}
   </section>`;
 }
 
@@ -84,17 +143,31 @@ function analyzerSettings() {
   </div>`;
 }
 
+function activeTab() {
+  return `<div class="active-models">${activeRole('compiler')}${activeRole('adjudicator')}</div>
+    <section class="models-document-note" aria-labelledby="documentsModelTitle"><div><h2 id="documentsModelTitle">Documents use the same analyzer</h2><p class="note">PDF, Word, text files, scans and images are read locally before policy checks. Try a file to inspect its reading status and verdict.</p></div><button type="button" class="btn" data-go="simulator">Try a document</button></section>`;
+}
+
+function promptsTab() {
+  return promptEditorMarkup(promptEditor.openRole ?? 'compiler');
+}
+
 function modelsPage() {
+  const tab = tabOf();
   return `<div class="sheet settings models-page">
-    <div class="models-page-head"><div><h1>Models</h1><p>Choose what writes your rules and what checks each request. Edit the prompts each role uses.</p></div><button type="button" class="btn quiet" id="refreshModels"${refreshing ? ' disabled' : ''}>${refreshing ? 'Refreshing…' : 'Refresh'}</button></div>
-    <div class="models-runtime-line">${runtimeNote()}<button type="button" class="linkbtn" data-go="engine">Runtime details</button></div>
-    <div class="active-models">${activeRole('compiler')}${activeRole('adjudicator')}</div>
-    ${libraryMarkup()}
-    <section class="models-document-note" aria-labelledby="documentsModelTitle"><div><h2 id="documentsModelTitle">Documents use the same analyzer</h2><p class="note">PDF, Word, text files, scans and images are read locally before policy checks. Try a file to inspect its reading status and verdict.</p></div><button type="button" class="btn" data-go="simulator">Try a document</button></section>
+    ${pageHead(tab)}
+    <nav class="tabs" aria-label="Models sections">
+      ${TABS.map(([sel, label]) => `<button type="button" class="tab${tab === sel ? ' on' : ''}" data-go="models"${sel ? ` data-sel="${sel}"` : ''}>${label}${sel === 'prompts' && hasPromptChanges() ? ' •' : ''}</button>`).join('')}
+    </nav>
+    ${tab === 'library' ? libraryMarkup() : tab === 'prompts' ? promptsTab() : activeTab()}
   </div>`;
 }
 
 function bindModels() {
+  const tab = tabOf();
+  // Interim: the Prompts tab still shows the per-role editor, which only draws
+  // for the role it has open. The table that replaces this picks per template.
+  if (tab === 'prompts' && !promptEditor.openRole) { togglePromptEditor('compiler'); render(); return; }
   if ($('refreshModels')) $('refreshModels').onclick = () => { void enterModels(); render(); };
   for (const button of document.querySelectorAll('[data-edit-role]')) button.onclick = () => { clearCompilerSecret(); closePromptEditor(); expanded = expanded === button.dataset.editRole ? null : button.dataset.editRole; render(); $(button.id)?.focus(); };
   for (const button of document.querySelectorAll('[data-prompt-role]')) button.onclick = () => { clearCompilerSecret(); expanded = null; togglePromptEditor(button.dataset.promptRole); render(); $(button.id)?.focus(); };
