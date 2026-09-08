@@ -10,7 +10,7 @@ unavailable `OCR_LATIN` model.
 | Format | What is read |
 | --- | --- |
 | TXT, Markdown, CSV | Complete UTF-8 text; UTF-16 LE/BE with a byte-order mark. Invalid encodings and binary text are held. |
-| PDF | Native text on every page, annotations and form values; source images and scanned/mixed pages through OCR. |
+| PDF | Native text on every page, annotations and form values; source images and scanned, mixed or vector-drawing pages through OCR. |
 | DOCX | Body, tables, headers, footers, notes, comments, other XML text and drawing alt text; embedded document images through OCR. |
 | PNG, JPEG, WebP, BMP | Offline English and Spanish OCR. Animated inputs are held. |
 

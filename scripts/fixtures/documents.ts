@@ -52,15 +52,36 @@ function stream(bytes: Buffer, extra = ''): Buffer {
   return Buffer.concat([Buffer.from(`<< /Length ${bytes.length}${extra ? ` ${extra}` : ''} >>\nstream\n`), bytes, Buffer.from('\nendstream')]);
 }
 
+/** Visible glyphs represented only by vector paths: no PDF text or image object. */
+function vectorTextPaths(text: string): string {
+  const canvas = createCanvas(1400, 160);
+  const context = canvas.getContext('2d');
+  context.fillStyle = 'white'; context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = 'black'; context.font = '72px sans-serif';
+  context.fillText(text, 20, 110);
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  const paths: string[] = ['q 0.38 0 0 0.38 36 480 cm 0 g'];
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width;) {
+      if (pixels[(y * canvas.width + x) * 4]! >= 128) { x++; continue; }
+      const start = x++;
+      while (x < canvas.width && pixels[(y * canvas.width + x) * 4]! < 128) x++;
+      paths.push(`${start} ${canvas.height - y - 1} ${x - start} 1 re`);
+    }
+  }
+  paths.push('f Q');
+  return paths.join('\n');
+}
+
 /** PDF objects, content streams and xref offsets; image bytes are a real JPEG. */
-export function pdfFixture(pages: Array<{ text?: string; image?: Buffer; width?: number; height?: number }>): Buffer {
+export function pdfFixture(pages: Array<{ text?: string; image?: Buffer; width?: number; height?: number; vectorText?: string }>): Buffer {
   const objects: Buffer[] = [Buffer.from('<< /Type /Catalog /Pages 2 0 R >>'), Buffer.alloc(0), Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')];
   const pageRefs: string[] = [];
   for (const page of pages) {
     const pageNumber = objects.length + 1;
     const contentNumber = pageNumber + 1;
     const imageNumber = pageNumber + 2;
-    const commands = [page.text ? `BT /F1 18 Tf 40 740 Td (${page.text.replace(/[\\()]/g, '\\$&')}) Tj ET` : '', page.image ? 'q 540 0 0 125 36 480 cm /Im0 Do Q' : ''].join('\n');
+    const commands = [page.text ? `BT /F1 18 Tf 40 740 Td (${page.text.replace(/[\\()]/g, '\\$&')}) Tj ET` : '', page.image ? 'q 540 0 0 125 36 480 cm /Im0 Do Q' : '', page.vectorText ? vectorTextPaths(page.vectorText) : ''].join('\n');
     objects.push(Buffer.from(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> ${page.image ? `/XObject << /Im0 ${imageNumber} 0 R >>` : ''} >> /Contents ${contentNumber} 0 R >>`));
     objects.push(stream(Buffer.from(commands)));
     if (page.image) objects.push(stream(page.image, `/Type /XObject /Subtype /Image /Width ${page.width ?? 1400} /Height ${page.height ?? 320} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode`));

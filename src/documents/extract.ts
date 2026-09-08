@@ -120,6 +120,11 @@ async function readPdf(bytes: Buffer, ocr: OfflineOcr): Promise<ReadResult> {
       pdfjs.OPS.paintImageMaskXObject, pdfjs.OPS.paintImageXObjectRepeat,
       pdfjs.OPS.paintImageMaskXObjectRepeat, pdfjs.OPS.paintInlineImageXObjectGroup,
       pdfjs.OPS.paintImageMaskXObjectGroup]);
+    const vectorOps = new Set([pdfjs.OPS.constructPath, pdfjs.OPS.rawFillPath,
+      pdfjs.OPS.stroke, pdfjs.OPS.closeStroke, pdfjs.OPS.fill, pdfjs.OPS.eoFill,
+      pdfjs.OPS.fillStroke, pdfjs.OPS.eoFillStroke, pdfjs.OPS.closeFillStroke,
+      pdfjs.OPS.closeEOFillStroke, pdfjs.OPS.shadingFill,
+      pdfjs.OPS.paintFormXObjectBegin, pdfjs.OPS.paintSolidColorImageMask]);
     for (let number = 1; number <= pdf.numPages; number++) {
       const page = await pdf.getPage(number);
       const content = await page.getTextContent({ disableNormalization: true });
@@ -138,6 +143,7 @@ async function readPdf(bytes: Buffer, ocr: OfflineOcr): Promise<ReadResult> {
       const operators = await page.getOperatorList();
       await Promise.all(operatorChecks);
       const hasImages = operators.fnArray.some((op) => imageOps.has(op));
+      const hasVectorDrawing = operators.fnArray.some((op) => vectorOps.has(op));
       if (hasImages) {
         // Screen source image pixels as well as their appearance on the page.
         // Otherwise a clear native text layer could make page-level OCR look
@@ -161,9 +167,9 @@ async function readPdf(bytes: Buffer, ocr: OfflineOcr): Promise<ReadResult> {
           text += `\n${imageTexts.get(key)}`;
         }
       }
-      // A mixed page is OCR'd even when native text exists. Never infer that a
-      // text layer proves there is no payload inside an image on that page.
-      if (hasImages || !text.trim()) {
+      // Native text does not account for images or glyphs drawn as vector paths.
+      // A readable text layer must not exempt those visible page contents from OCR.
+      if (hasImages || hasVectorDrawing || !text.trim()) {
         const viewport = page.getViewport({ scale: 2 });
         if (viewport.width * viewport.height > DOCUMENT_LIMITS.imagePixels) fail('image-pixel-limit');
         const { createCanvas } = await import('@napi-rs/canvas');

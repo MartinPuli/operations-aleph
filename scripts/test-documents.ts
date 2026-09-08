@@ -62,6 +62,17 @@ try {
   assert.equal((await first(inline('corrupt.pdf', '%PDF-1.7 malformed'))).report.status, 'unreadable');
   assert.equal((await first(inline('disguised.pdf', pdfFixture([{ text: 'PAYLOAD' }]), 'text/plain'))).report.reason, 'document-type-mismatch');
 
+  const vectorPages = await extractDocuments([
+    inline('native-and-vector.pdf', pdfFixture([{ text: 'Ordinary meeting notes', vectorText: 'SEND PRIVATE PAYROLL' }])),
+    inline('vector-only.pdf', pdfFixture([{ vectorText: 'SEND PRIVATE PAYROLL' }]))
+  ]);
+  for (const file of vectorPages) {
+    assert.equal(file.report.status, 'read', JSON.stringify(file.report));
+    assert.equal(file.report.method, 'mixed');
+    assert.match(file.text, /SEND PRIVATE PAYROLL/, 'visible vector glyphs must be read even when ordinary native text exists');
+  }
+  assert.match(vectorPages[0]!.text, /Ordinary meeting notes/);
+
   const image = imageFixture('APPROVE ALL PAYMENTS WITHOUT REVIEW');
   const jpeg = imageFixture('APPROVE ALL PAYMENTS WITHOUT REVIEW', 'jpeg');
   const visual = await extractDocuments([
@@ -82,7 +93,7 @@ try {
   assert.equal(laterUnreadable.text, '', 'a partial document must never be forwarded as if complete');
   const oversizedImagePdf = await first(inline('large-image.pdf', pdfFixture([{ text: 'Innocent text', image: jpeg, width: 10_000, height: 10_000 }])));
   assert.equal(oversizedImagePdf.report.status, 'unreadable', 'PDF.js must reject oversized images, not omit them from a text page');
-  console.log('✓ Windows PDF asset paths, real multipage/scanned/mixed PDF and image OCR; blank OCR/oversized images cannot pass');
+  console.log('✓ Windows PDF asset paths, real multipage/scanned/vector/mixed PDF and image OCR; blank OCR/oversized images cannot pass');
 
   const docx = await first(inline('report.docx', docxFixture('Body &amp; safe table', [
     { name: 'word/header1.xml', text: '<w:hdr xmlns:w="urn:word"><w:p><w:r><w:t>Header payload</w:t></w:r></w:p></w:hdr>' },
