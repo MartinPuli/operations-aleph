@@ -366,7 +366,6 @@ button, input, select, textarea { font: inherit; font-size: var(--fs-3); color: 
   overflow-wrap: anywhere;
 }
 
-.row-actions { display: flex; gap: var(--s-2); margin-top: var(--s-4); flex-wrap: wrap; align-items: center; }
 
 .btn.danger { color: var(--block); }
 .btn.danger:hover { background: var(--block-bg); border-color: var(--block); color: var(--block); }
@@ -639,10 +638,6 @@ input.inline.wide { min-width: 320px; flex: 1 1 320px; }
 .row.roomy .dot, .row.roomy .avatar { margin-top: 3px; }
 .row.roomy .col { min-width: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
 .row.roomy .t { color: var(--ink); font-weight: var(--fw-medium); line-height: var(--lh-snug); }
-.row.roomy .m2 {
-  font-size: var(--fs-2); color: var(--muted); line-height: var(--lh-snug);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
 .row.roomy .m {
   display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
   font-size: var(--fs-2); color: var(--faint);
@@ -1637,7 +1632,20 @@ select.mini {
      row, the facts under it stack, and the actions stay beside the name where
      a thumb expects them. The header goes: with one item per line there is
      nothing left for it to head. */
-  .tbl.models .thead, .tbl.prompts .thead { display: none; }
+  .tbl.models .thead, .tbl.prompts .thead, .tbl.rules .thead { display: none; }
+  /* The rule keeps the line and wraps; the severity stays beside it because
+     it is the one thing you scan a policy for. Who it applies to and what it
+     has done go underneath. */
+  .tbl.rules .trow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--s-2) var(--s-4);
+    padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5);
+  }
+  .tbl.rules .trow > :nth-child(3) { grid-column: 2; grid-row: 1; justify-self: end; }
+  .tbl.rules .trow > .c-aud, .tbl.rules .trow > .c-activity { grid-column: 1 / -1; font-size: var(--fs-2); color: var(--muted); }
+  .c-rule { padding: 0; flex-wrap: wrap; }
+  .c-rule .nm { white-space: normal; }
   .tbl.models .trow, .tbl.prompts .trow {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
