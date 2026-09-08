@@ -1594,6 +1594,21 @@ select.mini {
   .analyzer-option { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
   .model-transfer { flex-wrap: wrap; }
   .model-transfer progress { width: 100%; order: 3; }
+  /* A four-column table has no four columns on a phone. The name keeps the
+     row, the facts under it stack, and the actions stay beside the name where
+     a thumb expects them. The header goes: with one item per line there is
+     nothing left for it to head. */
+  .tbl.models .thead, .tbl.prompts .thead { display: none; }
+  .tbl.models .trow, .tbl.prompts .trow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--s-2) var(--s-4);
+    padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5);
+  }
+  .tbl.models .trow > span:not(.c-model):not(.c-model-act),
+  .tbl.prompts .trow > span:not(.c-model):not(.c-model-act) { grid-column: 1; font-size: var(--fs-2); color: var(--muted); }
+  .tbl.models .trow > .c-model-act, .tbl.prompts .trow > .c-model-act { grid-column: 2; grid-row: 1; }
+  .library-head { flex-direction: column; align-items: flex-start; }
   .models-page .btn { min-height: 40px; }
   .models-page input[type="text"], .models-page input[type="password"], .models-page select, #prompt { font-size: var(--fs-4); }
   .document-formats { margin-left: var(--s-3); }

@@ -182,14 +182,14 @@ function analyzerSettings() {
   const chosen = !custom ? a.model : null;
   const selected = a.choices.find((choice) => choice.id === chosen);
   return `<div class="model-editor analyzer-editor" aria-busy="${Boolean(changingAnalyzer)}">
-    <p class="note">Choose installed weights, or select a model to download. The analyzer always runs on this gateway. Your own compatible models appear in Your models below.</p>
+    <p class="note">The analyzer always runs on this gateway.</p>
     ${a.overriddenByEnv ? `<div class="banner warn"><b>Controlled by the environment.</b> ${esc(modelLabel(a.inForce))} is in force. Saved preferences apply after the environment override is removed.</div>` : ''}
     <ul class="analyzer-options">${a.choices.map((choice) => {
       const on = choice.id === chosen;
       const current = !a.overriddenByEnv && choice.onDisk && on;
       return `<li class="analyzer-option${on ? ' chosen' : ''}"><div><div class="library-model-name"><h3>${esc(choice.label)}</h3>${on ? `<span class="model-status${current ? ' good' : ' warn'}">${current ? 'Selected' : 'Saved preference'}</span>` : ''}</div><p>${esc(choice.trade)}</p><div class="model-metadata"><span>${(choice.approxMB / 1000).toFixed(1)} GB</span><span class="${choice.onDisk ? 'good' : 'warn'}">${choice.onDisk ? 'On this gateway' : 'Not downloaded'}</span><span>${esc(choice.perDecision ?? 'Speed not measured')}</span></div></div><div class="analyzer-option-action">${on && !choice.onDisk && state.canLeaveDemo ? '<button type="button" class="btn primary js-get-models">Download model</button>' : `<button type="button" class="btn" data-analyzer-choice="${esc(choice.id)}"${changingAnalyzer || on ? ' disabled' : ''}>${changingAnalyzer === choice.id ? 'Applying…' : current ? 'Selected' : choice.onDisk ? 'Use model' : 'Select for download'}</button>`}</div></li>`;
     }).join('')}</ul>
-    ${selected && !selected.onDisk ? `<p class="note warn">${esc(selected.label)} is not downloaded yet. ${state.canLeaveDemo ? 'Download it to finish applying this selection.' : 'Run the model setup on the gateway to download it.'} The current runtime model is shown above.</p>` : ''}
+    ${selected && !selected.onDisk ? `<p class="note warn">${esc(selected.label)} is not downloaded yet. ${state.canLeaveDemo ? 'Download it to finish applying this selection.' : 'Run the model setup on the gateway to download it.'} The card above says which model is judging now.</p>` : ''}
     ${analyzerNote ? `<p class="note ${analyzerNote.ok ? 'good' : 'bad'}" role="${analyzerNote.ok ? 'status' : 'alert'}">${esc(analyzerNote.text)}</p>` : ''}
   </div>`;
 }

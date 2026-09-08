@@ -60,7 +60,7 @@ function localCompilerMissing() {
 }
 
 function localCompilerNote() {
-  if (!localCompilerMissing()) return '<p class="note">Uses the compiler weights installed on this machine. Choose a model from Your models below to use your own local weights.</p>';
+  if (!localCompilerMissing()) return '<p class="note">Uses the compiler weights installed on this machine. Your own local weights live on the Library tab.</p>';
   const selected = state.compiler?.provider === 'local' && !compilerNeedsSetup();
   return `<div class="compiler-local-missing"><p class="note warn">The local compiler model is not downloaded. ${selected ? 'Download its weights before drafting a rule.' : 'Apply this selection, then download its weights before drafting a rule.'}</p>${state.canLeaveDemo ? `<button type="button" class="btn js-get-models"${selected ? '' : ' disabled'}>Download models</button>` : '<p class="note">After applying, run <code>pnpm run setup</code> on the gateway to download the local compiler.</p>'}</div>`;
 }
