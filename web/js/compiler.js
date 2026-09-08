@@ -1,237 +1,133 @@
-/**
- * Where rule compilation runs, as a page rather than four environment variables and a restart.
- */
+/** Compiler settings, shared by the Models screen and its older deep link. */
 import { $, esc, post, state } from './core.js';
 import { refreshCompiler } from './data.js';
 import { modelLabel } from './format.js';
 import { render } from './render.js';
 import { go } from './router.js';
-import { rulesTabs } from './rules.js';
 import { VIEWS } from './views.js';
 
-/**
- * Where rule compilation runs, as a page rather than four environment
- * variables and a restart.
- *
- * It sits under Rules, and the line that leads here sits in the composer,
- * because that is where the cost of a weak compiler is felt: a rule whose
- * compliant examples are generic is a rule that blocks honest work, and the
- * local 1.7B writes generic ones. Asked to allow something it has produced a
- * rule prohibiting it.
- *
- * The judge is deliberately absent from this page. It is not a model anyone
- * gets to move from a browser — it sees every employee prompt — and offering
- * the choice here would suggest otherwise.
- */
+// A tested key can be applied without asking the administrator to paste it
+// twice. It is scoped to the tested host and never reinserted into an input.
+let testedKey = null;
+export function clearCompilerSecret() { testedKey = null; }
+
 VIEWS.compiler = {
-  railParent: 'policy',
-  body: compilerPage,
+  railParent: 'models',
+  body: () => `<div class="sheet settings"><button class="btn quiet" data-go="models">Back to Models</button>${compilerSettings()}</div>`,
   bind: bindCompiler
 };
 
-/** The draft being edited, seeded from what the server reports. */
 function compilerDraft() {
   if (!state.compilerDraft) {
-    const c = state.compiler ?? { provider: 'local', baseUrl: '', model: '', redactNames: false };
-    const preset = (c.providers ?? []).find((p) => p.id === (c.provider ?? 'local'));
+    const c = state.compiler ?? {};
+    const provider = (c.providers ?? []).some((p) => p.id === c.provider) ? c.provider : 'local';
+    const preset = (c.providers ?? []).find((p) => p.id === provider);
     state.compilerDraft = {
-      provider: c.provider ?? 'local',
-      // Falls back to the provider's own endpoint so a half-saved setting shows
-      // the right host rather than an empty box.
-      baseUrl: c.baseUrl || preset?.baseUrl || '',
-      model: c.model || preset?.models?.[0] || '',
-      apiKey: '',
-      redactNames: Boolean(c.redactNames)
+      provider, baseUrl: c.baseUrl || preset?.baseUrl || '',
+      model: c.model || preset?.models?.[0] || '', redactNames: Boolean(c.redactNames)
     };
   }
   return state.compilerDraft;
 }
 
-function compilerPage() {
+/** The registry owns named custom connections; this form keeps the existing
+ * preset and signed-in CLI choices in the same administrative surface. */
+export function compilerSettings() {
   const c = state.compiler;
-  if (!c) return `<div class="sheet settings">${rulesTabs()}<div class="note">Could not read the compiler settings.</div></div>`;
-
+  if (!c) return '<p class="note bad" role="alert">Compiler settings could not be loaded. Refresh Models to try again.</p>';
   const d = compilerDraft();
-  const providers = c.providers ?? [];
-  const chosen = providers.find((p) => p.id === d.provider) ?? providers[0];
-  // Three kinds of provider and they need different forms. `local` asks for
-  // nothing. A `-cli` provider asks for nothing either — that is the point of
-  // it — beyond which model to pass through. Only a real endpoint needs a URL
-  // and a key, so only that one gets those fields.
+  const chosen = (c.providers ?? []).find((p) => p.id === d.provider);
   const cli = d.provider.endsWith('-cli');
   const remote = d.provider !== 'local' && !cli;
+  const busy = state.compilerBusy;
   const t = state.compilerTest;
-  const host = (() => {
-    try { return new URL(d.baseUrl || chosen?.baseUrl || '').host; } catch { return ''; }
-  })();
-
-  return `<div class="sheet settings">
-    ${rulesTabs()}
-
-    <div class="section">
-      <div class="label">Which model writes your rules</div>
-
-      ${c.overriddenByEnv ? `<div class="banner warn">
-        <b>The environment is setting this.</b> <code>WARDEN_COMPILER_API</code> wins over what you save here.
-      </div>` : ''}
-
+  return `<form id="compilerForm" class="model-editor" aria-label="Compiler settings" aria-busy="${Boolean(busy)}">
+    <p class="note">The compiler turns your instructions into rules. A provider or signed-in CLI can receive your instruction, role names and staff list. Employee requests are analyzed locally.</p>
+    ${c.overriddenByEnv ? '<div class="banner warn"><b>Controlled by the environment.</b> Your saved preference will apply after the environment override is removed.</div>' : ''}
+    <fieldset class="model-fields"${busy ? ' disabled' : ''}>
       <div class="field">
-        <label>Provider</label>
-        <div class="hero-sugg tight">
-          ${providers.map((p) => {
-            // A CLI option that is not installed is still offered, greyed and
-            // labelled, rather than hidden. Hiding it answers "why can I not
-            // use my Claude Code session" with silence; saying "not found on
-            // this machine" answers it with the reason.
-            const cliState = cliFor(p.id);
-            const missing = cliState !== null && !cliState.found;
-            return `<button type="button" class="pill${p.id === d.provider ? ' on' : ''}${missing ? ' faded' : ''}" data-prov="${esc(p.id)}">${esc(p.label)}${missing ? ' · not found' : ''}</button>`;
-          }).join('')}
-        </div>
+        <label for="cProvider">Provider</label>
+        <select id="cProvider" data-no-restore>${(c.providers ?? []).map((p) => `<option value="${esc(p.id)}"${p.id === d.provider ? ' selected' : ''}>${esc(p.label)}${cliFor(p.id)?.found === false ? ' · not installed' : ''}</option>`).join('')}</select>
         ${cliNote(d.provider)}
       </div>
-
-      ${cli ? `
-      <div class="field">
-        <label for="cModel">Model</label>
-        <input id="cModel" type="text" spellcheck="false" list="cModelList" value="${esc(d.model)}"
-               placeholder="${esc(chosen?.models?.[0] ?? 'leave blank for its default')}">
-        ${chosen?.models?.length ? `<datalist id="cModelList">${chosen.models.map((m) => `<option value="${esc(m)}"></option>`).join('')}</datalist>` : ''}
-        <span class="note">${esc(chosen?.note ?? '')}</span>
-      </div>
-
-      <div class="field">
-        <label class="check"><input id="cRedact" type="checkbox"${d.redactNames ? ' checked' : ''}>
-          <span>Send <code>@ana</code> instead of employee names</span></label>
-        <span class="note">Sent: your sentence, your role names, your staff list.
-          Never: prompts, the log, your policy. Judging stays here.</span>
-      </div>
-      ` : ''}
-
-      ${remote ? `
-      <div class="grid2">
-        <div class="field">
-          <label for="cBase">Endpoint</label>
-          <input id="cBase" type="text" spellcheck="false" value="${esc(d.baseUrl)}" placeholder="https://…/v1">
-        </div>
-        <div class="field">
-          <label for="cModel">Model</label>
-          <input id="cModel" type="text" spellcheck="false" list="cModelList" value="${esc(d.model)}"
-                 placeholder="${esc(chosen?.models?.[0] ?? 'model name')}">
-          ${chosen?.models?.length ? `<datalist id="cModelList">${chosen.models.map((m) => `<option value="${esc(m)}"></option>`).join('')}</datalist>` : ''}
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="cKey">API key</label>
-        <input id="cKey" type="password" spellcheck="false" autocomplete="off" value=""
-               placeholder="${c.hasKey ? `saved ${esc(c.keyHint)} — leave blank to keep it` : 'paste your key'}">
-        <span class="note">${chosen?.note ? `${esc(chosen.note)}. ` : ''}Kept on this machine, never shown again.</span>
-      </div>
-
-      <div class="field">
-        <label class="check"><input id="cRedact" type="checkbox"${d.redactNames ? ' checked' : ''}>
-          <span>Send <code>@ana</code> instead of employee names</span></label>
-        <span class="note">Sent: your sentence, your role names, your staff list.
-          Never sent: employee prompts, the audit log, your policy.</span>
-      </div>
-      ` : ''}
-
+      ${remote ? `<div class="field"><label for="cBase">API endpoint</label><input id="cBase" type="text" spellcheck="false" autocomplete="url" required value="${esc(d.baseUrl)}" placeholder="https://api.example.com/v1"><span class="note">Use the provider’s OpenAI-compatible endpoint.</span></div>` : ''}
+      ${remote || cli ? `<div class="field">
+        <label for="cModel">Model ${cli ? '<span class="optional">(optional)</span>' : ''}</label>
+        <input id="cModel" type="text" spellcheck="false" list="cModelList"${remote ? ' required' : ''} value="${esc(d.model)}" placeholder="${esc(chosen?.models?.[0] ?? 'Provider default')}">
+        <datalist id="cModelList">${(chosen?.models ?? []).map((m) => `<option value="${esc(m)}"></option>`).join('')}</datalist>
+        ${chosen?.note ? `<span class="note">${esc(chosen.note)}</span>` : ''}
+      </div>` : `<p class="note">Uses the compiler weights installed on this machine. Choose a model from Your models below to use your own local weights.</p>`}
+      ${remote ? `<div class="field"><label for="cKey">API key <span class="optional">(if required)</span></label><input id="cKey" type="password" autocomplete="off" spellcheck="false" value="" placeholder="${testedKey ? 'Tested key ready to apply.' : c.hasKey ? 'A key is saved. Leave blank to keep it.' : 'Enter a provider key'}"><span class="note">Stored on the gateway. Saved keys are never returned to this page.</span></div>` : ''}
+      ${remote || cli ? `<div class="field"><label class="check"><input id="cRedact" type="checkbox"${d.redactNames ? ' checked' : ''}><span>Replace employee names with their IDs before sending</span></label></div>` : ''}
       <div class="actions">
         ${remote ? '<button type="button" class="btn" id="cTest">Test connection</button>' : ''}
-        <button type="button" class="btn primary" id="cSave">Save</button>
-        ${t ? `<span class="note ${t.ok ? 'good' : 'bad'}">${
-          t.saved ? 'Saved.'
-          : t.ok ? `Answered in ${t.ms} ms.`
-          : esc(String(t.error ?? `HTTP ${t.status}`).slice(0, 160))}</span>` : ''}
+        <button type="submit" class="btn primary" id="cSave">${busy === 'save' ? 'Applying…' : 'Apply compiler'}</button>
       </div>
-    </div>
-  </div>`;
+    </fieldset>
+    <div id="compilerFeedback" role="status" aria-live="polite">${busy === 'test' ? '<p class="note">Testing the connection…</p>' : t ? `<p class="note ${t.ok ? 'good' : 'bad'}">${t.saved ? 'Compiler applied. New rule drafts use this selection.' : t.ok ? `Connection answered in ${t.ms ?? 0} ms. Apply the compiler when you are ready.` : esc(String(t.error ?? 'The compiler could not be updated. Try again.'))}</p>` : ''}</div>
+  </form>`;
 }
 
-function bindCompiler() {
+export function bindCompiler(onChanged = async () => {}) {
+  if (!$('compilerForm')) return;
   const d = compilerDraft();
-  const providers = state.compiler?.providers ?? [];
-
-  /**
-   * Switching provider rewrites the endpoint and model boxes, and has to say so
-   * explicitly.
-   *
-   * `render()` restores every field by id *after* replacing the pane, which is
-   * right while someone is typing and wrong when the re-render is happening
-   * *because* the values changed: the new provider's endpoint went into the
-   * HTML and was immediately overwritten with the old one. The page then showed
-   * Google selected next to `api.anthropic.com`, which is not a cosmetic
-   * disagreement — it is the wrong host in the box that decides where the staff
-   * list gets sent. `adopt` marks the one render that must win over the restore,
-   * and `bindCompiler` runs after it.
-   */
   if (d.adopt) {
-    const base = document.getElementById('cBase');
-    const model = document.getElementById('cModel');
-    if (base) base.value = d.baseUrl;
-    if (model) model.value = d.model;
+    if ($('cBase')) $('cBase').value = d.baseUrl;
+    if ($('cModel')) $('cModel').value = d.model;
     delete d.adopt;
   }
-
-  for (const b of document.querySelectorAll('[data-prov]')) {
-    b.onclick = () => {
-      const next = providers.find((p) => p.id === b.dataset.prov);
-      // Adopts that provider's own endpoint and first model, so the common case
-      // is one click. It does not clear a typed key — changing the model of the
-      // same provider is the other common case.
-      state.compilerDraft = {
-        ...d,
-        provider: b.dataset.prov,
-        baseUrl: next?.baseUrl ?? '',
-        model: next?.models?.[0] ?? '',
-        adopt: true
-      };
-      state.compilerTest = null;
-      render();
-    };
-  }
-
+  $('cProvider').onchange = (event) => {
+    testedKey = null;
+    const next = (state.compiler?.providers ?? []).find((p) => p.id === event.target.value);
+    state.compilerDraft = { provider: next.id, baseUrl: next.baseUrl ?? '', model: next.models?.[0] ?? '', redactNames: Boolean($('cRedact')?.checked), adopt: true };
+    state.compilerTest = null;
+    render();
+    $('cProvider')?.focus();
+  };
   const readForm = () => ({
-    provider: d.provider,
-    baseUrl: document.getElementById('cBase')?.value.trim() ?? '',
-    model: document.getElementById('cModel')?.value.trim() ?? '',
-    apiKey: document.getElementById('cKey')?.value ?? '',
-    redactNames: Boolean(document.getElementById('cRedact')?.checked)
+    provider: d.provider, baseUrl: $('cBase')?.value.trim() ?? '', model: $('cModel')?.value.trim() ?? '',
+    redactNames: Boolean($('cRedact')?.checked)
   });
-
-  const test = document.getElementById('cTest');
-  if (test) test.onclick = async () => {
-    state.compilerDraft = readForm();
-    test.disabled = true;
-    test.textContent = 'Testing…';
-    const { j } = await post('/api/settings/compiler/test', state.compilerDraft).catch(() => ({ j: { ok: false, error: 'could not reach Warden' } }));
-    state.compilerTest = j;
-    render();
+  // Public fields survive background audit refreshes. The secret is read only
+  // at submission and lives in that request, never in long-lived UI state.
+  for (const f of $('compilerForm').querySelectorAll('input:not([type="password"])')) f.oninput = () => {
+    Object.assign(d, readForm()); state.compilerTest = null;
+    if (f.id === 'cBase') { testedKey = null; if ($('cKey')) $('cKey').value = ''; }
   };
-
-  const save = document.getElementById('cSave');
-  if (save) save.onclick = async () => {
+  async function submit(mode) {
+    if (state.compilerBusy || !$('compilerForm').reportValidity()) return;
+    const fields = readForm();
+    const sameHost = testedKey?.provider === fields.provider && testedKey?.baseUrl === fields.baseUrl;
+    const body = { ...fields, apiKey: $('cKey')?.value || (sameHost ? testedKey.key : '') };
     state.compilerDraft = readForm();
-    save.disabled = true;
-    save.textContent = 'Saving…';
-    const { ok, j } = await post('/api/settings/compiler', state.compilerDraft, { method: 'PUT' }).catch(() => ({ ok: false, j: { error: 'could not reach Warden' } }));
-    if (!ok) {
-      state.compilerTest = { ok: false, error: j?.error ?? 'could not save' };
+    state.compilerBusy = mode;
+    state.compilerTest = null;
+    render();
+    try {
+      const result = await post(`/api/settings/compiler${mode === 'test' ? '/test' : ''}`, body, mode === 'save' ? { method: 'PUT' } : {});
+      if (!result.ok || result.j?.ok === false) {
+        state.compilerTest = { ok: false, error: typeof result.j?.error === 'string' ? result.j.error : 'The provider did not answer. Check the endpoint, model and key, then try again.' };
+      } else if (mode === 'test') {
+        testedKey = body.apiKey ? { key: body.apiKey, provider: body.provider, baseUrl: body.baseUrl } : null;
+        state.compilerTest = { ...result.j, ok: true };
+      } else {
+        testedKey = null;
+        await refreshCompiler();
+        await onChanged();
+        state.compilerDraft = null;
+        state.compilerTest = { ok: true, saved: true };
+      }
+    } catch {
+      state.compilerTest = { ok: false, error: 'Warden could not be reached. Check the gateway connection and try again.' };
+    } finally {
+      body.apiKey = '';
+      state.compilerBusy = false;
       render();
-      return;
+      $(mode === 'test' ? 'cTest' : 'cSave')?.focus();
     }
-    await refreshCompiler();
-    state.compilerDraft = null;
-    state.compilerTest = { ok: true, saved: true };
-    render();
-    // Clear the key box by hand. `restoreFields` reinstates form values across
-    // a re-render, which is right for every other field and wrong for this one:
-    // dropping the draft is not enough to get the secret back out of the DOM,
-    // and the placeholder already says a key is saved and shows its last four.
-    const box = document.getElementById('cKey');
-    if (box) box.value = '';
-  };
+  }
+  if ($('cTest')) $('cTest').onclick = () => void submit('test');
+  $('compilerForm').onsubmit = (event) => { event.preventDefault(); void submit('save'); };
 }
 
 /** One line in the composer saying who is about to write the rule. */

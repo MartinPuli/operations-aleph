@@ -146,3 +146,9 @@ export function modelLabel(raw) {
   const size = rest.match(/(\d+(?:[._]\d)?)[-_]?([bBmM])(?![A-Za-z0-9])/);
   return size ? `${hit.label} ${size[1].replace('_', '.')}${size[2].toUpperCase()}` : hit.label;
 }
+
+/** Display sizes consistently for model imports and request attachments. */
+export const fileSize = (bytes) => bytes >= 1024 ** 3
+  ? `${(bytes / 1024 ** 3).toFixed(1)} GB`
+  : bytes >= 1024 ** 2 ? `${(bytes / 1024 ** 2).toFixed(1)} MB`
+    : bytes === 0 ? '0 KB' : `${Math.ceil(bytes / 1024)} KB`;

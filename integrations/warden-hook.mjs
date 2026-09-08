@@ -27,9 +27,11 @@
  */
 
 import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { closeSync, constants, copyFileSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const WARDEN_URL = process.env.WARDEN_URL ?? 'http://localhost:8080';
 const API_KEY = process.env.WARDEN_API_KEY ?? '';
@@ -92,7 +94,12 @@ function timeoutFromEnv(name, fallback) {
 
 async function readStdin() {
   const chunks = [];
-  for await (const chunk of process.stdin) chunks.push(chunk);
+  let bytes = 0;
+  for await (const chunk of process.stdin) {
+    bytes += chunk.length;
+    if (bytes > 24 * 1024 * 1024) throw new Error('The hook event exceeds the 24 MB input limit.');
+    chunks.push(chunk);
+  }
   return Buffer.concat(chunks).toString('utf8');
 }
 
@@ -183,7 +190,7 @@ function detect(payload) {
   const text =
     firstString(payload.prompt, payload.user_input, payload.message, payload.text, payload.input) ??
     lastUserMessage(payload.messages) ??
-    '';
+    contentText(payload.parts ?? payload.content ?? payload.prompt ?? payload.input);
 
   // An explicit source wins: a plugin knows what it is, and guessing from the
   // field name would call OpenCode "codex" because both use `prompt`.
@@ -210,11 +217,115 @@ function firstString(...values) {
 /** OpenAI-shaped payloads: judge the last thing the person actually said. */
 function lastUserMessage(messages) {
   if (!Array.isArray(messages)) return undefined;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i];
-    if (m?.role === 'user' && typeof m.content === 'string') return m.content;
+  return messages.filter((m) => m?.role === 'user').map((m) => contentText(m.content)).join('\n\n') || undefined;
+}
+
+function contentText(content) {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content.filter((p) => p?.type === 'text' || p?.type === 'input_text').map((p) => {
+    if (typeof p.text !== 'string') throw new Error('A text content part is malformed.');
+    return p.text;
+  }).join('\n');
+}
+
+/**
+ * Only explicit file references supplied by the calling integration are read.
+ * A path mentioned in prose is not permission to crawl the employee's disk.
+ * Files become bounded inline bytes on this machine: sending a local path to a
+ * gateway on another computer would inspect the wrong file, or no file at all.
+ * Keep this inside the standalone hook so employees still install one file.
+ */
+function documentAttachments(payload) {
+  const entries = [];
+  if (payload.attachments !== undefined) {
+    if (!Array.isArray(payload.attachments)) throw new Error('Attachments must be a list.');
+    entries.push(...payload.attachments);
   }
-  return undefined;
+  const collections = [payload.parts, payload.content, payload.prompt, payload.input];
+  if (Array.isArray(payload.messages)) {
+    collections.push(...payload.messages.filter((m) => m?.role === 'user').map((m) => m.content));
+  }
+  for (const parts of collections) {
+    if (!Array.isArray(parts)) continue;
+    for (const part of parts) {
+      if (part?.type === 'text' || part?.type === 'input_text') continue;
+      if (part?.type === 'file' || part?.type === 'input_file') entries.push(part.file ?? part);
+      else if (part?.type === 'image_url' || part?.type === 'input_image') {
+        entries.push({ url: typeof part.image_url === 'string' ? part.image_url : part.image_url?.url, name: part.name });
+      } else if ((part?.type === 'image' || part?.type === 'document') && part.source) {
+        entries.push({ ...part.source, mimeType: part.source.media_type, name: part.title ?? part.name });
+      } else throw new Error(`The content part "${String(part?.type ?? 'unknown').slice(0, 60)}" cannot be inspected.`);
+    }
+  }
+  if (entries.length > 5) throw new Error('Send at most five attachments at a time.');
+  let total = 0;
+  return entries.map((entry, index) => {
+    if (typeof entry === 'string') entry = { path: entry };
+    if (!entry || typeof entry !== 'object') throw new Error('An attachment is malformed.');
+    let name = entry.name ?? entry.filename;
+    let mimeType = entry.mimeType ?? entry.mime_type ?? entry.mime ?? entry.media_type;
+    let data = entry.data ?? entry.file_data;
+    let filePath = entry.path;
+    if (typeof entry.url === 'string') {
+      if (entry.url.startsWith('file:')) filePath = fileURLToPath(entry.url);
+      else if (entry.url.startsWith('data:')) data = entry.url;
+      else throw new Error('Remote attachment URLs cannot be inspected. Attach the file itself.');
+    }
+    let bytes;
+    if (typeof filePath === 'string') {
+      const path = resolve(typeof payload.cwd === 'string' ? payload.cwd : process.cwd(), filePath);
+      const fd = openSync(path, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
+      try {
+        const stat = fstatSync(fd);
+        if (!stat.isFile() || stat.size < 1 || stat.size > 8 * 1024 * 1024) {
+          throw new Error('Each attachment must be a regular file between 1 byte and 8 MB.');
+        }
+        const buffer = Buffer.alloc(stat.size + 1);
+        let read = 0;
+        while (read < buffer.length) {
+          const count = readSync(fd, buffer, read, buffer.length - read, null);
+          if (!count) break;
+          read += count;
+        }
+        if (read !== stat.size || fstatSync(fd).mtimeMs !== stat.mtimeMs) {
+          throw new Error('An attachment changed while being read. Send it again.');
+        }
+        bytes = buffer.subarray(0, read);
+        name ??= basename(path);
+      } finally {
+        closeSync(fd);
+      }
+    } else {
+      if (typeof data !== 'string') throw new Error('An attachment has no readable file bytes.');
+      if (data.startsWith('data:')) {
+        const match = /^data:([^;,]+);base64,([\s\S]*)$/.exec(data);
+        if (!match) throw new Error('Attachment data URLs must contain base64 bytes.');
+        mimeType = match[1];
+        data = match[2];
+      }
+      if (data.length > Math.ceil(8 * 1024 * 1024 / 3) * 4 || data.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(data)) {
+        throw new Error('An attachment is too large or has invalid base64 bytes.');
+      }
+      bytes = Buffer.from(data, 'base64');
+      if (bytes.toString('base64') !== data) throw new Error('An attachment has invalid base64 bytes.');
+    }
+    total += bytes.length;
+    if (!bytes.length || bytes.length > 8 * 1024 * 1024 || total > 16 * 1024 * 1024) {
+      throw new Error('Attachments must be nonempty, at most 8 MB each and 16 MB together.');
+    }
+    const extension = ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'application/pdf': 'pdf', 'text/plain': 'txt' })[mimeType];
+    name ??= `attachment-${index + 1}${extension ? `.${extension}` : ''}`;
+    if (typeof name !== 'string' || !name.trim() || name.length > 200) throw new Error('An attachment has an invalid filename.');
+    return { name: basename(name), ...(mimeType ? { mimeType } : {}), data: bytes.toString('base64') };
+  });
+}
+
+function refuseUninspected(message) {
+  const reason = `Warden could not inspect this request. ${message}`;
+  process.stderr.write(`${reason}\n`);
+  process.stdout.write(JSON.stringify({ continue: false, stopReason: reason, decision: 'block', reason, systemMessage: reason }));
+  process.exitCode = 2;
 }
 
 /**
@@ -1066,7 +1177,9 @@ async function main() {
   }, decisionTimeoutMs);
   watchdog.unref?.();
 
-  const raw = await readStdin();
+  let raw;
+  try { raw = await readStdin(); }
+  catch (err) { clearTimeout(watchdog); return refuseUninspected(err?.message ?? 'The input could not be read.'); }
   clearTimeout(watchdog);
 
   let payload;
@@ -1077,8 +1190,16 @@ async function main() {
     return;
   }
 
-  const { tool, prompt } = detect(payload);
-  if (!prompt.trim()) return;
+  let detected;
+  let attachments;
+  try {
+    detected = detect(payload);
+    attachments = documentAttachments(payload);
+  } catch (err) {
+    return refuseUninspected(err?.message ?? 'An attachment could not be read.');
+  }
+  const { tool, prompt } = detected;
+  if (!prompt.trim() && !attachments.length) return;
 
   // Read before the gateway call so a slow disk shows up in our own timing
   // rather than eating into the decision deadline.
@@ -1102,6 +1223,11 @@ async function main() {
     // for a gateway too old to answer, and for debugging.
     const stated = health?.deadlines?.decisionMs;
     if (Number.isFinite(stated) && stated > 0) decisionTimeoutMs = stated;
+    // Extraction (45 s) and document adjudication (25 s) are separate bounded
+    // stages. Leave room for their explicit verdict even on a gateway whose
+    // ordinary text deadline is shorter; an early transport timeout cannot
+    // substitute for a completed document inspection.
+    if (attachments.length) decisionTimeoutMs = Math.max(decisionTimeoutMs, 80_000);
     // Read on the health call so it is known before the decision can fail. A
     // gateway that never answered leaves this false, which is the fail-open
     // default and the only answer available: refusing on the basis of a policy
@@ -1116,12 +1242,12 @@ async function main() {
           'content-type': 'application/json',
           authorization: `Bearer ${API_KEY}`
         },
-        body: JSON.stringify({ prompt, source: tool, usage })
+        body: JSON.stringify({ prompt, source: tool, usage, ...(attachments.length ? { attachments } : {}) })
       },
       decisionTimeoutMs,
       validateDecision,
       (http, value) => {
-        if (http.status !== 401 && http.status !== 403) return undefined;
+        if (![400, 401, 403, 413, 415, 422].includes(http.status)) return undefined;
         const body = value && typeof value === 'object' ? value : {};
         return {
           ...body,
@@ -1131,7 +1257,7 @@ async function main() {
           explanation:
             typeof body.explanation === 'string'
               ? body.explanation
-              : 'This gateway did not recognise your Warden API key.'
+              : [401, 403].includes(http.status) ? 'This gateway did not recognise your Warden API key.' : 'The gateway could not inspect this request. Check its size and file formats.'
         };
       }
     );
@@ -1172,6 +1298,21 @@ async function main() {
       `⚠ Warden unreachable at ${WARDEN_URL} (${err?.message ?? err}). Prompt allowed unchecked.\n`
     );
     return;
+  }
+
+  // A prompt-submit hook cannot replace file bytes inside its caller. The
+  // proxy can forward masked extractions, but here an original secret-bearing
+  // attachment would still leave after an ALLOW. Ask for a cleaned file.
+  if (res?.verdict === 'ALLOW' && attachments.length) {
+    if (!Array.isArray(res.documents) || res.documents.length !== attachments.length || res.documents.some((d, i) =>
+      d?.status !== 'read' || d.sha256 !== createHash('sha256').update(Buffer.from(attachments[i].data, 'base64')).digest('hex') ||
+      !Number.isInteger(d.redactions) || d.redactions < 0
+    )) {
+      return refuseUninspected('The gateway did not confirm inspecting every attachment. Update Warden or send the document through its console.');
+    }
+    if (res.documents.some((d) => d.redactions > 0)) {
+      return refuseUninspected('An attachment contains credentials. Remove them from the original file before sending it.');
+    }
   }
 
   /**

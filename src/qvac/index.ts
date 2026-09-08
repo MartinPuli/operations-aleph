@@ -6,7 +6,9 @@ import { MockQvacAdapter } from './mock.js';
 import { LlamaCppAdapter } from './llamacpp.js';
 import { RealQvacAdapter } from './real.js';
 import { RemoteCompilerAdapter, remoteCompilerConfig } from './remote.js';
-import type { QvacAdapter } from './types.js';
+import type { CompleteRequest, QvacAdapter } from './types.js';
+import type { ZodType } from 'zod';
+import { withModelRole } from './coordination.js';
 import { CliCompilerAdapter, cliCompilerConfig } from './cli-compiler.js';
 
 let instance: QvacAdapter | null = null;
@@ -21,33 +23,41 @@ let instance: QvacAdapter | null = null;
  * `package.json`, so selecting it is a deliberate act and everyone else pays
  * nothing for its existence.
  */
+let localInstance: QvacAdapter | null = null;
+let compilerInstance: QvacAdapter | null = null;
+let compilerSignature = '';
+
+function compilerAdapter(local: QvacAdapter): QvacAdapter {
+  const cli = cliCompilerConfig();
+  const remote = cli ? null : remoteCompilerConfig();
+  const signature = JSON.stringify([cli, remote]);
+  if (!compilerInstance || signature !== compilerSignature) {
+    compilerInstance = cli ? new CliCompilerAdapter(local, cli) : remote ? new RemoteCompilerAdapter(local, remote) : local;
+    compilerSignature = signature;
+  }
+  return compilerInstance;
+}
+
+/** The routing object stays stable, while each compiler call captures the
+ * currently saved connection. Updating it never disposes the local guard. */
 export function adapter(): QvacAdapter {
   if (!instance) {
     const choice = process.env['WARDEN_ADAPTER'];
-    let local: QvacAdapter;
-    if (choice === 'mock') local = new MockQvacAdapter();
-    else if (choice === 'llamacpp') local = new LlamaCppAdapter();
-    else local = new RealQvacAdapter();
-
-    // The wrap is additive and role-scoped: everything the guard does still
-    // runs on `local`, and only the rule compiler is routed off-machine. When
-    // the feature is unconfigured this returns the local adapter untouched, so
-    // a default install has no network path from any model call.
-    // Two ways to move compilation off the local weights, and they are
-    // mutually exclusive by construction: a CLI already signed in on this
-    // machine, or an endpoint someone configured. The CLI wins when both are
-    // set, because it is the one that needed no credential typed in and is
-    // therefore the one somebody chose on purpose.
-    const cli = cliCompilerConfig();
-    if (cli) {
-      instance = new CliCompilerAdapter(local, cli);
-    } else {
-      const remote = remoteCompilerConfig();
-      instance = remote ? new RemoteCompilerAdapter(local, remote) : local;
-    }
+    const local = localInstance = choice === 'mock' ? new MockQvacAdapter() : choice === 'llamacpp' ? new LlamaCppAdapter() : new RealQvacAdapter();
+    instance = {
+      complete: (req) => withModelRole(req.role, () => (req.role === 'compiler' ? compilerAdapter(local) : local).complete(req)),
+      completeJSON: <T>(req: CompleteRequest, schema: ZodType<T>, json: Record<string, unknown>) =>
+        withModelRole(req.role, () => (req.role === 'compiler' ? compilerAdapter(local) : local).completeJSON(req, schema, json)),
+      embed: (texts) => withModelRole('embedder', () => local.embed(texts)),
+      ocr: (path) => withModelRole('ocr', () => local.ocr(path)),
+      stats: () => local.stats(),
+      dispose: () => local.dispose()
+    };
   }
   return instance;
 }
+
+export function refreshCompiler(): void { compilerInstance = null; compilerSignature = ''; }
 
 /**
  * Where rule compilation runs, for the console and the measurement records.
@@ -57,7 +67,8 @@ export function adapter(): QvacAdapter {
  * null when compilation is local, which is the default.
  */
 export function remoteCompiler(): string | null {
-  const a = adapter();
+  adapter();
+  const a = compilerAdapter(localInstance!);
   if (a instanceof CliCompilerAdapter) return a.describe();
   return a instanceof RemoteCompilerAdapter ? a.describe() : null;
 }

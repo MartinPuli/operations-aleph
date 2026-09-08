@@ -33,7 +33,7 @@ const TEAM_NAV = [
   // to "is the guard working at all", and it used to sit two clicks deep
   // behind a page about who WRITES the rules — an unrelated question that a
   // reader has to get past before reaching the one they came with.
-  { view: 'engine', label: 'Engine' }
+  { view: 'models', label: 'Models' }
 ];
 
 const SOLO_NAV_ITEM = { view: 'soloRules', label: 'This device' };
@@ -73,7 +73,7 @@ export function soloIsPureInstall() {
  */
 function navItems() {
   return soloIsPureInstall()
-    ? [SOLO_NAV_ITEM, SOLO_SETTINGS_NAV_ITEM]
+    ? [SOLO_NAV_ITEM, { view: 'models', label: 'Models' }, SOLO_SETTINGS_NAV_ITEM]
     : [...TEAM_NAV, { sep: true }, SOLO_NAV_ITEM];
 }
 
@@ -82,7 +82,7 @@ export function renderNav() {
   $('nav').innerHTML = navItems().map((it) => {
     if (it.sep) return '<span class="nav-sep"></span>';
     const n = it.count ? it.count() : 0;
-    return `<button type="button" class="nav-item${here === it.view ? ' on' : ''}" data-go="${it.view}"${it.sel ? ` data-sel="${it.sel}"` : ''}>
+    return `<button type="button" class="nav-item${here === it.view ? ' on' : ''}"${here === it.view ? ' aria-current="page"' : ''} data-go="${it.view}"${it.sel ? ` data-sel="${it.sel}"` : ''}>
       <span>${esc(it.label)}</span>
       ${n > 0 ? `<span class="nav-count">${n}</span>` : ''}
     </button>`;

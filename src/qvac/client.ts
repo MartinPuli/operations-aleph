@@ -14,7 +14,8 @@ import { loadModel, unloadModel, close } from '@qvac/sdk';
 import { withDeadline } from './deadline.js';
 import { adjudicatorFilename, MODEL_SPECS, modelsDir } from './models.js';
 import { remoteCompilerConfig } from './remote.js';
-import { loadAdjudicatorSettings } from '../settings.js';
+import { loadAdjudicatorSettings, loadCompilerSettings } from '../settings.js';
+import { findModel, fingerprint, modelPath, type ManagedRole } from '../models/store.js';
 import type { ModelRole } from './types.js';
 
 /** Written by `pnpm run setup` — resolved absolute paths per role. */
@@ -67,9 +68,12 @@ function overrideFor(role: ModelRole): string | null {
  * the conventional filename in the models directory, and finally the SDK
  * registry constant so a machine with working P2P still resolves.
  */
-function sourceFor(role: ModelRole): string | object {
+export function sourceFor(role: ModelRole): string | object {
   const override = overrideFor(role);
   if (override) return override;
+
+  const custom = selectedLocalModel(role);
+  if (custom) { fingerprint(custom); return modelPath(custom); }
 
   // The seat an administrator picked in the console, which outranks whatever
   // `pnpm run setup` happened to record. Below the env override on purpose:
@@ -163,6 +167,65 @@ function modelTypeFor(role: ModelRole): string {
 const LOAD_TIMEOUT_MS = 90_000;
 
 const loaded = new Map<ModelRole, Promise<string>>();
+const inForce = new Map<ModelRole, string>();
+const inForceFormats = new Map<ModelRole, 'compliance' | 'dynaguard' | null>();
+
+function selectedLocalModel(role: ModelRole) {
+  const settings = role === 'adjudicator' ? loadAdjudicatorSettings() : role === 'compiler' ? loadCompilerSettings() : null;
+  if (!settings?.modelId || (role === 'compiler' && loadCompilerSettings().provider !== 'catalog')) return null;
+  const entry = findModel(settings.modelId);
+  if (entry.kind !== 'local' || !entry.roles.includes(role as ManagedRole)) return null;
+  return entry;
+}
+
+/** Custom files carry a declared dialect; a renamed file cannot silently change
+ * PASS/FAIL into a general instruction model's compliance prompt. */
+export function customAdjudicatorForm(): 'compliance' | 'dynaguard' | null {
+  if (inForceFormats.has('adjudicator')) return inForceFormats.get('adjudicator') ?? null;
+  if (process.env['WARDEN_MODEL_ADJUDICATOR']) return null;
+  return selectedLocalModel('adjudicator')?.format ?? null;
+}
+export function activeLocalModel(role: ModelRole): string | null { return inForce.get(role) ?? null; }
+
+/** Desired configuration, including a built-in whose download is still pending.
+ * This must remain separate from the identity and dialect of cached weights. */
+export function configuredModel(role: ModelRole): string {
+  try {
+    if (role === 'compiler') {
+      const remote = remoteCompilerConfig();
+      if (remote) return remote.model;
+    }
+    const override = process.env[`WARDEN_MODEL_${role.toUpperCase()}`];
+    if (override) return override.split('/').pop() ?? override;
+    const custom = selectedLocalModel(role);
+    if (custom) return `${custom.id}.gguf`;
+    if (role === 'adjudicator') {
+      const chosen = loadAdjudicatorSettings().model;
+      if (chosen !== 'default') return adjudicatorFilename(chosen);
+    }
+    return sourceName(sourceFor(role));
+  } catch (err) {
+    return `unresolved (${err instanceof Error ? err.message : String(err)})`;
+  }
+}
+
+function sourceName(source: string | object): string {
+  if (typeof source === 'string') return source.split('/').pop() ?? source;
+  const entry = source as { name?: string; src?: string };
+  return entry.name ?? entry.src ?? 'registry';
+}
+
+export async function withTemporaryModel<T>(role: ManagedRole, path: string, work: (id: string) => Promise<T>): Promise<T> {
+  const pending = loadModel({ modelSrc: path as never, modelType: 'llm' as never, modelConfig: configFor(role) as never });
+  let modelId: string | undefined;
+  try {
+    modelId = await withDeadline(pending, LOAD_TIMEOUT_MS, 'loading the candidate model');
+    return await work(modelId);
+  } finally {
+    if (modelId) await unloadModel({ modelId }).catch(() => {});
+    else void pending.then((late) => unloadModel({ modelId: late })).catch(() => {});
+  }
+}
 
 /**
  * Roles whose load timed out, and when to stop holding it against them.
@@ -264,19 +327,31 @@ export function modelFor(role: ModelRole): Promise<string> {
    * and the load happens before either of them is called. This is the one place
    * that covers all three.
    */
+  const source = sourceFor(role);
+  const format = role === 'adjudicator' && !process.env['WARDEN_MODEL_ADJUDICATOR'] ? selectedLocalModel(role)?.format ?? null : null;
+  const pending = loadModel({
+    modelSrc: source as never,
+    modelType: modelTypeFor(role) as never,
+    modelConfig: configFor(role) as never
+  });
   const loading = withDeadline(
-    loadModel({
-      modelSrc: sourceFor(role) as never,
-      modelType: modelTypeFor(role) as never,
-      modelConfig: configFor(role) as never
-    }),
+    pending,
     LOAD_TIMEOUT_MS,
     `loading the ${role} model`
-  ).catch((err: unknown) => {
+  ).then((id) => {
+    inForce.set(role, typeof source === 'string' ? source.split('/').pop()! : (source as { name?: string }).name ?? 'registry');
+    inForceFormats.set(role, format);
+    return id;
+  }).catch((err: unknown) => {
+    // A deadline does not cancel the SDK's load. If it finishes after a failed
+    // activation was rolled back, release those abandoned weights as well.
+    void pending.then((id) => unloadModel({ modelId: id })).catch(() => {});
     // Drop the rejected promise so a later call can retry rather than
     // permanently inheriting a transient failure, and start the cooldown so
     // that retry is not immediate.
     loaded.delete(role);
+    inForce.delete(role);
+    inForceFormats.delete(role);
     unloadable.set(role, { until: Date.now() + LOAD_RETRY_AFTER_MS, why: loadFailure(role, err) });
     throw new Error(loadFailure(role, err));
   });
@@ -296,9 +371,8 @@ export function modelFor(role: ModelRole): Promise<string> {
  * different files on disk both wrote "(default)" and their numbers were filed
  * as the same configuration.
  *
- * Resolution order is `sourceFor`'s, so this is what will be loaded rather than
- * what someone hoped would be. A registry constant has no path, so it is named
- * by its own identity instead.
+ * Loaded weights keep their identity until they are unloaded. Before the first
+ * load this follows `sourceFor`, including its available-model fallback.
  */
 export function resolvedModel(role: ModelRole): string {
   // Compilation may not be running on anything in `models/`. When it is remote
@@ -309,11 +383,14 @@ export function resolvedModel(role: ModelRole): string {
     const remote = remoteCompilerConfig();
     if (remote) return remote.model;
   }
+  // A missing built-in selection is only a download request. The old weights
+  // keep serving until restart, and their identity determines their dialect.
+  // Reporting the desired filename here would prompt those old weights using
+  // the new model's instructions before the new bytes had even arrived.
+  const active = inForce.get(role);
+  if (active) return active;
   try {
-    const src = sourceFor(role);
-    if (typeof src === 'string') return src.split('/').pop() ?? src;
-    const entry = src as { name?: string; src?: string };
-    return entry.name ?? entry.src ?? 'registry';
+    return sourceName(sourceFor(role));
   } catch (err) {
     return `unresolved (${err instanceof Error ? err.message : String(err)})`;
   }
@@ -394,8 +471,7 @@ async function runProbe(): Promise<{ path: string | null; ok: boolean; detail: s
 /**
  * Which weights are on this disk, per role, and which are not.
  *
- * `resolvedModel` answers "what would load", which is not the same question and
- * is the only one the console could ask. So a person with no models installed
+ * A model name alone does not answer this question. A person with no models installed
  * saw the adjudicator named after a file that is not there, decided it was
  * fine, and then could not work out why every rule came back unevaluated. The
  * name of a thing is not evidence that the thing exists.
@@ -487,6 +563,8 @@ export function thinkingMarker(role: ModelRole): string {
 export async function forgetRole(role: ModelRole): Promise<void> {
   const previous = loaded.get(role);
   loaded.delete(role);
+  inForce.delete(role);
+  inForceFormats.delete(role);
   unloadable.delete(role);
   if (!previous) return;
   try {
@@ -505,6 +583,8 @@ export async function warmup(roles: ModelRole[]): Promise<void> {
 export async function shutdown(): Promise<void> {
   const entries = [...loaded.entries()];
   loaded.clear();
+  inForce.clear();
+  inForceFormats.clear();
   for (const [, idPromise] of entries) {
     try {
       await unloadModel({ modelId: await idPromise });

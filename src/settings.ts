@@ -21,8 +21,9 @@
  * lives in `data/` which is gitignored, and the key is never sent back to a
  * browser. Callers get `hasKey` and the last four characters.
  */
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { atomicJSON } from './models/store.js';
 import { z } from 'zod';
 
 const SETTINGS_PATH = process.env['WARDEN_SETTINGS_PATH'] ?? join('data', 'settings.json');
@@ -119,7 +120,8 @@ export const compilerSettingsSchema = z.object({
   baseUrl: z.string().max(400),
   apiKey: z.string().max(400),
   model: z.string().max(120),
-  redactNames: z.boolean()
+  redactNames: z.boolean(),
+  modelId: z.string().uuid().optional()
 });
 export type CompilerSettings = z.infer<typeof compilerSettingsSchema>;
 
@@ -152,10 +154,10 @@ export function saveCompilerSettings(next: CompilerSettings): CompilerSettings {
     try {
       existing = JSON.parse(readFileSync(SETTINGS_PATH, 'utf8')) as Record<string, unknown>;
     } catch {
-      existing = {};
+      throw new Error('The saved settings file is unreadable. Restore it before changing settings.');
     }
   }
-  writeFileSync(SETTINGS_PATH, JSON.stringify({ ...existing, compiler: settings }, null, 2));
+  atomicJSON(SETTINGS_PATH, { ...existing, compiler: settings });
   // Best effort: on a filesystem without POSIX modes this throws and the file
   // is still written. Failing the save over it would be the wrong trade.
   try {
@@ -199,7 +201,8 @@ export function redactedCompilerSettings(s: CompilerSettings): Omit<CompilerSett
  * points of attacks.
  */
 export const adjudicatorSettingsSchema = z.object({
-  model: z.enum(['default', 'dynaguard', 'dynaguard-8b', 'base', 'large'])
+  model: z.enum(['default', 'dynaguard', 'dynaguard-8b', 'base', 'large']),
+  modelId: z.string().uuid().optional()
 });
 export type AdjudicatorSettings = z.infer<typeof adjudicatorSettingsSchema>;
 
@@ -224,12 +227,12 @@ export function saveAdjudicatorSettings(next: AdjudicatorSettings): AdjudicatorS
     try {
       existing = JSON.parse(readFileSync(SETTINGS_PATH, 'utf8')) as Record<string, unknown>;
     } catch {
-      existing = {};
+      throw new Error('The saved settings file is unreadable. Restore it before changing settings.');
     }
   }
   // Merged, not replaced — the compiler settings live in the same file and a
   // whole-file write here would delete somebody's API key for choosing a model.
-  writeFileSync(SETTINGS_PATH, JSON.stringify({ ...existing, adjudicator: settings }, null, 2));
+  atomicJSON(SETTINGS_PATH, { ...existing, adjudicator: settings });
   try {
     chmodSync(SETTINGS_PATH, 0o600);
   } catch {

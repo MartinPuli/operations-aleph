@@ -62,8 +62,10 @@ or the provider picker in the console) — because compilation turns a sentence
 policy cannot be talked into enacting it. What goes with it: your sentence,
 your role names, and your employee roster (`WARDEN_COMPILER_REDACT_NAMES=1`
 reduces the roster to tokens). What never does: employee prompts, audit
-entries, the policy, and any API key. Both wrappers gate on the `compiler`
-role and repeat the check inside the call.
+entries or the active policy as employee evaluation input. Employee API keys
+are not compiler content; an endpoint's own provider key authenticates that
+connection. Compiler wrappers gate on the `compiler` role and repeat the check
+inside the call.
 
 **Keeping a transcript of your team.** The audit log holds `sha256(prompt)` and
 never the prompt: `recordDecision` strips the text before writing, so the
@@ -89,6 +91,86 @@ onboarding script and the audit record require an administrator: a request from
 the machine the gateway runs on, or an API key belonging to a role the ratified
 policy exempts. See [`src/server/admin-auth.ts`](src/server/admin-auth.ts).
 
+### Documents and the inspection boundary
+
+Public attachment APIs accept canonical base64 bytes and sanitized display
+names, never a gateway path, remote URL or stored file ID. The proxy normalizes
+all supported text/file parts before evaluation and reconstructs allowed
+forwarding from the exact inspected documents, matched by ordered SHA-256.
+Unknown content parts, mismatched results and incomplete extraction are refused;
+original file bytes are not forwarded. Extracted text and filenames are masked
+before upstream forwarding. See [document screening](docs/DOCUMENTS.md).
+
+Files are treated as untrusted parser input. Limits bound original bytes, page
+and image counts, decoded pixels, ZIP expansion, XML structure, extracted text,
+concurrent reader processes and elapsed time. The reader runs in a separate
+process with a 512 MiB JavaScript heap ceiling and is killed on timeout or client
+cancellation. That process is fault isolation, **not an OS security sandbox**:
+native PDF/image/OCR dependencies remain in the trusted computing base. A
+malformed native-parser exploit is not prevented merely by spawning a child.
+
+A document check evaluates every applicable input rule over overlapping text
+windows. An unreadable source image, missing page, failed rule/window or expired
+deadline cannot turn into ALLOW. OCR uses bundled English/Spanish language data
+and local PDF assets; there is no remote-OCR or document-URL download fallback.
+Empty or low-confidence OCR, active/embedded document content and unsupported
+structures are held rather than silently discarded. This conservative behavior
+can hold a legitimate document containing an unreadable logo or image.
+
+The audit chain retains each original file's digest, sanitized name, byte size,
+reading status and extraction metadata. It does not retain original bytes or
+extracted document text. Existing retention of the separately supplied prompt is
+unchanged. An administrator can still learn a document's sanitized filename and
+whether it matched a policy from the audit record; this is metadata, not an
+absence of information.
+
+Hooks run on the employee's computer and can read only attachments explicitly
+exposed by the host event as bytes or paths. They do not infer file permissions
+from prose. A hook cannot replace its host's original file with sanitized text:
+if the returned metadata reports masked credentials, it asks for a cleaned
+original and refuses. A claimed ALLOW without complete matching inspection
+metadata is refused as well. Gateway-outage behavior still follows the hook's
+configured fail-open/fail-closed policy, and a client-side hook deadline can
+still discard its result. Synthetic hook tests do not prove that a native client
+provides all attachments to that hook.
+
+### Administrator-owned models
+
+`/api/settings/models` and its import, test, activation and deletion routes use
+the existing administrative gate. Models belong to one gateway installation;
+they are not isolated per administrator. A direct loopback request may import a
+file already on the gateway. A remote administrator must upload bytes instead
+of gaining a path-based read capability on another machine.
+
+Saved compiler endpoints are compiler-only. Analysis always uses local weights.
+Remote compiler endpoints require HTTPS and an API key; direct loopback model
+servers may use HTTP without one. Changing a saved endpoint never copies its
+credential to a different address automatically. Catalogue responses expose key
+presence and a suffix, never a key or test fingerprint. Provider response bodies
+and raw JSON parser errors are suppressed during connection tests.
+
+The catalogue and settings are atomically replaced in mode `0600`; endpoint
+keys remain plaintext at rest, as with the existing compiler settings. Browser
+form snapshots exclude password and file controls. An employee credential in a
+Simulator request takes precedence over a saved administrator credential, so
+its policy exemption cannot silently change the test identity.
+
+Custom downloads accept public HTTPS sources only, validate and pin DNS results
+on each redirect, reject local/private addresses and URL credentials, and enforce
+size, disk-space and time bounds. Transfers use private partial files and clean
+up on cancellation or failure. Filenames never choose a destination path.
+Imported GGUF headers and complete-byte digests are checked, but the real native
+model loader remains part of the trusted computing base. Import weights from
+sources you trust; a successful compatibility test is not a provenance audit or
+a policy-accuracy result.
+
+A model must pass the test for its intended role before activation. Editing
+invalidates prior tests, active selections cannot be edited or removed, and a
+failed activation restores prior settings. Role leases let existing evaluations
+finish before a model is changed and prevent one decision from mixing weights.
+Environment overrides remain authoritative. Full storage, transfer and API
+contracts are in [model management](docs/MODEL-MANAGEMENT.md).
+
 ### What Warden does not defend
 
 These are real and stated on purpose. A security document that lists only
@@ -100,7 +182,9 @@ deadline, the prompt goes through unchecked and the employee is told so on
 stderr. A cold Codex decision was observed exceeding the 30-second deadline on
 2026-08-23. Failing closed would mean a broken gateway stops all work, and that
 is a product decision the deployment gets to make, not one this repo makes for
-it. Until it is configurable, treat the deadline as the guarantee's edge.
+it. `WARDEN_FAIL_CLOSED=1` selects refusal after the hook learns and remembers
+that policy; a machine that has never reached the gateway has no remembered
+policy. The native client's own deadline remains an independent boundary.
 
 The deadline has two halves and both fail open. Warden's own is 90 seconds.
 Claude Code has one of its own for `UserPromptSubmit` hooks, 30 seconds by
@@ -157,8 +241,10 @@ not a usability one.
 
 ## The one thing that may run off-machine, and what it is not
 
-Inference is local. The single exception is **rule compilation**, and it is
-opt-in, off by default, and enforced by role rather than by convention.
+Policy analysis and document extraction are local. **Rule compilation** may use
+an explicitly configured endpoint or installed CLI, enforced by role rather than
+by convention. Allowed, sanitized requests may also be sent to the administrator's
+configured upstream assistant; that forwarding is separate from analysis.
 
 Compilation turns one sentence an administrator typed into a draft rule that
 the same administrator then reads and ratifies. It never sees an employee
@@ -171,9 +257,9 @@ the local adapter and performs zero network calls, with `fetch` replaced by a
 recorder.
 
 Enable it with `WARDEN_COMPILER_API` (an OpenAI-shaped `/chat/completions` base
-URL) and `WARDEN_COMPILER_API_KEY`. Both are required — a URL without a key
-stays local rather than posting to an unauthenticated endpoint. Plain `http` to
-a non-loopback host is refused outright.
+URL) and `WARDEN_COMPILER_API_KEY`, or use Models in the console. A remote
+endpoint requires a key and HTTPS. An endpoint on `localhost`, `127.0.0.1` or
+`[::1]` may use HTTP without a key for a model served on the gateway itself.
 
 **What leaves the machine when it is on**, stated without qualification:
 
@@ -186,8 +272,9 @@ a non-loopback host is refused outright.
 Point 3 is the reason this is a security note and not a feature note. Set
 `WARDEN_COMPILER_REDACT_NAMES=1` and the provider sees `@e-01` and never the
 person; that costs accuracy exactly where the roster was earning it, so it is a
-choice rather than a default. No employee prompt, audit entry, policy hash or
-API key is sent under any setting.
+choice rather than a default. Employee prompts, documents, audit entries and
+employee keys are not sent to the compiler. The configured provider key is used
+only to authenticate that provider's connection.
 
 The console reports which model drafted a rule, and whether it was remote, on
 every draft it returns. An administrator ratifying a rule should not have to
@@ -327,8 +414,9 @@ down. The default stays open, and stays the documented trade it always was.
 
 ## Scope
 
-In scope: the guard pipeline, the policy store, the server's authentication and
-routes, the audit chain, the hook integrations, and the desktop packaging.
+In scope: the guard pipeline, document validation/extraction adapters, model
+catalogue and transfers, the policy store, server authentication and routes,
+audit chain, hook integrations, console identity boundaries and desktop packaging.
 
 Out of scope: vulnerabilities in `@qvac/sdk` or in the models themselves (report
 those upstream), and social engineering of an administrator.

@@ -96,7 +96,7 @@ export function recordDecision(
   // caller holds keeps `maskedPrompt` — the console's live trace and the proxy
   // forward both need it — but writing it here would make the log a transcript
   // of everything employees typed, which its own header promises it is not.
-  const { maskedPrompt: _neverPersisted, ...audited } = { ...decision, auditId };
+  const { maskedPrompt: _neverPersisted, maskedDocuments: _documentsNeverPersisted, ...audited } = { ...decision, auditId };
 
   const body = {
     auditId,
@@ -279,4 +279,3 @@ export function verifyChain(): {
 
   return { ok: true, entries: lines.length };
 }
-

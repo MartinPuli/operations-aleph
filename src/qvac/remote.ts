@@ -47,6 +47,7 @@
  * treatment every unmeasured lever in this repo gets.
  */
 import { loadCompilerSettings } from '../settings.js';
+import { findModel } from '../models/store.js';
 import { CompilerOffload } from './offload.js';
 import {
   FailClosedError,
@@ -94,10 +95,10 @@ type Draft = { baseUrl: string; apiKey: string; model: string; timeoutMs: number
 function configFromEnv(): Draft | null {
   const baseUrl = process.env['WARDEN_COMPILER_API']?.trim();
   const apiKey = process.env['WARDEN_COMPILER_API_KEY']?.trim();
-  if (!baseUrl || !apiKey) return null;
+  if (!baseUrl || (!apiKey && !isLocalEndpoint(baseUrl))) return null;
   return {
     baseUrl,
-    apiKey,
+    apiKey: apiKey ?? '',
     model: process.env['WARDEN_COMPILER_MODEL']?.trim() || 'claude-sonnet-5',
     timeoutMs: Number(process.env['WARDEN_COMPILER_TIMEOUT_MS']) || 60_000
   };
@@ -105,10 +106,15 @@ function configFromEnv(): Draft | null {
 
 function configFromSettings(): Draft | null {
   const s = loadCompilerSettings();
-  if (s.provider === 'local') return null;
+  if (s.provider === 'local' || s.provider.endsWith('-cli')) return null;
+  if (s.provider === 'catalog') {
+    if (!s.modelId) throw new Error('No saved compiler model selected');
+    const entry = findModel(s.modelId);
+    return entry.kind === 'endpoint' ? { ...entry, timeoutMs: 60_000 } : null;
+  }
   const baseUrl = s.baseUrl.trim();
   const apiKey = s.apiKey.trim();
-  if (!baseUrl || !apiKey) return null;
+  if (!baseUrl || (!apiKey && !isLocalEndpoint(baseUrl))) return null;
   return { baseUrl, apiKey, model: s.model.trim() || 'claude-sonnet-5', timeoutMs: 60_000 };
 }
 
@@ -116,6 +122,13 @@ function configFromSettings(): Draft | null {
  * The checks every source has to pass, so a setting saved from the console is
  * held to exactly the same bar as an environment variable.
  */
+export function isLocalEndpoint(baseUrl: string): boolean {
+  try {
+    const host = new URL(baseUrl).hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1';
+  } catch { return false; }
+}
+
 export function validate(draft: Draft): RemoteConfig {
   const { baseUrl, apiKey } = draft;
 
@@ -128,12 +141,15 @@ export function validate(draft: Draft): RemoteConfig {
   // http would put the roster on the wire in clear text. Loopback is exempt
   // because that is how someone points this at a model server on their own
   // machine, which is not remote at all.
-  const loopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1';
-  if (url.protocol !== 'https:' && !loopback) {
+  const loopback = isLocalEndpoint(baseUrl);
+  if (url.username || url.password || url.search || url.hash) throw new Error('Use an endpoint URL without credentials, query parameters or fragments');
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) {
     throw new Error(
       `the compiler endpoint must be https (got "${url.protocol}//") — the employee roster is sent to it`
     );
   }
+  if (!loopback && !apiKey) throw new Error('An API key is required for a remote compiler');
+  if (!draft.model.trim()) throw new Error('A compiler model name is required');
 
   return { ...draft, baseUrl: baseUrl.replace(/\/+$/, '') };
 }
@@ -172,7 +188,7 @@ export class RemoteCompilerAdapter extends CompilerOffload {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          authorization: `Bearer ${this.config.apiKey}`
+          ...(this.config.apiKey ? { authorization: `Bearer ${this.config.apiKey}` } : {})
         },
         body: JSON.stringify({
           model: this.config.model,
@@ -191,7 +207,8 @@ export class RemoteCompilerAdapter extends CompilerOffload {
               }
             : {})
         }),
-        signal: AbortSignal.timeout(req.timeoutMs ?? this.config.timeoutMs)
+        signal: AbortSignal.timeout(req.timeoutMs ?? this.config.timeoutMs),
+        redirect: 'error'
       });
     } catch (err) {
       // Network failure during compilation is a failed draft, never a rule.
@@ -203,9 +220,8 @@ export class RemoteCompilerAdapter extends CompilerOffload {
     }
 
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
       throw new FailClosedError(
-        `remote compiler returned ${res.status}: ${body.slice(0, 300)}`,
+        `remote compiler returned HTTP ${res.status}`,
         { role: req.role, attempts: 0 }
       );
     }

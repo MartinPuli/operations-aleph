@@ -6,7 +6,9 @@ import { readFileSync } from 'node:fs';
 import { Router } from 'express';
 import { promptsEnabled, retentionSummary } from '../../audit/prompts.js';
 import { cliCompilerConfig, cliToolLabel } from '../../qvac/cli-compiler.js';
-import { modelInventory, probeRuntime, resolvedModel } from '../../qvac/client.js';
+import { activeLocalModel, configuredModel, modelInventory, probeRuntime, resolvedModel } from '../../qvac/client.js';
+import { selections } from '../../models/manager.js';
+import { findModel } from '../../models/store.js';
 import { isMock, remoteCompiler } from '../../qvac/index.js';
 import { shellAttached, tellShell } from '../desktop-bridge.js';
 import { asyncRoute } from '../http.js';
@@ -113,6 +115,9 @@ systemRoutes.get('/api/models', asyncRoute(async (_req, res) => {
   const remote = remoteCompiler();
   // Cheap, and it is the one question nothing else on this machine can answer.
   const runtime = isMock() ? null : await probeRuntime();
+  const selected = selections();
+  const customJudge = selected.adjudicator && !process.env['WARDEN_MODEL_ADJUDICATOR'] ? findModel(selected.adjudicator) : null;
+  const customCompiler = selected.compiler && !process.env['WARDEN_COMPILER_API'] && !process.env['WARDEN_COMPILER_CLI'] && !process.env['WARDEN_MODEL_COMPILER'] ? findModel(selected.compiler) : null;
   res.json({
     mock: isMock(),
     state: modelState(),
@@ -130,12 +135,14 @@ systemRoutes.get('/api/models', asyncRoute(async (_req, res) => {
     })),
     // Two seats, one of which never leaves. Named separately because conflating
     // them is the misunderstanding this route exists to end.
-    judging: { where: 'this machine', model: resolvedModel('adjudicator') },
+    judging: { where: 'this machine', model: customJudge?.name ?? resolvedModel('adjudicator'),
+      modelId: customJudge?.id ?? null, configuredModel: configuredModel('adjudicator'), inForce: activeLocalModel('adjudicator') },
     drafting: cli
       ? { where: cliToolLabel(cli.tool), model: cli.model || 'its default' }
       : remote
-        ? { where: 'a configured endpoint', model: remote }
-        : { where: 'this machine', model: resolvedModel('compiler') }
+        ? { where: 'a configured endpoint', model: customCompiler?.name ?? remote, modelId: customCompiler?.id ?? null, inForce: remote }
+        : { where: 'this machine', model: customCompiler?.name ?? resolvedModel('compiler'), modelId: customCompiler?.id ?? null,
+          configuredModel: configuredModel('compiler'), inForce: activeLocalModel('compiler') }
   });
 }));
 

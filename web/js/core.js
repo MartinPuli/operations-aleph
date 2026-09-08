@@ -57,13 +57,16 @@ const askForAdminKey = () => {
  */
 export const api = async (path, opts, retried) => {
   const key = adminKey();
-  const init = key
+  // The Simulator deliberately borrows an employee's identity. A saved admin
+  // key must not replace it and turn an ordinary guard check into an exemption.
+  const hasIdentity = Boolean(new Headers(opts?.headers).get('authorization'));
+  const init = key && !hasIdentity
     ? { ...opts, headers: { ...(opts?.headers ?? {}), authorization: `Bearer ${key}` } }
     : opts;
 
   const r = await fetch(path, init);
 
-  if (r.status === 403 && !retried && askForAdminKey()) return api(path, opts, true);
+  if (r.status === 403 && !hasIdentity && !retried && askForAdminKey()) return api(path, opts, true);
 
   const text = await r.text();
   let j = null;

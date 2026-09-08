@@ -12,7 +12,7 @@
  * the trace and the audit record know three labels and keep knowing three.
  */
 import { z } from 'zod';
-import { resolvedModel, thinkingMarker } from '../../qvac/client.js';
+import { customAdjudicatorForm, resolvedModel, thinkingMarker } from '../../qvac/client.js';
 import type { Rule } from '../../policy/types.js';
 import { isolationPreamble, type Isolated } from '../isolate.js';
 
@@ -69,7 +69,7 @@ export type Shots = { violating: string[]; compliant: string[] };
 export function formFromEnv(): Form {
   const raw = process.env['WARDEN_ADJUDICATOR_FORM'];
   if (raw === 'choice' || raw === 'dynaguard' || raw === 'compliance' || raw === 'dynaguard-native') return raw;
-  return /dynaguard/i.test(resolvedModel('adjudicator')) ? 'dynaguard' : 'compliance';
+  return customAdjudicatorForm() ?? (/dynaguard/i.test(resolvedModel('adjudicator')) ? 'dynaguard' : 'compliance');
 }
 
 export function isDynaguard(form: Form): boolean {

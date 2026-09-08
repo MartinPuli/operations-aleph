@@ -36,7 +36,9 @@ export function go(view, sel, query) {
 export function toggleSel(view, id) { return go(view, state.sel === id ? null : id); }
 
 export function route() {
-  Object.assign(state, parseHash());
+  const next = parseHash();
+  if (next.view !== state.view) VIEWS[state.view]?.onLeave?.();
+  Object.assign(state, next);
   render();
   if (VIEWS[state.view].onEnter) VIEWS[state.view].onEnter();
 }

@@ -14,6 +14,7 @@ import type { Actor, Decision, ReportedUsage } from '../guard/types.js';
 import { actorForCredential } from '../policy/people.js';
 import { loadPolicy } from '../policy/store.js';
 import { adapter } from '../qvac/index.js';
+import { parseDocumentAttachments } from '../documents/index.js';
 
 /**
  * What an unrecognised key gets back.
@@ -49,8 +50,8 @@ export function extractPrompt(body: unknown): string {
   const b = body as { prompt?: string; user_input?: string; messages?: { role: string; content: string }[] };
   if (typeof b?.prompt === 'string') return b.prompt;
   if (typeof b?.user_input === 'string') return b.user_input;
-  const lastUser = b?.messages?.filter((m) => m.role === 'user').at(-1);
-  return lastUser?.content ?? '';
+  const lastUser = Array.isArray(b?.messages) ? b.messages.filter((m) => m && m.role === 'user').at(-1) : undefined;
+  return typeof lastUser?.content === 'string' ? lastUser.content : '';
 }
 
 /**
@@ -102,10 +103,10 @@ export function reportedUsage(body: unknown): ReportedUsage | undefined {
  * Run the guard for a request, whatever shape it arrived in. The caller has
  * already resolved the actor; this only assembles the input the pipeline wants.
  */
-export function evaluateRequest(req: Request, actor: Actor): Promise<Decision> {
+export function evaluateRequest(req: Request, actor: Actor, signal?: AbortSignal): Promise<Decision> {
   return evaluate(
     adapter(),
-    { actor, prompt: extractPrompt(req.body), usage: reportedUsage(req.body) },
+    { actor, prompt: extractPrompt(req.body), usage: reportedUsage(req.body), documents: parseDocumentAttachments(req.body?.attachments), signal },
     loadPolicy()
   );
 }

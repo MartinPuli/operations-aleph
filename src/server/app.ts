@@ -7,7 +7,7 @@
  * reasons for that order are written beside the lines that set it.
  */
 import { join } from 'node:path';
-import express, { type Express } from 'express';
+import express, { type Express, type ErrorRequestHandler } from 'express';
 import { ASSETS } from './config.js';
 import { adminAudit, adminGate, corsIfConfigured, securityHeaders, throttle } from './middleware.js';
 import { auditRoutes } from './routes/audit.js';
@@ -22,10 +22,10 @@ import { reviewRoutes } from './routes/review.js';
 import { settingsRoutes } from './routes/settings.js';
 import { soloRoutes } from './routes/solo.js';
 import { systemRoutes } from './routes/system.js';
+import { modelRoutes } from './routes/models.js';
 
 export function createApp(): Express {
   const app = express();
-  app.use(express.json({ limit: '4mb' }));
 
   corsIfConfigured(app);
   app.use(securityHeaders);
@@ -54,9 +54,20 @@ export function createApp(): Express {
    */
   app.use(adminGate);
 
+  // File-bearing requests have a separate bounded envelope. Authentication of
+  // admin routes happens before parsing large input; model-weight uploads use
+  // an octet stream and never become a multi-gigabyte JavaScript string.
+  const ordinaryJson = express.json({ limit: '4mb' });
+  const documentJson = express.json({ limit: '24mb' });
+  app.use((req, res, next) => {
+    const acceptsDocuments = req.path === '/api/guard/check' || req.path === '/v1/chat/completions';
+    (acceptsDocuments ? documentJson : ordinaryJson)(req, res, next);
+  });
+
   app.use(auditRoutes);
   app.use(policyRoutes);
   app.use(settingsRoutes);
+  app.use(modelRoutes);
   app.use(peopleRoutes);
   app.use(companyRoutes);
   app.use(guardRoutes);
@@ -69,6 +80,21 @@ export function createApp(): Express {
   // The console, after every API route so a file can never shadow one.
   app.use(express.static(join(ASSETS, 'web')));
   app.use(systemRoutes);
+
+  // A malformed or oversized request is a refusal, not a gateway outage. In
+  // particular the standalone hook must receive JSON it can distinguish from
+  // the network failures covered by the installation's availability policy.
+  const inputError: ErrorRequestHandler = (err, _req, res, next) => {
+    if (res.headersSent) return next(err);
+    const status = err?.type === 'entity.too.large' ? 413 : err?.type === 'entity.parse.failed' ? 400 : null;
+    if (status === null) return next(err);
+    res.status(status).json({
+      verdict: 'BLOCK', auditId: 'invalid-request', firedRules: [],
+      error: status === 413 ? 'request_too_large' : 'invalid_json',
+      explanation: status === 413 ? 'The request exceeds the permitted upload size.' : 'The request is not valid JSON.'
+    });
+  };
+  app.use(inputError);
 
   return app;
 }

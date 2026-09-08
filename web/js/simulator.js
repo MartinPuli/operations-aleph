@@ -4,6 +4,7 @@
 import { passRow } from './activity.js';
 import { $, attr, esc, post, state } from './core.js';
 import { refreshAppeals } from './data.js';
+import { bindDocuments, clearDocuments, documentComposer, documentMetadataMarkup, documentsBusy, loadDocumentCapabilities, selectedAttachments, selectedMetadata } from './documents.js';
 import { say } from './draft.js';
 import { personById, plural, ruleName, sendOnEnter } from './format.js';
 import { disclosure, render } from './render.js';
@@ -17,6 +18,7 @@ export const backToRules = '<button type="button" class="btn quiet" data-go="pol
 
 VIEWS.simulator = {
   railParent: 'policy',
+  onEnter: loadDocumentCapabilities,
   flush: true,
   body: () => `<div class="chatwrap">
     <div class="chat" id="chat">
@@ -25,21 +27,22 @@ VIEWS.simulator = {
           ${backToRules}
           <span class="spacer"></span>
           <span class="label">Send as</span>
-          <select class="inline" id="who" aria-label="Employee to send as">
-            ${sendAsOptions()}
+          <select class="inline" id="who" aria-label="Employee to send as"${state.company.employees.length ? '' : ' disabled'}>
+            ${sendAsOptions() || '<option value="">No identity set up</option>'}
           </select>
         </div>
         ${state.chat.length
           ? state.chat.map(renderMessage).join('')
-          : '<div class="empty"><b>See what Warden would do</b><span>Send a prompt as somebody on your team. It runs on their key and gets judged like anything else they send.</span></div>'}
+          : state.company.employees.length ? '<div class="empty"><b>See what Warden would do</b><span>Check a prompt, a document, or both as somebody on your team. The same policy and identity checks apply.</span></div>' : '<div class="empty"><b>Set up an identity to check requests</b><span>Choose who Warden should check as. Protect this device to create your own identity, or add people to your team.</span><div class="actions"><button type="button" class="btn primary" data-go="soloRules">Set up this device</button><button type="button" class="btn" data-go="people">Add people</button></div></div>'}
       </div>
     </div>
     <div class="composer">
       <div class="sheet">
         <div class="hero-box">
-          <textarea id="prompt" rows="2" placeholder="${state.sending ? 'Waiting for the verdict…' : 'Write a prompt as this employee…'}"${state.sending ? ' disabled' : ''}></textarea>
-          <button type="button" class="btn primary send" id="send"${state.sending ? ' disabled' : ''}>${state.sending ? 'Judging…' : 'Send'}</button>
+          <textarea id="prompt" rows="2" aria-label="Prompt to check" placeholder="${state.sending ? 'Waiting for the verdict…' : 'Write a prompt, or attach a document…'}"${state.sending ? ' disabled' : ''}></textarea>
+          <button type="button" class="btn primary send" id="send"${state.sending || documentsBusy() || !state.company.employees.length ? ' disabled' : ''}>${state.sending ? 'Checking…' : 'Check request'}</button>
         </div>
+        ${documentComposer()}
       </div>
     </div>
   </div>`,
@@ -47,13 +50,14 @@ VIEWS.simulator = {
     const send = $('send');
     if (send) send.onclick = doSend;
     sendOnEnter($('prompt'), doSend);
+    bindDocuments();
     bindFollowUps();
   }
 };
 
 function renderMessage(m, i) {
   if (m.from === 'employee') {
-    return `<div class="msg"><div class="who">${esc(m.who)}</div><div class="say">${esc(m.text)}</div></div>`;
+    return `<div class="msg"><div class="who">${esc(m.who)}</div>${m.text ? `<div class="say">${esc(m.text)}</div>` : ''}${documentMetadataMarkup(m.documents, { submitted: true })}</div>`;
   }
   // The pass list travels with the answer instead of living in a side panel —
   // same disclosure, same place in the hierarchy, as a decision in Activity.
@@ -66,6 +70,7 @@ function renderMessage(m, i) {
     <div class="who">Warden</div>
     <div class="verdict ${esc(m.verdict)}">${esc(m.label)}</div>
     ${m.why ? `<div class="why">${m.why}</div>` : ''}
+    ${documentMetadataMarkup(m.documents)}
     ${followUpControls(m, i)}
     ${passes}
   </div>`;
@@ -82,40 +87,55 @@ function renderMessage(m, i) {
  * pair with the wrong questions in the transcript.
  */
 async function doSend() {
-  if (state.sending) return;
+  if (state.sending || documentsBusy()) return;
   const box = $('prompt');
   const text = box.value.trim();
-  if (!text) return;
+  const attachments = selectedAttachments();
+  if (!text && !attachments.length) { box.focus(); return; }
   const who = $('who').value || 'anon';
   const person = personById(who);
+  // Missing identity must not fall through to the console's administrator
+  // credential and accidentally exercise the policy's exempt path.
+  if (!person?.apiKey) { $('who')?.focus(); return; }
   box.value = '';
 
-  state.chat.push({ from: 'employee', who: person ? `${person.name} · ${person.role}` : who, text });
+  state.chat.push({ from: 'employee', who: person ? `${person.name} · ${person.role}` : who, text, documents: selectedMetadata() });
   state.sending = true;
   render();
 
   try {
-    await judge(text, person, who);
+    if (await judge(text, person, who, attachments)) clearDocuments();
+    else if ($('prompt')) $('prompt').value = text;
+  } catch {
+    state.chat.push({ from: 'warden', verdict: 'error', label: 'Request was not checked', why: '<div>Warden could not be reached. Your files are still attached. Check the gateway connection and try again.</div>' });
+    if ($('prompt')) $('prompt').value = text;
   } finally {
     state.sending = false;
     render();
+    $('prompt')?.focus();
   }
 }
 
-async function judge(text, person, who) {
+async function judge(text, person, who, attachments) {
 
   // The person's own API key, exactly as their laptop would send it. The
   // console deliberately has no privileged way to assert an identity — it
   // exercises the same path an employee's tool does, so a break here breaks
   // the demo too.
-  const { j } = await post('/api/guard/check', { prompt: text, source: 'console' }, {
+  const { ok, j } = await post('/api/guard/check', { prompt: text, source: 'console', ...(attachments.length ? { attachments } : {}) }, {
     headers: person?.apiKey ? { authorization: `Bearer ${person.apiKey}` } : {}
   });
 
   if (j?.error === 'unknown_api_key') {
     state.chat.push({ from: 'warden', verdict: 'BLOCK', label: 'Key not recognised', why: `<div>${esc(j.explanation)}</div>` });
     render();
-    return;
+    return false;
+  }
+
+  if (!ok || !['ALLOW', 'ESCALATE', 'BLOCK'].includes(j?.verdict)) {
+    state.chat.push({ from: 'warden', verdict: 'error', label: 'Request was not checked', why: `<div>${esc(typeof j?.error === 'string' ? j.error : 'The gateway could not check this request. Review the files and try again.')}</div>` });
+    render();
+    return false;
   }
 
   const rule = j.firedRules?.[0];
@@ -141,6 +161,7 @@ async function judge(text, person, who) {
       why += `<div><b>These would go through:</b>${rule.allowedExamples.map((x) => `<div>· ${esc(x)}</div>`).join('')}</div>`;
     }
   }
+  if (!rule && j.verdict !== 'ALLOW' && j.explanation) why += `<div>${esc(j.explanation)}</div>`;
   if (j.maskedSpans?.length) why += `<div>${plural(j.maskedSpans.length, 'secret')} masked before checking.</div>`;
   if (j.quota?.limit) why += `<div>Used ${j.quota.used} of ${j.quota.limit} today.</div>`;
   if (j.auditId) why += `<div><button type="button" class="linkbtn" data-go="activity" data-sel="${attr(j.auditId)}">See the full record</button></div>`;
@@ -150,12 +171,13 @@ async function judge(text, person, who) {
   // shows them because the simulator is where it stands in for one.
   state.chat.push({
     from: 'warden', verdict: j.verdict, label, why,
-    passes: j.passes, totalMs: j.totalMs,
+    passes: j.passes, totalMs: j.totalMs, documents: j.documents,
     ...(j.verdict !== 'ALLOW' && j.auditId && person
-      ? { followUp: { auditId: j.auditId, prompt: text, who: person.id } }
+      ? { followUp: { auditId: j.auditId, prompt: text, who: person.id, hasDocuments: Boolean(attachments.length) } }
       : {})
   });
   render();
+  return true;
 }
 
 // ── the two ways out of a refusal ────────────────────────────────────────────
@@ -183,9 +205,10 @@ function followUpControls(m, i) {
     ${m.appealed
       ? '<div class="note good">Reported. An administrator sees it in their Inbox, next to the rule that stopped you.</div>'
       : `<div class="chips">
-          ${s ? '' : `<button type="button" class="btn" data-rewrite="${i}"${m.busy ? ' disabled' : ''}>${m.busy === 'rewrite' ? 'Asking…' : 'Suggest a rewrite'}</button>`}
+          ${s || m.followUp.hasDocuments ? '' : `<button type="button" class="btn" data-rewrite="${i}"${m.busy ? ' disabled' : ''}>${m.busy === 'rewrite' ? 'Asking…' : 'Suggest a rewrite'}</button>`}
           <button type="button" class="btn" data-appeal="${i}"${m.busy ? ' disabled' : ''}>This block was wrong</button>
         </div>
+        ${m.followUp.hasDocuments ? '<div class="note">To revise a document request, update the file and check it again.</div>' : ''}
         ${m.appealOpen ? `
           <textarea id="appealNote" rows="2" placeholder="What were you actually trying to do? (optional)"></textarea>
           <button type="button" class="btn primary" data-send-appeal="${i}"${m.busy ? ' disabled' : ''}>${m.busy === 'appeal' ? 'Sending…' : 'Send the report'}</button>` : ''}

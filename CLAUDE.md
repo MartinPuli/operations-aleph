@@ -1,8 +1,10 @@
 # Working on Warden
 
 Warden is a local AI gateway. An administrator writes policy in plain language;
-every employee prompt is judged against it before it reaches any model, and all
-inference runs on-device through QVAC.
+employee requests and supplied documents are checked before they reach their
+assistant. Policy analysis uses local QVAC weights; document extraction uses
+local parsers and offline OCR. Administrators can explicitly move compilation
+or the allowed upstream assistant to another service, but not analysis.
 
 This file is for whoever works on it next. It is about how the codebase thinks,
 what has already been measured, and which mistakes are cheap to repeat.
@@ -40,6 +42,14 @@ src/guard/       the pipeline: one prompt in, one decision out
   aggregate.ts     pass 4 — the only place a verdict is decided. No inference
   sanitize.ts      pass -1 — mask secrets before anything else sees the text
   quota.ts         pass -2 — per-role daily counters
+src/documents/   inline-byte validation, bounded local parsing/OCR, extraction reports
+  runner.ts        cancellable reader process; never an OS security sandbox
+  extract.ts       PDF/DOCX/text/image completeness and resource limits
+src/proxy/       content normalization and forwarding from inspected, masked results
+src/models/      per-installation model catalogue, transfers, tests and activation
+  store.ts         private atomic state, fingerprints and redacted public entries
+  manager.ts       role compatibility, active-entry restrictions and rollback
+  transfers.ts     bounded uploads/path imports/public HTTPS downloads
 src/policy/      rules, roles, people, retrieval, the compiler
   compile.ts       the compiler's logic; prompts.ts is what it says to the model
   preview.ts       a draft judged by the real adjudicator before anyone activates it
@@ -47,6 +57,7 @@ src/policy/      rules, roles, people, retrieval, the compiler
 src/qvac/        the only boundary to @qvac/sdk. Everything else uses an adapter
   offload.ts       the one gate a compiler that leaves the local weights goes through
   json.ts          the one parser every adapter reads a model's JSON with
+  coordination.ts  role leases: a decision finishes before its weights change
 src/server/      HTTP. index.ts only boots; app.ts fixes the middleware order
   routes/          one router per surface: policy, people, guard, solo, system…
   middleware.ts    CORS, headers, rate limit, admin audit, admin gate
@@ -56,6 +67,8 @@ web/             the console: index.html is the shell, style.css the styles,
                  core/format/router/data/render. No build step. draft.js is the
                  rule conversation, draft-set.js the list a broad instruction
                  becomes, answers.js what the compiler says when it is not a rule
+                 models.js/model-library.js manage the two roles and custom models;
+                 documents.js prepares files; form-state.js excludes secrets/files
 src/redteam/     the corpus and the runner that writes REPORT.md
 scripts/         setup, benchmarks, and the adjudicator bench
 integrations/    the UserPromptSubmit hooks for Claude Code, Codex, opencode
@@ -118,7 +131,12 @@ looks like.
 what you could not measure. No bullet lists of files.
 
 **No new dependencies without a reason that survives being written down.** The
-runtime is express, zod, and the QVAC SDK.
+HTTP/guard core uses Express, Zod and QVAC. Document reading adds pinned local
+PDF, XML, ZIP, image and OCR libraries; their purposes and licenses are recorded
+in `THIRD_PARTY_NOTICES.md`. Preserve upstream notices and the lockfile. PDF.js
+upgrades must rerun the partial-operator-stream regression in
+`docs/DOCUMENTS.md`: a resolved rendering promise alone is not proof that every
+source image was inspected.
 
 ## Running it
 
@@ -128,10 +146,22 @@ pnpm run setup                    # downloads the models (~5.4 GB)
 pnpm run dev                      # gateway + console on :8080
 WARDEN_ADAPTER=mock pnpm run dev  # no models, no GPU — the mock stands in
 pnpm run typecheck
+pnpm test                        # isolated regression suites; real parser/OCR fixtures
+pnpm run build                   # server and desktop assets
 pnpm run redteam                  # the corpus. Writes REPORT.md
 pnpm run bench                    # the adjudicator bench
 pnpm run verify-audit             # walk the audit chain
 ```
+
+Use Node 22.17+ for the runtime requirement. CI uses Node 22; Node 24 is the
+verified local desktop-packaging choice. A 2026-09-08 local Forge run under
+Node 26 exited successfully during Electron ZIP extraction without producing
+an application, while the same packaging path under Node 24 completed. That is
+an observed toolchain compatibility issue, not a claim that Warden's server
+cannot run under Node 26. Verify the actual packaged artifact, not just the
+packaging command's exit code. The packaged macOS arm64 app has been booted and
+its PDF and offline-OCR readers checked; other target platforms still need their
+own artifact verification.
 
 The mock adapter is a test double, never a fallback. If the real adapter fails,
 Warden escalates — it does not downgrade to keyword matching and keep answering.
@@ -156,6 +186,21 @@ engine, and `pnpm run bench -- --against` pairs the two over identical cells.
 Keep the boundary that tight — the moment a guard pass imports the SDK, the
 question stops being cheap to ask.
 
+**A document is checked completely or held.** `src/documents/` produces
+sanitized reports and transient text, not verdicts. Documents require every
+applicable input rule and every overlapping text window; failed extraction,
+an unreadable source image or an unfinished window cannot be waived because a
+paragraph was readable. The proxy forwards only masked text matched to the
+complete original-byte digests. Do not add URL fetching, gateway paths or
+unrecognized content passthrough to an employee API.
+
+**Changing weights is an administrative operation.** The Models catalogue is
+shared within an installation. Test each role before activation, keep analysis
+local, and hold the role lease across the whole decision. A failed load restores
+prior settings; an edit invalidates previous compatibility tests. Read
+`docs/MODEL-MANAGEMENT.md` before changing these boundaries. Compatibility is
+not evidence of policy accuracy.
+
 **When you add a pass with a new enum label, add that label to the mock.** Its
 `mockValue` picks from the enum by matching known benign and hostile names; a
 label it does not recognise falls through to `choices[0]` and makes the mock
@@ -178,8 +223,9 @@ something. The parts that matter while you are editing:
 - **The audit log stores prompt hashes, never prompt text.** Keeping the text
   would make the governance record the largest data-exposure risk in the system.
   That has not changed and must not: `recordDecision` strips `maskedPrompt`
-  before writing, and nothing in the hash chain `verifyChain()` walks contains
-  a prompt.
+  and `maskedDocuments` before writing. Original document bytes and extracted
+  document text do not enter retention or events either; sanitized filenames,
+  complete-byte hashes and extraction metadata remain as audit evidence.
 - **Prompt text lives in a second store with a date on it**
   ([`src/audit/prompts.ts`](src/audit/prompts.ts)). The console has to be able
   to show an administrator what was blocked, and it used to do that from a Map
@@ -191,8 +237,9 @@ something. The parts that matter while you are editing:
   turns it off and deletes the file. If you make this longer, you are making
   the blast radius of a stolen gateway larger by the same factor — say so out
   loud when you do.
-- **The hook fails open on timeout, by design and under protest.** A deadline
-  that passes lets the prompt through unchecked. This is documented in
+- **The hook defaults to failing open on timeout.** A deadline that passes
+  lets the prompt through unchecked unless the hook has learned the gateway's
+  `WARDEN_FAIL_CLOSED=1` setting; a native client's own deadline is independent. This is documented in
   `SECURITY.md` and in `docs/HOOK-VERIFICATION.md`; it is a known, deliberate
   trade, not an oversight to fix quietly. It was 30 seconds until v0.1.18 and
   is 90 now, because the optional 8B adjudicator was measured at 46 seconds on
@@ -229,9 +276,13 @@ Warden was built fast and the repo says so rather than pretending otherwise.
 - The 8B also costs **46 s per decision** on four CPU cores, against a hook that
   gives up at 30 and fails open. That is a fact about the machine, and it is why
   the number is worth having: a deployment with a GPU should measure it again.
-- Six attachment-bearing corpus prompts are skipped in every run, because the
-  OCR model resolves only over the P2P registry. `document-borne` has never been
-  measured.
+- Historical model runs skipped attachment-bearing prompts because the old
+  QVAC OCR model resolved only over the P2P registry. The current public path
+  has tested PDF/DOCX/text parsing and bundled English/Spanish OCR, including a
+  packaged macOS arm64 smoke. Those tests do not establish document attack
+  accuracy or retroactively repair historical scores. Native attachment coverage
+  still depends on hosts exposing bytes or explicit paths; never infer paths
+  from prose. See `docs/DOCUMENTS.md` and `docs/HOOK-VERIFICATION.md`.
 - **The policy splitter splits on a capable compiler, and only there.**
   `compilePolicy` turns one broad instruction into the specific rules it
   means. Run against the real `Qwen3-1.7B-Q4_0` on 2026-09-01 it returned
@@ -257,8 +308,9 @@ Warden was built fast and the repo says so rather than pretending otherwise.
   item-shaped rules judge better than category-shaped ones on the real judge
   is a hypothesis that row sets up and does not test.
 - Quota counters live in memory and reset with the process.
-- API keys are stored in plaintext in the directory file, and so is the compiler
-  provider key in `data/settings.json` (written `0600`, gitignored). On every
+- Employee API keys are stored in plaintext in the directory file; compiler
+  provider keys are plaintext in `data/settings.json` and `data/models.json`
+  (written `0600`, gitignored). On every
   employee laptop the key is also in the shell profile and, since 0.1.44, in
   the `env` block of `~/.claude/settings.json`, because a Claude Code opened
   from the desktop app reads the second and not the first.

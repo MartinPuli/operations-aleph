@@ -15,12 +15,11 @@
 import type { Request, Response } from 'express';
 import { evaluate } from '../guard/pipeline.js';
 import { screenOutput, screensOutput } from '../guard/output.js';
-import { normalizeUntrusted } from '../guard/isolate.js';
-import { sanitize } from '../guard/sanitize.js';
 import type { Actor, Decision } from '../guard/types.js';
 import { actorForCredential } from '../policy/people.js';
 import { loadPolicy, rulesForActor } from '../policy/store.js';
 import { adapter } from '../qvac/index.js';
+import { ChatInputError, forwardedMessages, parseConversation } from './content.js';
 
 /** The local model that answers allowed prompts. Cloud is out by track rules. */
 const UPSTREAM = process.env['WARDEN_UPSTREAM'] ?? 'http://localhost:11434';
@@ -64,6 +63,27 @@ export async function handleChatCompletion(
   res: Response,
   emit: (decision: unknown) => void
 ): Promise<void> {
+  const controller = new AbortController();
+  const abort = () => { if (!res.writableEnded) controller.abort(); };
+  res.once('close', abort);
+  if (res.destroyed) controller.abort();
+  try {
+    if (!controller.signal.aborted) await handleConnectedChatCompletion(req, res, emit, controller.signal);
+  } catch (err) {
+    // A disconnected client has nowhere to receive an error. Fetch body reads
+    // also reject on abort, including while an output is being held to screen.
+    if (!controller.signal.aborted && !res.destroyed) throw err;
+  } finally {
+    res.off('close', abort);
+  }
+}
+
+async function handleConnectedChatCompletion(
+  req: Request,
+  res: Response,
+  emit: (decision: unknown) => void,
+  signal: AbortSignal
+): Promise<void> {
   const actor = resolveActor(req);
   if (!actor) {
     res.status(401).json({
@@ -73,23 +93,27 @@ export async function handleChatCompletion(
   }
 
   const body = req.body as {
-    messages?: { role: string; content: string }[];
+    messages?: unknown[];
     stream?: boolean;
     model?: string;
+    attachments?: unknown;
   };
-  const messages = body.messages ?? [];
-  // Every user turn is judged, not just the last one. An OpenAI-compatible
-  // client resends the whole history, so "put the payload in turn one and say
-  // 'continue' in turn two" would otherwise walk straight past the guard while
-  // the raw turn-one text still reached the model.
-  const userTurns = messages.filter((m) => m.role === 'user' && typeof m.content === 'string');
-  const prompt = userTurns.map((m) => m.content).join('\n\n');
-
-  let outbound = messages;
+  let conversation;
+  try {
+    conversation = parseConversation(body);
+  } catch (err) {
+    const status = (err as { status?: number }).status ?? 400;
+    res.status(status).json({ error: { code: 'unreadable_content', message: err instanceof Error ? err.message : 'The request could not be inspected.' } });
+    return;
+  }
+  let outbound: unknown[];
 
   if (MODE === 'warden') {
-    const decision: Decision = await evaluate(adapter(), { actor, prompt }, loadPolicy());
+    const decision: Decision = await evaluate(adapter(), {
+      actor, prompt: conversation.prompt, documents: conversation.documents, signal
+    }, loadPolicy());
     emit(decision);
+    if (signal.aborted || res.destroyed) return;
 
     if (decision.verdict === 'BLOCK') {
       const quotaHit = decision.quota && decision.quota.limit > 0 && decision.quota.used >= decision.quota.limit;
@@ -122,20 +146,26 @@ export async function handleChatCompletion(
       return;
     }
 
-    // Forward the masked text, never the original. A credential the employee
-    // pasted must not reach the model just because the request was allowed —
-    // and it can sit in any turn of the history, so each user turn is masked,
-    // not only the newest.
-    outbound = messages.map((m) =>
-      m.role === 'user' && typeof m.content === 'string'
-        ? { ...m, content: sanitize(normalizeUntrusted(m.content)).masked }
-        : m
-    );
+    try {
+      outbound = forwardedMessages(conversation, decision.maskedDocuments ?? []);
+    } catch (err) {
+      if (!(err instanceof ChatInputError)) throw err;
+      res.status(422).json({ error: { code: 'incomplete_inspection', message: err.message } });
+      return;
+    }
   } else {
-    outbound = [{ role: 'system', content: baselineSystemPrompt(actor) }, ...messages];
+    // Baseline is a benchmark control, with no document inspection. Explicitly
+    // reject attachments there instead of mislabelling raw file forwarding as
+    // supported document handling.
+    if (conversation.documents.length) {
+      res.status(400).json({ error: { code: 'baseline_text_only', message: 'Document inspection requires Warden mode.' } });
+      return;
+    }
+    outbound = [{ role: 'system', content: baselineSystemPrompt(actor) }, ...(body.messages ?? [])];
   }
 
-  const payload = { ...body, messages: outbound, model: body.model ?? UPSTREAM_MODEL };
+  const payload = { ...conversation.options, messages: outbound, model: conversation.options.model ?? UPSTREAM_MODEL };
+  if (signal.aborted || res.destroyed) return;
 
   /**
    * Screening the answer costs the stream, so it is bought only when the policy
@@ -148,11 +178,11 @@ export async function handleChatCompletion(
    * by token exactly as before.
    */
   if (MODE === 'warden' && screensOutput(loadPolicy(), actor)) {
-    await forwardScreened(res, payload, actor, emit);
+    await forwardScreened(res, payload, actor, emit, signal);
     return;
   }
 
-  await forward(res, payload);
+  await forward(res, payload, signal);
 }
 
 /**
@@ -167,8 +197,10 @@ async function forwardScreened(
   res: Response,
   payload: { messages: unknown[]; model: string; stream?: boolean },
   actor: Actor,
-  emit: (decision: unknown) => void
+  emit: (decision: unknown) => void,
+  signal: AbortSignal
 ): Promise<void> {
+  if (signal.aborted || res.destroyed) return;
   const wantsStream = payload.stream === true;
 
   let upstream: globalThis.Response;
@@ -176,9 +208,11 @@ async function forwardScreened(
     upstream = await fetch(`${UPSTREAM}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${UPSTREAM_KEY}` },
-      body: JSON.stringify({ ...payload, stream: false })
+      body: JSON.stringify({ ...payload, stream: false }),
+      signal
     });
   } catch (err) {
+    if (signal.aborted || res.destroyed) return;
     res.status(502).json({
       error: {
         code: 'upstream_unreachable',
@@ -191,6 +225,7 @@ async function forwardScreened(
   }
 
   const raw = await upstream.text();
+  if (signal.aborted || res.destroyed) return;
   if (!upstream.ok) {
     // Upstream's own error, passed through untouched. Judging it would be
     // judging a failure message as if the model had said it.
@@ -201,53 +236,88 @@ async function forwardScreened(
     return;
   }
 
-  let answer: string;
-  let parsed: { choices?: { message?: { content?: string } }[] };
+  let parsed: { choices: { index?: unknown; message: unknown; finish_reason?: unknown; logprobs?: unknown }[]; usage?: unknown };
   try {
     parsed = JSON.parse(raw) as typeof parsed;
-    answer = parsed.choices?.[0]?.message?.content ?? '';
+    if (!Array.isArray(parsed.choices) || !parsed.choices.length || parsed.choices.length > 8) throw new Error('invalid choices');
   } catch {
-    res.status(502).json({
-      error: { code: 'upstream_unparseable', message: 'The model returned something this gateway could not read.' }
-    });
+    res.status(502).json({ error: { code: 'upstream_unparseable', message: 'The model returned an unreadable answer. Nothing was forwarded.' } });
     return;
   }
 
-  const decision = await screenOutput(adapter(), { actor, text: answer, policy: loadPolicy() });
-  emit(decision);
-
-  // Same shape the input path refuses with, so a client handles one refusal
-  // and gets both. ESCALATE holds it too: an answer nobody has cleared is not
-  // an answer to show, and unlike a held prompt there is nothing lost by
-  // waiting — the request is already paid for and the text already exists.
-  if (decision.verdict !== 'ALLOW') {
-    res.status(decision.verdict === 'BLOCK' ? 403 : 202).json({
-      error: {
-        code: decision.verdict === 'BLOCK' ? 'policy_block_output' : 'policy_escalate_output',
-        message: decision.explanation,
-        rule: decision.firedRules[0]?.ruleText,
-        auditId: decision.auditId,
-        side: 'output'
+  const choices: { index: number; message: Record<string, unknown>; finish_reason: string | null }[] = [];
+  let auditId = '';
+  for (const [index, choice] of parsed.choices.entries()) {
+    let conversation;
+    try {
+      if (!choice || typeof choice !== 'object' || Object.keys(choice).some((key) => !['index', 'message', 'finish_reason', 'logprobs'].includes(key))) throw new Error('unsupported choice fields');
+      if (choice.logprobs !== undefined && choice.logprobs !== null) throw new Error('token log probabilities cannot be screened');
+      if (choice.index !== undefined && choice.index !== index) throw new Error('invalid choice index');
+      const message = choice.message as { role?: unknown; refusal?: unknown; [key: string]: unknown };
+      if (!message || message.role !== 'assistant') throw new Error('invalid assistant response');
+      // A refusal is text too. Put it into readable content before inspecting
+      // it instead of preserving a second unscreened output field.
+      const { refusal, ...fields } = message;
+      if (refusal !== undefined && refusal !== null) {
+        if (typeof refusal !== 'string') throw new Error('invalid refusal');
+        if (fields.content === null || fields.content === undefined) fields.content = refusal;
+        else if (typeof fields.content === 'string') fields.content += `\n${refusal}`;
+        else throw new Error('unsupported refusal content');
       }
-    });
-    return;
+      conversation = parseConversation({ messages: [fields] });
+      if (conversation.documents.length) throw new Error('attachment output cannot be screened');
+      if (choice.finish_reason !== undefined && choice.finish_reason !== null && !['stop', 'length', 'tool_calls', 'function_call', 'content_filter'].includes(String(choice.finish_reason))) throw new Error('unsupported finish reason');
+    } catch {
+      res.status(502).json({ error: { code: 'unsupported_output', message: 'The model returned output that could not be completely inspected. Nothing was forwarded.' } });
+      return;
+    }
+
+    // Every returned alternative is a distinct answer. Screening one and then
+    // returning the entire provider object would expose the unchecked choices
+    // and any instructions placed in function-call arguments.
+    const decision = await screenOutput(adapter(), { actor, text: conversation.prompt, policy: loadPolicy() });
+    emit(decision);
+    if (signal.aborted || res.destroyed) return;
+    auditId = decision.auditId;
+    if (decision.verdict !== 'ALLOW') {
+      res.status(decision.verdict === 'BLOCK' ? 403 : 202).json({ error: {
+        code: decision.verdict === 'BLOCK' ? 'policy_block_output' : 'policy_escalate_output',
+        message: decision.explanation, rule: decision.firedRules[0]?.ruleText, auditId: decision.auditId, side: 'output'
+      } });
+      return;
+    }
+    choices.push({ index, message: forwardedMessages(conversation, [])[0]!, finish_reason: choice.finish_reason === undefined ? 'stop' : choice.finish_reason as string | null });
   }
 
+  // Rebuild the response from inspected messages and bounded protocol values.
+  // Arbitrary provider extension fields cannot carry another unchecked answer.
+  const safe = { id: `chatcmpl-${auditId}`, object: 'chat.completion', created: Math.floor(Date.now() / 1000), model: payload.model, choices,
+    ...(safeUsage(parsed.usage) ? { usage: safeUsage(parsed.usage) } : {}) };
   if (!wantsStream) {
-    res.status(200).type('application/json').send(raw);
+    res.status(200).json(safe);
     return;
   }
 
   res.status(200).setHeader('content-type', 'text/event-stream');
-  const chunk = {
-    id: `chatcmpl-${decision.auditId}`,
-    object: 'chat.completion.chunk',
-    model: payload.model,
-    choices: [{ index: 0, delta: { role: 'assistant', content: answer }, finish_reason: 'stop' }]
-  };
+  const chunk = { ...safe, object: 'chat.completion.chunk', choices: choices.map((choice) => ({ index: choice.index,
+    delta: { ...choice.message, ...(Array.isArray(choice.message.tool_calls) ? { tool_calls: choice.message.tool_calls.map((call, i) => ({ index: i, ...call })) } : {}) },
+    finish_reason: choice.finish_reason })) };
   res.write(`data: ${JSON.stringify(chunk)}\n\n`);
   res.write('data: [DONE]\n\n');
   res.end();
+}
+
+
+/** Usage counters are useful metadata, never arbitrary provider text. */
+function safeUsage(value: unknown): Record<string, number> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const out: Record<string, number> = {};
+  for (const key of ['prompt_tokens', 'completion_tokens', 'total_tokens']) {
+    const count = raw[key];
+    if (typeof count === 'number' && Number.isSafeInteger(count) && count >= 0) out[key] = count;
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 /**
@@ -256,15 +326,18 @@ async function forwardScreened(
  * Real clients stream, so buffering the whole response would make the gateway
  * feel broken even when it is working.
  */
-async function forward(res: Response, payload: unknown): Promise<void> {
+async function forward(res: Response, payload: unknown, signal: AbortSignal): Promise<void> {
+  if (signal.aborted || res.destroyed) return;
   let upstream: globalThis.Response;
   try {
     upstream = await fetch(`${UPSTREAM}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${UPSTREAM_KEY}` },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal
     });
   } catch (err) {
+    if (signal.aborted || res.destroyed) return;
     res.status(502).json({
       error: {
         code: 'upstream_unreachable',
@@ -276,6 +349,7 @@ async function forward(res: Response, payload: unknown): Promise<void> {
     return;
   }
 
+  if (signal.aborted || res.destroyed) return;
   res.status(upstream.status);
   const contentType = upstream.headers.get('content-type');
   if (contentType) res.setHeader('content-type', contentType);
@@ -287,20 +361,17 @@ async function forward(res: Response, payload: unknown): Promise<void> {
 
   // Headers are already out, so a mid-stream failure cannot become a status
   // code — but it must still end the response rather than park the client on a
-  // connection nobody will ever close. And a client that walks away stops the
-  // upstream read instead of draining it to nowhere.
+  // connection nobody will ever close. The request's abort signal also stops
+  // the upstream read when the client walks away.
   const reader = upstream.body.getReader();
-  res.on('close', () => {
-    void reader.cancel().catch(() => {});
-  });
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done || signal.aborted || res.destroyed) break;
       res.write(Buffer.from(value));
     }
   } finally {
-    res.end();
+    reader.releaseLock();
+    if (!signal.aborted && !res.destroyed) res.end();
   }
 }
-

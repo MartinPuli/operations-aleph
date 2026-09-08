@@ -1,6 +1,6 @@
 {
   "name": "warden",
-  "version": "0.1.51",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Warden — the local AI gateway. Your admin writes the rules; no prompt can break them. 100% on-device via QVAC.",
@@ -14,6 +14,8 @@
   "scripts": {
     "setup": "tsx scripts/setup.ts",
     "smoke": "tsx scripts/smoke.ts",
+    "smoke:models": "tsx scripts/smoke-model-management.ts",
+    "measure:documents": "tsx scripts/measure-document-pairs.ts",
     "dev": "tsx watch src/server/index.ts",
     "build": "tsc -p tsconfig.build.json && tsc -p desktop/tsconfig.json && node scripts/copy-dist-assets.mjs",
     "start": "node dist/server/index.js",
@@ -24,6 +26,12 @@
     "bench": "tsx scripts/bench-adjudicator.ts",
     "report": "tsx scripts/rerender-report.ts",
     "typecheck": "tsc --noEmit",
+    "test": "node scripts/test-all.mjs",
+    "test:documents": "tsx scripts/test-documents.ts",
+    "test:hook-documents": "tsx scripts/test-hook-documents.ts",
+    "test:proxy-documents": "tsx scripts/test-proxy-documents.ts",
+    "test:model-management": "tsx scripts/test-model-management.ts",
+    "test:console": "node scripts/test-console.mjs",
     "verify-audit": "tsx scripts/verify-audit.ts",
     "permalinks": "tsx scripts/permalinks.ts",
     "benchmark": "tsx scripts/benchmark.ts",
@@ -42,9 +50,17 @@
     "test:remote": "tsx scripts/test-remote-boundary.ts"
   },
   "dependencies": {
+    "@napi-rs/canvas": "1.0.8",
     "@qvac/sdk": "^0.17.1",
+    "@tesseract.js-data/eng": "1.0.0",
+    "@tesseract.js-data/spa": "1.0.0",
     "express": "^5.1.0",
+    "image-size": "2.0.2",
+    "pdfjs-dist": "6.3.289",
     "require-asset": "^1.2.2",
+    "saxes": "6.0.0",
+    "tesseract.js": "7.0.0",
+    "yauzl": "3.4.0",
     "zod": "^4.1.5"
   },
   "devDependencies": {
@@ -55,6 +71,7 @@
     "@electron-forge/plugin-base": "^7.11.2",
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.0",
+    "@types/yauzl": "3.4.0",
     "electron": "^43.0.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"

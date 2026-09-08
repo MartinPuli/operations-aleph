@@ -23,8 +23,10 @@ async function runHook(payload: unknown, url: string, env: Record<string, string
       ...process.env,
       WARDEN_URL: url,
       WARDEN_USER: 'fede',
-      WARDEN_HEALTH_TIMEOUT_MS: '250',
-      WARDEN_TIMEOUT_MS: '250',
+      // Healthy child-process requests must survive a loaded CI machine.
+      // Deadline-specific cases below override these with a short timeout.
+      WARDEN_HEALTH_TIMEOUT_MS: '2000',
+      WARDEN_TIMEOUT_MS: '2000',
       ...env
     },
     stdio: ['pipe', 'pipe', 'pipe']
