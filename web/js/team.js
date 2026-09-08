@@ -281,6 +281,8 @@ function rolesTab() {
       <button type="button" class="btn" id="addRole">Add role</button>
     </div>
   </div>
+  <div class="note under">A daily limit opens its role's ceilings — output, context and prompt size.
+    Token counts are reported by the tool, not measured here.</div>
   <div class="note under" id="roleNote"></div>`;
 }
 
