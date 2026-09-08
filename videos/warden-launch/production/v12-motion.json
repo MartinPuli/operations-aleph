@@ -1,0 +1,60 @@
+{
+  "duration": 17,
+  "fps": 30,
+  "frames": 510,
+  "canvas": [
+    1920,
+    1080
+  ],
+  "beats": [
+    {
+      "scene": "hook",
+      "start": 0,
+      "end": 3.25,
+      "canonical_duration": 2.6,
+      "mapping": "output seconds clamped at2.6; impact0.30, safe crossing1.80"
+    },
+    {
+      "scene": "policy",
+      "start": 3.25,
+      "end": 7.2,
+      "canonical_duration": 4.5
+    },
+    {
+      "scene": "tools",
+      "start": 7.2,
+      "end": 9.75,
+      "canonical_duration": 3
+    },
+    {
+      "scene": "proof",
+      "start": 9.75,
+      "end": 13.55,
+      "canonical_duration": 3
+    },
+    {
+      "scene": "outro",
+      "start": 13.55,
+      "end": 17,
+      "mapping": "24.1 +1.25*(t-13.55), capped28.0"
+    }
+  ],
+  "transitions": {
+    "duration": 0.24,
+    "policy": "metal policy edge reveals the manager prompt",
+    "tools": "two workspace faces pivot around one shared seam; heading stays untransformed",
+    "proof": "opaque angled wipe follows the checked request; no UI double exposure",
+    "outro": "continuous single official3Dshield with anchored CTA"
+  },
+  "voice": {
+    "voice_name": "Lukas - Excited youthful young man",
+    "voice_id": "wSqOdjeNqDrHcoK0zorF",
+    "model": "eleven_v3",
+    "flow_id": "pCGBY90nZz4ds3l5t5PZ",
+    "selected_take": 1,
+    "source_duration": 13.84,
+    "pitch_or_tempo_change": false,
+    "edit": "sentence boundaries placed around visible object contacts; exact cuts in v12-sound-plan.json"
+  },
+  "script_review": "Concrete file-stop hook, goal\u2192drafts\u2192review\u2192activate, named connections, specific request-check scope, direct free/open-source CTA. No invented incident, guaranteed accuracy or download statistic."
+}

@@ -1,0 +1,1 @@
+Wait, Warden just blocked that client file! Tell it what to protect, review its drafts, and activate. Connect Claude Code or Codex. Warden checks their requests before the model sees them. Download Warden for free! It's open source.

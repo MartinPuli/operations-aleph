@@ -1,0 +1,72 @@
+{
+  "status": "encoded_media_audio_verification_passed",
+  "master": "/Users/martinezequielpulitano/warden/videos/warden-launch/renders/warden-launch-17s-v12.mp4",
+  "master_sha256": "7c393d3a0d418f00a67acf127b6e53aad07525fc05287db718f18db7b8fd6aad",
+  "verified_mix": "/Users/martinezequielpulitano/warden/videos/warden-launch/assets/audio/warden-launch-v12-mix.wav",
+  "verified_mix_sha256": "ffb1f02eef5a5cc0858ba22d53778edb8c1b0effc1f781a321308505c632dfc4",
+  "container_duration_seconds": 17.0,
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": "30/1",
+    "frames": 510,
+    "pixel_format": "yuv420p",
+    "color_space": "bt709",
+    "color_primaries": "bt709",
+    "color_transfer": "bt709"
+  },
+  "audio": {
+    "codec": "aac",
+    "sample_rate": 48000,
+    "channels": 2,
+    "stream_duration_seconds": 17.0,
+    "decoded_samples_per_channel": 816128,
+    "approved_source_samples_per_channel": 816000,
+    "codec_padding_samples": 128,
+    "measured": {
+      "integrated_lufs": -16.53,
+      "true_peak_dbtp": -4.55,
+      "lra_lu": 3.2
+    },
+    "sample_peak_dbfs": -4.553415336442075
+  },
+  "waveform_identity": {
+    "method": "Decoded mono-sum normalized correlation on a fixed sparse grid; coarse and one-sample fine lag search against approved WAV",
+    "best_lag_samples": 0,
+    "best_lag_seconds": 0.0,
+    "correlation": 0.999682367994137,
+    "AAC_PCM_bytes_expected_to_differ": true
+  },
+  "ending": {
+    "dialogue_source_end_seconds": 16.03,
+    "final_musical_release_only_after_dialogue": true,
+    "encoded_tail_windows": [
+      {
+        "start": 16.03,
+        "end": 16.5,
+        "rms_dbfs": -35.436789365677626,
+        "peak_dbfs": -25.425102757283856
+      },
+      {
+        "start": 16.5,
+        "end": 16.9,
+        "rms_dbfs": -48.52107793152135,
+        "peak_dbfs": -33.2687819428305
+      },
+      {
+        "start": 16.9,
+        "end": 17.0,
+        "rms_dbfs": -93.85185328005294,
+        "peak_dbfs": -87.53994361164267
+      },
+      {
+        "start": 16.98,
+        "end": 17.0,
+        "rms_dbfs": -97.71222821189258,
+        "peak_dbfs": -89.17050578057938
+      }
+    ]
+  },
+  "scope": "Actual corrected final encoded media metadata, levels, source correspondence, synchronization and ending tested. No subjective listening or visual-quality approval is implied."
+}

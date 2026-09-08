@@ -1,0 +1,31 @@
+{
+  "title": "Warden \u2014 original commercial score",
+  "duration_seconds": 32,
+  "bpm": 120,
+  "beats": 64,
+  "sample_rate": 48000,
+  "channels": 2,
+  "provenance": "Original deterministic synthesis. No third-party recordings, samples, music, model-generated audio or externally licensed motifs used. Source retained alongside this metadata.",
+  "mastering": "FFmpeg two-pass EBU R128 normalization; target -15 LUFS integrated, ceiling -1.2 dBTP, 48 kHz 24-bit stereo WAV, plus 256 kb/s MP3.",
+  "verified_wav": {
+    "integrated_lufs": -15.01,
+    "true_peak_dbtp": -1.63,
+    "loudness_range_lu": 1.9
+  },
+  "cue_times_seconds": [
+    0,
+    4,
+    8,
+    10,
+    14,
+    20,
+    26,
+    29,
+    32
+  ],
+  "near_silence_window_seconds": [
+    10.105,
+    10.305
+  ],
+  "seed": 814306
+}

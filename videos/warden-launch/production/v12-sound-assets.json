@@ -1,0 +1,94 @@
+{
+  "status": "source_assessment_only_no_v12_mix_created",
+  "voice_timing_status": "awaiting_measured_Lukas_timing",
+  "no_listening_approval": true,
+  "assets_and_candidate_excerpts": [
+    {
+      "id": "latch",
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2",
+      "source_duration_seconds": 0.48,
+      "sample_rate": 48000,
+      "channels": 2,
+      "codec": "pcm_s16le",
+      "trim_seconds": null,
+      "measured_integrated_lufs": -21.55,
+      "measured_true_peak_dbtp": -4.24,
+      "measured_lra_lu": 0.0
+    },
+    {
+      "id": "transfer",
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606",
+      "source_duration_seconds": 0.48,
+      "sample_rate": 48000,
+      "channels": 2,
+      "codec": "pcm_s16le",
+      "trim_seconds": null,
+      "measured_integrated_lufs": -27.25,
+      "measured_true_peak_dbtp": -3.99,
+      "measured_lra_lu": 0.0
+    },
+    {
+      "id": "score",
+      "path": "assets/audio/warden-commercial-score.wav",
+      "sha256": "7af2d3cb11c3100ca98c7ac4d2c5b0c2504cbebf88fe3404e461dc02b8124880",
+      "source_duration_seconds": 32.0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "codec": "pcm_s24le",
+      "trim_seconds": null,
+      "measured_integrated_lufs": -15.01,
+      "measured_true_peak_dbtp": -1.63,
+      "measured_lra_lu": 1.9
+    },
+    {
+      "id": "quiet_bar_11_13",
+      "path": "assets/audio/warden-commercial-score.wav",
+      "sha256": "7af2d3cb11c3100ca98c7ac4d2c5b0c2504cbebf88fe3404e461dc02b8124880",
+      "source_duration_seconds": 32.0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "codec": "pcm_s24le",
+      "trim_seconds": [
+        11,
+        13
+      ],
+      "measured_integrated_lufs": -15.68,
+      "measured_true_peak_dbtp": -6.28,
+      "measured_lra_lu": 0.0
+    },
+    {
+      "id": "active_bar_16_18",
+      "path": "assets/audio/warden-commercial-score.wav",
+      "sha256": "7af2d3cb11c3100ca98c7ac4d2c5b0c2504cbebf88fe3404e461dc02b8124880",
+      "source_duration_seconds": 32.0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "codec": "pcm_s24le",
+      "trim_seconds": [
+        16,
+        18
+      ],
+      "measured_integrated_lufs": -14.86,
+      "measured_true_peak_dbtp": -4.87,
+      "measured_lra_lu": 0.0
+    },
+    {
+      "id": "tail_30_32",
+      "path": "assets/audio/warden-commercial-score.wav",
+      "sha256": "7af2d3cb11c3100ca98c7ac4d2c5b0c2504cbebf88fe3404e461dc02b8124880",
+      "source_duration_seconds": 32.0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "codec": "pcm_s24le",
+      "trim_seconds": [
+        30,
+        32
+      ],
+      "measured_integrated_lufs": -18.09,
+      "measured_true_peak_dbtp": -9.01,
+      "measured_lra_lu": 0.0
+    }
+  ]
+}

@@ -1,0 +1,415 @@
+{
+  "version": 12,
+  "timings_locked": true,
+  "duration": 17,
+  "fps": 30,
+  "outputs": {
+    "mix": "assets/audio/warden-launch-v12-mix.wav",
+    "dialogue": "assets/audio/warden-lukas-v12-dialogue.wav",
+    "sfx": "assets/audio/warden-launch-v12-sfx.wav",
+    "bed": "assets/audio/warden-launch-v12-bed.wav",
+    "report": "production/sound-design-v12.json"
+  },
+  "voice": {
+    "path": "assets/audio/warden-lukas-v12-take1.mp3",
+    "sha256": "7e4dafad9c7d422e6e466402b647cd9c4a4349e27a5b99f3ea237e8d18e0ad9a",
+    "tempo": 1,
+    "target_lufs": -17.5,
+    "ceiling_dbtp": -3,
+    "segments": [
+      {
+        "id": "hook",
+        "source": [
+          0,
+          3.035
+        ],
+        "output_start": 0
+      },
+      {
+        "id": "policy",
+        "source": [
+          3.035,
+          6.24
+        ],
+        "output_start": 3.25
+      },
+      {
+        "id": "tools",
+        "source": [
+          6.24,
+          8.356
+        ],
+        "output_start": 7.2
+      },
+      {
+        "id": "proof",
+        "source": [
+          8.356,
+          11.36
+        ],
+        "output_start": 9.75
+      },
+      {
+        "id": "cta",
+        "source": [
+          11.36,
+          13.84
+        ],
+        "output_start": 13.55
+      }
+    ],
+    "alignment_source": "production/voice-v12-take1-words.json",
+    "boundary_selection": "Original planned3.060 and8.280 moved to quieter3.035/8.356 to preserve phrase onsets/tails; no source samples omitted."
+  },
+  "phrases": [
+    {
+      "id": "hook",
+      "start": 0,
+      "end": 3.035
+    },
+    {
+      "id": "policy",
+      "start": 3.25,
+      "end": 6.455
+    },
+    {
+      "id": "tools",
+      "start": 7.2,
+      "end": 9.316
+    },
+    {
+      "id": "proof",
+      "start": 9.75,
+      "end": 12.754
+    },
+    {
+      "id": "cta",
+      "start": 13.55,
+      "end": 16.03
+    }
+  ],
+  "sources": {
+    "transfer": {
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-data-transfer-v4.wav",
+      "sha256": "fb8de864aa7b10c115bf74781e4225ac4abac583b0b715f73f5e4ba4db9c8606"
+    },
+    "latch": {
+      "path": "assets/audio/elevenlabs-v4/warden-eleven-rule-latch-v4.wav",
+      "sha256": "19dc30d7f4511fe216376343c3f60cc9b8f9844acaaa31d31c60ecc64a2b04e2"
+    }
+  },
+  "events": [
+    {
+      "id": "first_private_stop",
+      "source": "latch",
+      "at": 0.3,
+      "trim": [
+        0.055,
+        0.235
+      ],
+      "peak_dbfs": -17,
+      "filters": "highpass=f=180,lowpass=f=6500",
+      "fade_in": 0.004,
+      "fade_out": 0.035,
+      "visual_timing_basis": "Unscaled hook impact at .30"
+    },
+    {
+      "id": "first_public_crossing",
+      "source": "transfer",
+      "at": 1.8,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -23,
+      "filters": "highpass=f=600,lowpass=f=7200",
+      "fade_in": 0.004,
+      "fade_out": 0.025,
+      "visual_timing_basis": "Unscaled hook crossing at 1.80"
+    },
+    {
+      "id": "submit_instruction",
+      "source": "transfer",
+      "at": 3.969777778,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -25,
+      "filters": "highpass=f=240,lowpass=f=6500",
+      "fade_in": 0.004,
+      "fade_out": 0.025,
+      "visual_timing_basis": "Policy Send .82"
+    },
+    {
+      "id": "drafts_dock",
+      "source": "transfer",
+      "at": 4.865111111,
+      "trim": [
+        0.145,
+        0.335
+      ],
+      "peak_dbfs": -25,
+      "filters": "highpass=f=650,lowpass=f=6800",
+      "fade_in": 0.004,
+      "fade_out": 0.025,
+      "visual_timing_basis": "Policy complete draft assembly 1.84"
+    },
+    {
+      "id": "activate_press",
+      "source": "latch",
+      "at": 6.102777778,
+      "trim": [
+        0.045,
+        0.26
+      ],
+      "peak_dbfs": -18,
+      "filters": "highpass=f=180,lowpass=f=6500",
+      "fade_in": 0.004,
+      "fade_out": 0.035,
+      "visual_timing_basis": "Policy human activation 3.25"
+    },
+    {
+      "id": "switches_settle",
+      "source": "transfer",
+      "at": 6.480222222,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -25,
+      "filters": "highpass=f=750,lowpass=f=6200",
+      "fade_in": 0.004,
+      "fade_out": 0.025,
+      "visual_timing_basis": "One shared acknowledgment after visible switch cascade; no click per rule"
+    },
+    {
+      "id": "claude_connects",
+      "source": "transfer",
+      "at": 7.795,
+      "trim": [
+        0.145,
+        0.225
+      ],
+      "peak_dbfs": -24,
+      "filters": "highpass=f=650,lowpass=f=6600",
+      "fade_in": 0.004,
+      "fade_out": 0.025,
+      "visual_timing_basis": "Tools first latch .70"
+    },
+    {
+      "id": "codex_connects",
+      "source": "transfer",
+      "at": 8.5175,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -23,
+      "filters": "highpass=f=650,lowpass=f=6800",
+      "fade_in": 0.004,
+      "fade_out": 0.025,
+      "visual_timing_basis": "Tools second latch 1.55"
+    },
+    {
+      "id": "private_stays",
+      "source": "latch",
+      "at": 11.016666667,
+      "trim": [
+        0.055,
+        0.235
+      ],
+      "peak_dbfs": -22,
+      "filters": "highpass=f=300,lowpass=f=5800",
+      "fade_in": 0.004,
+      "fade_out": 0.035,
+      "visual_timing_basis": "Proof private stop 1.0"
+    },
+    {
+      "id": "public_crossing",
+      "source": "transfer",
+      "at": 11.941333333,
+      "trim": [
+        0.145,
+        0.225
+      ],
+      "peak_dbfs": -24,
+      "filters": "highpass=f=750,lowpass=f=6800",
+      "fade_in": 0.004,
+      "fade_out": 0.025,
+      "visual_timing_basis": "Proof public crossing 1.73"
+    },
+    {
+      "id": "public_completed",
+      "source": "transfer",
+      "at": 12.663333333,
+      "trim": [
+        0.238,
+        0.335
+      ],
+      "peak_dbfs": -22,
+      "filters": "highpass=f=650,lowpass=f=7000",
+      "fade_in": 0.004,
+      "fade_out": 0.025,
+      "visual_timing_basis": "Proof public completion 2.30"
+    },
+    {
+      "id": "brand_settles",
+      "source": "latch",
+      "at": 13.93,
+      "trim": [
+        0.055,
+        0.235
+      ],
+      "peak_dbfs": -22,
+      "filters": "highpass=f=320,lowpass=f=5800",
+      "fade_in": 0.004,
+      "fade_out": 0.035,
+      "visual_timing_basis": "Approved outro symbol lands near13.93; omit separate CTA hit"
+    }
+  ],
+  "score": {
+    "path": "assets/audio/warden-commercial-score.wav",
+    "sha256": "7af2d3cb11c3100ca98c7ac4d2c5b0c2504cbebf88fe3404e461dc02b8124880",
+    "provenance": "Original local deterministic composition from production/new-score/generate_score.py. Not native ElevenLabs music. Excerpts reuse existing WAV; no new synthesis.",
+    "segments": [
+      {
+        "source": [
+          11,
+          13.04
+        ],
+        "output_start": 0.5,
+        "fade_in": 0.1,
+        "fade_out": 0.04,
+        "gain_db": 0,
+        "purpose": "Existing quieter one-bar pulse"
+      },
+      {
+        "source": [
+          11,
+          13.04
+        ],
+        "output_start": 2.5,
+        "fade_in": 0.04,
+        "fade_out": 0.04,
+        "gain_db": 0,
+        "purpose": "Existing quieter one-bar pulse"
+      },
+      {
+        "source": [
+          11,
+          13.04
+        ],
+        "output_start": 4.5,
+        "fade_in": 0.04,
+        "fade_out": 0.04,
+        "gain_db": 0,
+        "purpose": "Existing quieter one-bar pulse"
+      },
+      {
+        "source": [
+          11,
+          13.04
+        ],
+        "output_start": 6.5,
+        "fade_in": 0.04,
+        "fade_out": 0.04,
+        "gain_db": 0,
+        "purpose": "Existing quieter one-bar pulse"
+      },
+      {
+        "source": [
+          16,
+          18.04
+        ],
+        "output_start": 8.5,
+        "fade_in": 0.04,
+        "fade_out": 0.04,
+        "gain_db": -1,
+        "purpose": "Existing denser one-bar lift"
+      },
+      {
+        "source": [
+          16,
+          18.04
+        ],
+        "output_start": 10.5,
+        "fade_in": 0.04,
+        "fade_out": 0.04,
+        "gain_db": -1,
+        "purpose": "Existing denser one-bar lift"
+      },
+      {
+        "source": [
+          11,
+          13.0
+        ],
+        "output_start": 12.5,
+        "fade_in": 0.04,
+        "fade_out": 0.5,
+        "gain_db": 0,
+        "purpose": "Existing quieter one-bar pulse"
+      },
+      {
+        "source": [
+          30,
+          32
+        ],
+        "output_start": 15,
+        "fade_in": 0.15,
+        "fade_out": 0.3,
+        "gain_db": -3,
+        "purpose": "Existing resolved harmonic tail after rhythm clears; no original impact or new sting"
+      }
+    ],
+    "filters": "highpass=f=90,lowpass=f=7800",
+    "target_lufs": -29.5,
+    "carve": {
+      "speech_band_hz": [
+        350,
+        4200
+      ],
+      "broadband_duck_db": -2.5,
+      "additional_mid_duck_db": -4.5,
+      "gain_lane_db": [
+        [
+          0,
+          0
+        ],
+        [
+          12.8,
+          0
+        ],
+        [
+          13.3,
+          -2
+        ],
+        [
+          13.55,
+          -6
+        ],
+        [
+          14.5,
+          -6
+        ],
+        [
+          15,
+          -3
+        ],
+        [
+          16.03,
+          0
+        ],
+        [
+          17,
+          0
+        ]
+      ]
+    }
+  },
+  "master": {
+    "target_lufs": -16.5,
+    "ceiling_dbtp": -1.2
+  },
+  "direction": "Voice stays original-speed and forward. Quiet120BPM pulse follows a continuous beat grid; twelve short native contacts mark visible actions. No full-score baked whooshes, opening bass boom, click per row, platform sound or extra CTA hit."
+}

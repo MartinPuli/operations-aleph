@@ -1,0 +1,116 @@
+{
+  "status": "analytical_pcm_verification_passed",
+  "duration_seconds": 17,
+  "samples_per_channel": 816000,
+  "video_target_frames": 510,
+  "source_voice_samples_retained_once": 664320,
+  "source_voice_seconds": 13.84,
+  "preserved_original_speed_pitch": true,
+  "edge_fades_seconds": 0.003,
+  "source_to_dialogue_max_pcm_error_outside_fades": 1.1897585135145494e-07,
+  "stem_sum_max_pcm_error": 2.384185791015625e-07,
+  "intentional_sentence_gaps_output_seconds": [
+    [
+      3.035,
+      3.25
+    ],
+    [
+      6.455,
+      7.2
+    ],
+    [
+      9.316,
+      9.75
+    ],
+    [
+      12.754,
+      13.55
+    ]
+  ],
+  "dialogue_end_seconds": 16.03,
+  "native_cues": 12,
+  "max_contact_peak_alignment_error_seconds": 6.944666666619526e-06,
+  "voice_over_bed_100ms_windows_voice_above_minus35_dbfs": {
+    "windows": 102,
+    "median_margin_db": 14.30655798573163,
+    "p10_margin_db": 3.9599012889827634
+  },
+  "mix": {
+    "integrated_lufs": -16.52,
+    "true_peak_dbtp": -4.74,
+    "lra_lu": 3.2
+  },
+  "mono_fold_down": {
+    "integrated_lufs": -19.08,
+    "true_peak_dbtp": -5.03,
+    "lra_lu": 3.3
+  },
+  "master_sha256": "ffb1f02eef5a5cc0858ba22d53778edb8c1b0effc1f781a321308505c632dfc4",
+  "limitations": "PCM/source integrity, timing and level analysis only. Short-window RMS margin does not certify intelligibility. No listening or encoded-video QA approval.",
+  "speech_band_100ms_margin": {
+    "band_hz": [
+      350,
+      4200
+    ],
+    "windows_voice_band_above_dbfs": -38,
+    "windows": 95,
+    "median_margin_db": 16.121261013057538,
+    "p10_margin_db": 6.4473982214261625,
+    "lowest_windows_below_6db": [
+      [
+        2.4,
+        -34.7,
+        -37.7,
+        2.9
+      ],
+      [
+        4.1,
+        -35.7,
+        -36.4,
+        0.7
+      ],
+      [
+        5.8,
+        -36.5,
+        -38.1,
+        1.5
+      ],
+      [
+        7.7,
+        -37.7,
+        -37.0,
+        -0.7
+      ],
+      [
+        7.8,
+        -31.6,
+        -37.6,
+        6.0
+      ],
+      [
+        8.1,
+        -32.8,
+        -37.3,
+        4.5
+      ],
+      [
+        10.1,
+        -34.1,
+        -38.6,
+        4.5
+      ],
+      [
+        11.2,
+        -36.2,
+        -38.9,
+        2.7
+      ],
+      [
+        11.4,
+        -35.8,
+        -39.1,
+        3.2
+      ]
+    ]
+  }
+}

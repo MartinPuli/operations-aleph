@@ -1,0 +1,160 @@
+{
+  "ok": true,
+  "strict": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "filesScanned": 6
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 2,
+    "findings": [
+      {
+        "code": "text_occluded",
+        "severity": "info",
+        "time": 14.1,
+        "selector": "#end-download",
+        "message": "Text is hidden beneath an opaque element.",
+        "rect": {
+          "left": 515,
+          "top": 841.04,
+          "right": 996.38,
+          "bottom": 918.04,
+          "width": 481.38,
+          "height": 77
+        },
+        "containerSelector": "#end-action-fill",
+        "text": "Download for free",
+        "fixHint": "Give the text its own zone, raise its stacking order above the covering element, or mark intentional layering with data-layout-allow-occlusion.",
+        "coveredFraction": 0.33,
+        "dataAttributes": {
+          "data-hf-id": "hf-r919"
+        },
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 515,
+          "y": 841.04,
+          "width": 481.38,
+          "height": 77
+        },
+        "firstSeen": 14.1,
+        "lastSeen": 14.1,
+        "occurrences": 1,
+        "heldMs": 0
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 14.1,
+        "selector": "#end-download",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 515,
+          "top": 843.04,
+          "right": 1325,
+          "bottom": 923.04,
+          "width": 810,
+          "height": 80
+        },
+        "containerSelector": "#end-action-label",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 515,
+          "top": 763.04,
+          "right": 1325,
+          "bottom": 843.04,
+          "width": 810,
+          "height": 80
+        },
+        "overflow": {
+          "bottom": 80
+        },
+        "dataAttributes": {
+          "data-hf-id": "hf-r919"
+        },
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 515,
+          "y": 843.04,
+          "width": 810,
+          "height": 80
+        },
+        "firstSeen": 14.1,
+        "lastSeen": 14.1,
+        "occurrences": 1,
+        "heldMs": 0
+      }
+    ],
+    "duration": 17,
+    "samples": [
+      0,
+      0.3,
+      1.8,
+      3.6,
+      4.9,
+      6.6,
+      7.22,
+      9.2,
+      9.77,
+      11.1,
+      12.7,
+      14.1,
+      16.5
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 2,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "samples": [
+      0,
+      3.6,
+      7.22,
+      11.1,
+      16.5
+    ],
+    "checked": 6,
+    "passed": 6
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  },
+  "_meta": {
+    "version": "0.8.31",
+    "latestVersion": "0.8.31",
+    "updateAvailable": false
+  }
+}

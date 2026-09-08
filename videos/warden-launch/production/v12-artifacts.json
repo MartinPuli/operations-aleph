@@ -1,0 +1,17 @@
+[
+  {
+    "path": "renders/warden-launch-17s-v12.mp4",
+    "bytes": 4179038,
+    "sha256": "7c393d3a0d418f00a67acf127b6e53aad07525fc05287db718f18db7b8fd6aad"
+  },
+  {
+    "path": "renders/warden-launch-17s-v12-silent.mp4",
+    "bytes": 3749976,
+    "sha256": "a1a0ba5bbbc1ee8c480a1307625428fb1b4efa223c031a52578471e83b167b2a"
+  },
+  {
+    "path": "renders/warden-launch-17s-v12-poster.png",
+    "bytes": 339898,
+    "sha256": "4dbda13cac6100e87b911b023cdf126b432051532a9d83996fab6ee8f1406a63"
+  }
+]
