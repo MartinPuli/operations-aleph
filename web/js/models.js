@@ -36,15 +36,19 @@ function runtimeNote() {
 function activeRole(role) {
   const compiler = role === 'compiler';
   const active = compiler ? state.models?.drafting : state.models?.judging;
-  const customId = library.catalog?.selections?.[role];
-  const custom = library.catalog?.models.find((model) => model.id === customId);
+  const inForce = library.catalog?.inForce?.[role] ?? (compiler ? state.compiler?.inForce : state.adjudicator?.inForce) ?? active?.model;
+  const basename = String(inForce ?? '').split(/[\\/]/).pop();
+  // A saved built-in preference may still be downloading while custom weights
+  // remain loaded. Resolve the running file before consulting role metadata.
+  const custom = library.catalog?.models.find((model) => model.kind === 'local' && (basename === `${model.id}.gguf` || basename === model.filename))
+    ?? library.catalog?.models.find((model) => model.activeRoles?.includes(role));
   const overridden = compiler ? state.compiler?.overriddenByEnv : state.adjudicator?.overriddenByEnv;
   const title = compiler ? 'Compiler' : 'Analyzer';
   const open = expanded === role;
   return `<section class="active-model-role" aria-labelledby="${role}Title">
     <div class="active-model-row">
       <div class="active-role-title"><h2 id="${role}Title">${title}</h2><p>${compiler ? 'Turns your instructions into rules' : 'Checks employee requests and documents'}</p></div>
-      <div class="active-role-value"><b data-active-model="${role}">${esc(modelLabel(active?.model) || 'Status unavailable')}</b><span>${esc(active?.where ?? 'Refresh to read the current model')}${custom && !overridden ? ` · ${esc(custom.name)}` : ''}</span>${overridden ? '<span class="model-status warn">Environment override</span>' : ''}</div>
+      <div class="active-role-value"><b data-active-model="${role}">${esc(custom?.name || modelLabel(inForce) || 'Status unavailable')}</b><span>${esc(active?.where ?? 'Refresh to read the current model')}</span>${overridden ? '<span class="model-status warn">Environment override</span>' : ''}</div>
       <button type="button" class="btn" id="edit-${role}" data-edit-role="${role}" aria-expanded="${open}" aria-controls="${role}Editor">${open ? 'Close' : 'Change'}</button>
     </div>
     ${open ? `<div id="${role}Editor" class="active-model-editor">${compiler ? compilerSettings() : analyzerSettings()}</div>` : ''}

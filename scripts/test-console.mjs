@@ -12,6 +12,8 @@ globalThis.sessionStorage = { getItem: () => 'administrator-secret' };
 const { api, post, state } = await import('../web/js/core.js');
 const { documentMetadataMarkup, documentReason } = await import('../web/js/documents.js');
 const { library, libraryMarkup } = await import('../web/js/model-library.js');
+await import('../web/js/models.js');
+const { VIEWS } = await import('../web/js/views.js');
 
 beforeEach(() => { elements.clear(); library.catalog = null; library.error = ''; library.loading = false; });
 after(() => { for (const [key, value] of Object.entries(original)) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; } });
@@ -110,4 +112,20 @@ test('an assigned model cannot be edited or removed, including an environment ov
   assert.ok(html.match(/<button[^>]*data-model-remove="model-1"[^>]*>/)?.[0].includes(' disabled'));
   assert.ok(!html.includes('<script>'));
   assert.equal(state.sending, false);
+});
+
+test('a retained custom runtime keeps its name and edit protection while a built-in download is pending', () => {
+  const model = { id: 'model-1', name: 'Our analyzer', filename: 'original.gguf', kind: 'local', roles: ['adjudicator'], testedRoles: ['adjudicator'], activeRoles: ['adjudicator'], bytes: 100 };
+  library.catalog = { models: [model], selections: { compiler: null, adjudicator: null }, inForce: { adjudicator: '/gateway/models/model-1.gguf' } };
+  const previous = state.models;
+  state.models = { state: 'ready', judging: { model: 'model-1.gguf', where: 'On this gateway' } };
+  try {
+    for (const actual of ['/gateway/models/model-1.gguf', 'unmapped-runtime']) {
+      library.catalog.inForce.adjudicator = actual;
+      const html = VIEWS.models.body();
+      assert.match(html, /data-active-model="adjudicator">Our analyzer<\/b>/);
+      assert.ok(html.match(/<button[^>]*data-model-edit="model-1"[^>]*>/)?.[0].includes(' disabled'));
+      assert.ok(html.match(/<button[^>]*data-model-remove="model-1"[^>]*>/)?.[0].includes(' disabled'));
+    }
+  } finally { state.models = previous; }
 });

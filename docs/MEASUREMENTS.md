@@ -1462,7 +1462,7 @@ request: compiler import/test/activation 17,207 ms; analyzer test/activation
 1,641 ms. See [model management](MODEL-MANAGEMENT.md). These are one-machine
 compatibility timings, not latency expectations for another model or machine.
 
-**The console and transports have separate evidence.** Ten console boundary
+**The console and transports have separate evidence.** Eleven console boundary
 tests pass, including employee identity precedence over a stored admin key,
 no privileged retry, password/file snapshot exclusion, caret/checkbox state,
 untrusted metadata escaping, and role-specific test-to-use gates. A browser

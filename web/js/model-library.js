@@ -82,7 +82,7 @@ function feedback(note) {
 function modelRow(model) {
   const id = attr(model.id);
   const active = model.activeRoles ?? [];
-  const assigned = Object.values(library.catalog?.selections ?? {}).includes(model.id);
+  const assigned = active.length > 0 || Object.values(library.catalog?.selections ?? {}).includes(model.id);
   const tested = model.testedRoles ?? [];
   const pending = editor.busy.startsWith(`${model.id}:`);
   return `<li class="library-row" data-model-id="${esc(model.id)}">
