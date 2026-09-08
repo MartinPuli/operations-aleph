@@ -38,6 +38,26 @@ API endpoints are offered for compilation only. The analyzer remains local.
 Compatibility tests establish that a model can answer the required interface;
 they are not a measurement of policy accuracy.
 
+## Prompts
+
+Each model role has **Edit prompts** alongside **Change model**. The compiler
+opens its rule-compilation instructions; the analyzer opens the active format's
+single-rule message template. A selector exposes the other system, request,
+policy, optional screening and rewrite templates without activating a different
+format. Default/custom and current-configuration status remain separate.
+
+The editor holds the full template, explains and inserts its required variables,
+and offers read-only references for the original template and response contract.
+**Save prompt** applies a valid draft to new work. **Restore default** requires
+an inline confirmation for that template. Conflicting edits show the newer
+saved text and preserve the local draft for explicit comparison and resolution.
+
+Drafts survive navigation and refresh in the same browser tab; they are never
+persisted to browser storage. A focused textarea keeps its selection through
+rendering. Status and validation messages are announced, required fields are
+labelled, and the editor remains usable at narrow widths. See
+[prompt management](PROMPT-MANAGEMENT.md) for complete operation and API details.
+
 ## Documents
 
 Open the Simulator (`#/simulator`) or choose **Try a document** on Models. Select

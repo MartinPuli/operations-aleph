@@ -12,10 +12,14 @@ globalThis.sessionStorage = { getItem: () => 'administrator-secret' };
 const { api, post, state } = await import('../web/js/core.js');
 const { documentMetadataMarkup, documentReason } = await import('../web/js/documents.js');
 const { library, libraryMarkup } = await import('../web/js/model-library.js');
+const { promptEditor, acceptPromptCatalog, hasPromptChanges, validatePromptTemplate, promptEditorMarkup, togglePromptEditor, closePromptEditor } = await import('../web/js/prompt-editor.js');
 await import('../web/js/models.js');
 const { VIEWS } = await import('../web/js/views.js');
 
-beforeEach(() => { elements.clear(); library.catalog = null; library.error = ''; library.loading = false; });
+beforeEach(() => {
+  elements.clear(); library.catalog = null; library.error = ''; library.loading = false;
+  Object.assign(promptEditor, { catalog: null, drafts: Object.create(null), openRole: null, selected: {}, loading: false, error: '', busy: '', confirmReset: null });
+});
 after(() => { for (const [key, value] of Object.entries(original)) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; } });
 
 function field(id, type, value, extra = {}) {
@@ -128,4 +132,88 @@ test('a retained custom runtime keeps its name and edit protection while a built
       assert.ok(html.match(/<button[^>]*data-model-remove="model-1"[^>]*>/)?.[0].includes(' disabled'));
     }
   } finally { state.models = previous; }
+});
+
+function promptTemplate(id, role, overrides = {}) {
+  return { id, role, name: id, description: 'An editable instruction.', active: true, custom: false,
+    template: 'Read {{input}}.', defaultTemplate: 'Read {{input}}.',
+    tokens: [{ name: 'input', required: true, description: 'The isolated request.' }],
+    requiredTokens: ['input'], outputContract: '{"verdict":"PASS|FAIL"}', ...overrides };
+}
+
+test('the prompt editor escapes saved text and response contracts instead of interpreting HTML', () => {
+  const attack = '</textarea><img src=x onerror=alert(1)>';
+  acceptPromptCatalog({ revision: 'first', templates: [promptTemplate('compile-system', 'compiler', { template: `${attack} {{input}}`, defaultTemplate: attack, outputContract: attack })] });
+  togglePromptEditor('compiler');
+  const html = promptEditorMarkup('compiler');
+  assert.ok(!html.includes('<img'));
+  assert.ok(html.includes('&lt;/textarea&gt;'));
+  assert.match(html, /id="savePrompt"[^>]*disabled/);
+  assert.equal(hasPromptChanges(), false);
+});
+
+test('required prompt context and unknown variables are reported before saving', () => {
+  const template = promptTemplate('compile-user', 'compiler');
+  assert.deepEqual(validatePromptTemplate(template, 'Literal JSON {"a":1}; {{input}}'), []);
+  assert.match(validatePromptTemplate(template, 'No context.').join(' '), /required variables/);
+  assert.match(validatePromptTemplate(template, '{{input}} {{unknown}}').join(' '), /Unknown variables/);
+});
+
+test('refresh preserves a draft and advances its revision when only another template changed', () => {
+  const first = promptTemplate('compile-system', 'compiler');
+  const second = promptTemplate('compile-user', 'compiler');
+  acceptPromptCatalog({ revision: 'first', templates: [first, second] });
+  togglePromptEditor('compiler'); promptEditorMarkup('compiler');
+  const draft = promptEditor.drafts[first.id];
+  draft.text = 'My unsaved instruction {{input}}';
+  acceptPromptCatalog({ revision: 'second', templates: [first, { ...second, template: 'Saved elsewhere {{input}}' }] });
+  assert.equal(draft.text, 'My unsaved instruction {{input}}');
+  assert.equal(draft.base, first.template);
+  assert.equal(draft.revision, 'second');
+  assert.equal(draft.conflict, false);
+  assert.equal(hasPromptChanges('compiler'), true);
+});
+
+test('a concurrent edit to the same prompt preserves both versions and prevents accidental overwrite', () => {
+  const template = promptTemplate('compile-system', 'compiler');
+  acceptPromptCatalog({ revision: 'first', templates: [template] });
+  togglePromptEditor('compiler'); promptEditorMarkup('compiler');
+  const draft = promptEditor.drafts[template.id];
+  draft.text = 'My draft {{input}}';
+  acceptPromptCatalog({ revision: 'second', templates: [{ ...template, template: 'Their saved instruction {{input}}', custom: true }] });
+  assert.equal(draft.text, 'My draft {{input}}');
+  assert.equal(draft.base, template.template);
+  assert.equal(draft.revision, 'first');
+  assert.equal(draft.conflict, true);
+  const html = promptEditorMarkup('compiler');
+  assert.match(html, /Their saved instruction/);
+  assert.match(html, /id="savePrompt"[^>]*disabled/);
+  assert.match(html, /id="keepPromptDraft"/);
+  assert.match(html, /id="useSavedPrompt"/);
+});
+
+test('closing and switching prompt roles retains drafts and selects the active analyzer format', () => {
+  const compile = promptTemplate('compile-system', 'compiler');
+  const inactive = promptTemplate('compliance-system', 'adjudicator', { active: false });
+  const active = promptTemplate('dynaguard-user', 'adjudicator');
+  acceptPromptCatalog({ revision: 'first', templates: [compile, inactive, active] });
+  togglePromptEditor('compiler'); promptEditorMarkup('compiler');
+  promptEditor.drafts[compile.id].text = 'Keep this draft {{input}}';
+  closePromptEditor();
+  togglePromptEditor('adjudicator');
+  assert.equal(promptEditor.selected.adjudicator, active.id);
+  assert.equal(hasPromptChanges('adjudicator'), false);
+  togglePromptEditor('compiler');
+  assert.match(promptEditorMarkup('compiler'), /Keep this draft/);
+  assert.equal(hasPromptChanges('compiler'), true);
+});
+
+test('refresh updates an untouched prompt without creating a local edit', () => {
+  const template = promptTemplate('compile-system', 'compiler');
+  acceptPromptCatalog({ revision: 'first', templates: [template] });
+  togglePromptEditor('compiler'); promptEditorMarkup('compiler');
+  acceptPromptCatalog({ revision: 'second', templates: [{ ...template, template: 'Updated saved instruction {{input}}', custom: true }] });
+  assert.equal(promptEditor.drafts[template.id].text, 'Updated saved instruction {{input}}');
+  assert.equal(promptEditor.drafts[template.id].revision, 'second');
+  assert.equal(hasPromptChanges(), false);
 });

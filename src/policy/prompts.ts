@@ -11,6 +11,7 @@
 import { isolationPreamble } from '../guard/isolate.js';
 import { thinkingMarker } from '../qvac/client.js';
 import { MAX_STATEMENTS } from './types.js';
+import { renderPrompt } from '../prompts/store.js';
 
 /** The system prompt that compiles one administrator's sentence into a rule draft. */
 /** What the administrator said earlier in this conversation, and what is on the table now. */
@@ -24,7 +25,7 @@ export type Conversation = { history: string[]; current: string[] };
  * target compiled into nothing. A follow-up is the most common second
  * message in the console and it was the one the compiler could not read.
  */
-function conversationBlock(c: Conversation | undefined): string[] {
+export function conversationBlock(c: Conversation | undefined): string[] {
   if (!c || (c.history.length === 0 && c.current.length === 0)) return [];
   return [
     'Earlier in this conversation the administrator said, in order:',
@@ -41,9 +42,9 @@ function conversationBlock(c: Conversation | undefined): string[] {
   ];
 }
 
-export function compilePrompt(roles: string[], roster: string[], nonce: string, conversation?: Conversation): string {
+export function defaultCompilePrompt(roles: string[], roster: string[], nonce: string, conversation?: Conversation, tokens = false): string {
   return [
-    ...conversationBlock(conversation),
+    ...(tokens ? ['{{conversation}}'] : conversationBlock(conversation)),
     'You convert a policy statement written by a company administrator into a structured rule.',
     '',
     // Two failures this paragraph exists for, both seen on a capable compiler.
@@ -99,12 +100,12 @@ export function compilePrompt(roles: string[], roster: string[], nonce: string, 
     '',
     'When notARule is true the other fields are ignored, so do not labour over them.',
     '',
-    `Valid role names: ${roles.join(', ')}.`,
+    `Valid role names: ${tokens ? '{{roles}}' : roles.join(', ')}.`,
     // Naming the people is what makes "Ana cannot ask for payroll" compile into
     // a rule about Ana rather than a rule about everyone. Without the roster the
     // model has no token for a person and defaults to the whole company, which
     // is a much broader rule than the admin asked for.
-    roster.length > 0 ? `Named employees, referred to with an @ prefix: ${roster.join(', ')}.` : '',
+    tokens ? '{{roster}}' : roster.length > 0 ? `Named employees, referred to with an @ prefix: ${roster.join(', ')}.` : '',
     'Use ["*"] when the rule binds everyone.',
     '',
     // The failure this whole block is written against is one number: on the
@@ -190,20 +191,20 @@ export function compilePrompt(roles: string[], roster: string[], nonce: string, 
     'The administrator may write in Spanish. Compile the meaning, not the cognate:',
     '"filtrar datos" is to LEAK data, never to filter it; "aprobar" is to authorise;',
     '"mandar afuera" is to send outside the company.',
-    isolationPreamble(nonce),
+    tokens ? '{{isolation}}' : isolationPreamble(nonce),
     // The compiler's marker, not the adjudicator's. They are the same local
     // model by default, and they are not the same model at all once
     // compilation is remote: this was emitting Qwen's `/no_think` control
     // token into a request bound for another vendor's API, which is the exact
     // failure `thinkingMarker` was written to prevent, one role over.
-    thinkingMarker('compiler')
+    tokens ? '{{thinking}}' : thinkingMarker('compiler')
   ]
     .filter(Boolean)
     .join('\n');
 }
 
 /** The system prompt that splits one broad instruction into the prohibitions it means. */
-export function splitPrompt(nonce: string, conversation?: Conversation): string {
+export function defaultSplitPrompt(nonce: string, conversation?: Conversation, tokens = false): string {
   // What this prompt is for, stated against what the last one did. Measured
   // 2026-09-05 through `claude -p --model sonnet` (docs/MEASUREMENTS.md, "The
   // splitter, asked to enumerate"): "hacé que no leakeen datos" came back as
@@ -219,8 +220,8 @@ export function splitPrompt(nonce: string, conversation?: Conversation): string 
   // The security instruction survives unchanged: the concrete kinds of the
   // thing they named are inside what they asked; a different subject is not.
   return [
-    ...conversationBlock(conversation),
-    ...(conversation?.current.length
+    ...(tokens ? ['{{conversation}}'] : conversationBlock(conversation)),
+    ...(tokens ? ['{{followup}}'] : conversation?.current.length
       ? [
           'When the new message is a follow-up to the rules on the table, return the',
           'FULL updated list: every rule that stays, reworded only where the follow-up',
@@ -234,7 +235,7 @@ export function splitPrompt(nonce: string, conversation?: Conversation): string 
     'that worry is made of — one sentence each, one concrete thing per sentence —',
     'so that each becomes one rule a small model can apply to one request.',
     '',
-    `- At most ${MAX_STATEMENTS} statements. Use as many as the worry actually contains, no more.`,
+    `- At most ${tokens ? '{{maxStatements}}' : MAX_STATEMENTS} statements. Use as many as the worry actually contains, no more.`,
     '- Each one stands alone and names ONE concrete thing that is prohibited:',
     '  the thing itself, not a category. When the administrator named a category',
     '  — data, information, money, code, documents, customers — list the concrete',
@@ -268,7 +269,32 @@ export function splitPrompt(nonce: string, conversation?: Conversation): string 
     '- If the sentence already names one concrete thing and nothing else, return',
     '  it as the only statement.',
     '- Write them in the language the administrator used.',
-    isolationPreamble(nonce),
-    thinkingMarker('compiler')
+    tokens ? '{{isolation}}' : isolationPreamble(nonce),
+    tokens ? '{{thinking}}' : thinkingMarker('compiler')
   ].join('\n');
+}
+
+/** Custom templates substitute only dynamic blocks; untouched defaults keep
+ * their original conditional whitespace and measured prompt bytes. */
+export function compilePrompt(roles: string[], roster: string[], nonce: string, conversation?: Conversation): string {
+  return renderPrompt('compiler.compile.system', {
+    conversation: conversationBlock(conversation).join('\n'), roles: roles.join(', '),
+    roster: roster.length ? `Named employees, referred to with an @ prefix: ${roster.join(', ')}.` : '',
+    isolation: isolationPreamble(nonce), thinking: thinkingMarker('compiler')
+  }, () => defaultCompilePrompt(roles, roster, nonce, conversation));
+}
+export function splitPrompt(nonce: string, conversation?: Conversation): string {
+  const followup = conversation?.current.length ? [
+    'When the new message is a follow-up to the rules on the table, return the',
+    'FULL updated list: every rule that stays, reworded only where the follow-up',
+    'changes it (carry a narrowing such as a role or a person into each one it',
+    'applies to), plus what it adds, minus what it removes.', ''
+  ].join('\n') : '';
+  return renderPrompt('compiler.split.system', { conversation: conversationBlock(conversation).join('\n'), followup,
+    maxStatements: String(MAX_STATEMENTS), isolation: isolationPreamble(nonce), thinking: thinkingMarker('compiler')
+  }, () => defaultSplitPrompt(nonce, conversation));
+}
+export function compilerUser(kind: 'compile' | 'split', envelope: string): string {
+  return renderPrompt(`compiler.${kind}.user`, { message: envelope }, () =>
+    `${envelope}\n\n${kind === 'compile' ? 'Convert the statement above into a rule.' : 'Split the instruction above.'}`);
 }

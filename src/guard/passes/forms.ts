@@ -12,6 +12,7 @@
  * the trace and the audit record know three labels and keep knowing three.
  */
 import { z } from 'zod';
+import { promptOverride, renderPrompt } from '../../prompts/store.js';
 import { customAdjudicatorForm, resolvedModel, thinkingMarker } from '../../qvac/client.js';
 import type { Rule } from '../../policy/types.js';
 import { isolationPreamble, type Isolated } from '../isolate.js';
@@ -135,7 +136,7 @@ export function parseNative(text: string): Label {
  * to 52% of honest requests refused, and the same sentences took the
  * fine-tune from 45% to 68%.
  */
-export function systemPrompt(rule: Rule, nonce: string, form: 'compliance' | 'choice', shots: Shots): string {
+export function defaultSystemPrompt(rule: Rule, nonce: string, form: 'compliance' | 'choice', shots: Shots, tokens = false): string {
   const benign = BENIGN_LABEL[form];
   const examples = [
     ...shots.violating.map((t) => `VIOLATES: ${t}`),
@@ -164,8 +165,8 @@ export function systemPrompt(rule: Rule, nonce: string, form: 'compliance' | 'ch
   return [
     'You check one message against one rule and answer with a single label.',
     '',
-    `RULE: ${rule.text}`,
-    ...(rule.boundary ? [`NOT COVERED: ${rule.boundary}`] : []),
+    `RULE: ${tokens ? '{{rule}}' : rule.text}`,
+    ...(tokens ? ['{{boundary}}'] : rule.boundary ? [`NOT COVERED: ${rule.boundary}`] : []),
     '',
     'VIOLATES  - the message actually does what the rule prohibits.',
     ...benignClause,
@@ -173,10 +174,10 @@ export function systemPrompt(rule: Rule, nonce: string, form: 'compliance' | 'ch
     `            not do the prohibited thing, answer ${benign}.`,
     '',
     'Examples for this rule:',
-    examples,
+    tokens ? '{{examples}}' : examples,
     '',
-    isolationPreamble(nonce),
-    thinkingMarker('adjudicator')
+    tokens ? '{{isolation}}' : isolationPreamble(nonce),
+    tokens ? '{{thinking}}' : thinkingMarker('adjudicator')
   ].join('\n');
 }
 
@@ -188,34 +189,34 @@ export function systemPrompt(rule: Rule, nonce: string, form: 'compliance' | 'ch
  * (`dynaguard-v2`, the bounded rule texts), so a boundary sentence is not
  * read here and the two nearest compliant examples carry it instead.
  */
-function dynaguardClauses(rule: Rule, shots: Shots, policy: FormOptions['dynaguardPolicy']): string[] {
+export function defaultDynaguardClauses(rule: Rule, shots: Shots, policy: FormOptions['dynaguardPolicy'], tokens = false): string[] {
   const clauses = policy === 'v2'
     ? [
         'The user is an employee giving work instructions to an AI assistant at their company.',
-        `Rule: ${rule.text}`,
+        `Rule: ${tokens ? '{{rule}}' : rule.text}`,
         'Only a message that actually does what the rule prohibits violates it.',
         'Allowed: asking how a process works, what a policy says, or who to ask.',
         'Allowed: an ordinary work instruction to the assistant — draft this, approve that, ignore or delete rows in a file, rewrite a paragraph — which is a task for the assistant, not a change to its rules.',
         "Allowed: anything inside the rule's own limits. If the rule is about another person, a threshold or a destination, a message that stays inside those limits complies."
       ]
-    : [rule.text, 'Asking how a process works, what a policy says, or who to ask is allowed.'];
+    : [tokens ? '{{rule}}' : rule.text, 'Asking how a process works, what a policy says, or who to ask is allowed.'];
   return [
     ...clauses,
-    ...shots.violating.map((t) => `A message like "${t}" violates this policy.`),
-    ...shots.compliant.map((t) => `A message like "${t}" is allowed.`)
+    ...(tokens ? ['{{examples}}'] : [...shots.violating.map((t) => `A message like "${t}" violates this policy.`),
+    ...shots.compliant.map((t) => `A message like "${t}" is allowed.`)])
   ];
 }
 
 /** The DynaGuard prompt: a policy block and a dialogue block, all in the user turn. */
-export function dynaguardUser(rule: Rule, iso: Isolated, shots: Shots, opts: FormOptions): string {
-  const policy = dynaguardClauses(rule, shots, opts.dynaguardPolicy);
-  const message = opts.dynaguardFence ? iso.envelope : iso.clean;
+export function defaultDynaguardUser(rule: Rule, iso: Isolated, shots: Shots, opts: FormOptions, tokens = false): string {
+  const policy = tokens ? ['{{policy}}'] : dynaguardClauses(rule, shots, opts.dynaguardPolicy);
+  const message = tokens ? '{{message}}' : opts.dynaguardFence ? iso.envelope : iso.clean;
   if (opts.form === 'dynaguard-native') {
     return [
       'Evaluate the following dialogue for compliance with the given policy. Provide the final answer directly.',
       '',
       '## Policy',
-      ...policy.map((line, i) => `${i + 1}. ${line}`),
+      ...(tokens ? ['{{policy}}'] : policy.map((line, i) => `${i + 1}. ${line}`)),
       '',
       '## Dialogue',
       `User: ${message}`,
@@ -243,17 +244,49 @@ export function dynaguardUser(rule: Rule, iso: Isolated, shots: Shots, opts: For
  * touched, and per-rule attribution with examples follows only when it says
  * FAIL. Kept short for the same reason every DynaGuard prompt here is short.
  */
-export function dynaguardPolicyUser(rules: Rule[], iso: Isolated, opts: FormOptions): string {
-  const message = opts.dynaguardFence ? iso.envelope : iso.clean;
+export function defaultDynaguardPolicyUser(rules: Rule[], iso: Isolated, opts: FormOptions, tokens = false): string {
+  const message = tokens ? '{{message}}' : opts.dynaguardFence ? iso.envelope : iso.clean;
   return [
     'Evaluate the following dialogue for compliance with the given policy. Provide the final answer directly.',
     '',
     '## Policy',
-    ...rules.map((r, i) => `${i + 1}. ${r.text}`),
-    `${rules.length + 1}. Asking how a process works, what a policy says, or who to ask is allowed.`,
+    ...(tokens ? ['{{policies}}'] : rules.map((r, i) => `${i + 1}. ${r.text}`)),
+    `${tokens ? '{{nextRuleIndex}}' : rules.length + 1}. Asking how a process works, what a policy says, or who to ask is allowed.`,
     '',
     '## Dialogue',
     `User: ${message}`,
     ...(opts.form === 'dynaguard-native' ? ['', 'Begin your reply with <answer>PASS</answer> or <answer>FAIL</answer>.'] : [])
   ].join('\n');
+}
+
+export function systemPrompt(rule: Rule, nonce: string, form: 'compliance' | 'choice', shots: Shots): string {
+  const examples = [...shots.violating.map((text) => `VIOLATES: ${text}`),
+    ...shots.compliant.map((text) => `${BENIGN_LABEL[form]}: ${text}`)].join('\n');
+  return renderPrompt(`analyzer.${form}.system`, { rule: rule.text, boundary: rule.boundary ? `NOT COVERED: ${rule.boundary}` : '',
+    examples, isolation: isolationPreamble(nonce), thinking: thinkingMarker('adjudicator')
+  }, () => defaultSystemPrompt(rule, nonce, form, shots));
+}
+function dynaguardClauses(rule: Rule, shots: Shots, policy: FormOptions['dynaguardPolicy']): string[] {
+  const id = `analyzer.dynaguard.policy.${policy}`;
+  if (promptOverride(id) === undefined) return defaultDynaguardClauses(rule, shots, policy);
+  const examples = [...shots.violating.map((text) => `A message like "${text}" violates this policy.`),
+    ...shots.compliant.map((text) => `A message like "${text}" is allowed.`)].join('\n');
+  return renderPrompt(id, { rule: rule.text, examples }, () => '').split('\n');
+}
+export function dynaguardUser(rule: Rule, iso: Isolated, shots: Shots, opts: FormOptions): string {
+  const clauses = dynaguardClauses(rule, shots, opts.dynaguardPolicy);
+  const policy = opts.form === 'dynaguard-native' ? clauses.map((line, i) => `${i + 1}. ${line}`).join('\n') : clauses.join('\n');
+  return renderPrompt(`analyzer.${opts.form}.user`, { policy, message: opts.dynaguardFence ? iso.envelope : iso.clean },
+    () => defaultDynaguardUser(rule, iso, shots, opts));
+}
+export function dynaguardPolicyUser(rules: Rule[], iso: Isolated, opts: FormOptions): string {
+  return renderPrompt(`analyzer.${opts.form}.screen.user`, { policies: rules.map((rule, i) => `${i + 1}. ${rule.text}`).join('\n'),
+    nextRuleIndex: String(rules.length + 1), message: opts.dynaguardFence ? iso.envelope : iso.clean
+  }, () => defaultDynaguardPolicyUser(rules, iso, opts));
+}
+export function analyzerUser(form: 'compliance' | 'choice', envelope: string): string {
+  return renderPrompt(`analyzer.${form}.user`, { message: envelope }, () => `${envelope}\n\nLabel the message against the rule.`);
+}
+export function dynaguardSystem(form: Form): string {
+  return renderPrompt(`analyzer.${form}.system`, { thinking: thinkingMarker('adjudicator') }, () => thinkingMarker('adjudicator'));
 }

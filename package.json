@@ -1,6 +1,6 @@
 {
   "name": "warden",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Warden — the local AI gateway. Your admin writes the rules; no prompt can break them. 100% on-device via QVAC.",
@@ -31,6 +31,7 @@
     "test:hook-documents": "tsx scripts/test-hook-documents.ts",
     "test:proxy-documents": "tsx scripts/test-proxy-documents.ts",
     "test:model-management": "tsx scripts/test-model-management.ts",
+    "test:prompts": "tsx scripts/test-prompt-management.ts",
     "test:console": "node scripts/test-console.mjs",
     "verify-audit": "tsx scripts/verify-audit.ts",
     "permalinks": "tsx scripts/permalinks.ts",

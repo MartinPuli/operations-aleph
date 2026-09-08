@@ -8,7 +8,7 @@ const suites = [
   'test-vote.ts', 'test-hook.ts', 'test-cli-compiler.ts', 'test-draft-schema.ts',
   'test-screen.ts', 'test-desktop-lib.ts', 'test-auth.ts', 'test-rules-for-actor.ts',
   'test-remote-boundary.ts', 'test-hook-documents.ts', 'test-proxy-documents.ts',
-  'test-documents.ts', 'test-model-management.ts', 'test-console.mjs'
+  'test-documents.ts', 'test-model-management.ts', 'test-prompt-management.ts', 'test-console.mjs'
 ];
 const temporary = mkdtempSync(join(tmpdir(), 'warden-tests-'));
 const failures = [];
@@ -19,7 +19,7 @@ try {
     // A developer may have cloud credentials or model overrides in their
     // shell. Deterministic regression tests must not use those accidentally.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('WARDEN_')));
-    for (const field of ['AUDIT', 'POLICY', 'COMPANY', 'SETTINGS', 'PROMPT', 'APPEALS', 'ESCALATIONS', 'RATE_STATE', 'MODEL_CATALOG']) {
+    for (const field of ['AUDIT', 'POLICY', 'COMPANY', 'SETTINGS', 'PROMPT', 'PROMPT_TEMPLATES', 'APPEALS', 'ESCALATIONS', 'RATE_STATE', 'MODEL_CATALOG']) {
       env[`WARDEN_${field}_PATH`] = join(folder, `${field.toLowerCase()}.json`);
     }
     env.WARDEN_ADAPTER = 'mock';

@@ -52,6 +52,7 @@ pnpm run test:documents
 pnpm run test:hook-documents
 pnpm run test:proxy-documents
 pnpm run test:model-management
+pnpm run test:prompts
 pnpm run test:console
 ```
 

@@ -8,12 +8,14 @@
  * is allowed to define the rules.
  */
 import { randomUUID } from 'node:crypto';
+import { withModelRole } from '../qvac/coordination.js';
+import { withPromptSnapshot } from '../prompts/store.js';
 import type { QvacAdapter } from '../qvac/types.js';
 import { redactNames, remoteCompilerConfig } from '../qvac/remote.js';
 import { isolate } from '../guard/isolate.js';
 import { EVERYONE, employeeToken, sanitiseAudience } from './audience.js';
 import { loadDirectory } from './people.js';
-import { compilePrompt, splitPrompt, type Conversation } from './prompts.js';
+import { compilePrompt, compilerUser, splitPrompt, type Conversation } from './prompts.js';
 import {
   MAX_STATEMENTS,
   POLICY_SPLIT_JSON_SCHEMA,
@@ -66,7 +68,7 @@ export function isDeclined(compiled: Rule | Declined): compiled is Declined {
   return 'notARule' in compiled && compiled.notARule === true;
 }
 
-export async function compileRule(
+async function compileRuleBody(
   qvac: QvacAdapter,
   text: string,
   policy: PolicySpec,
@@ -87,7 +89,7 @@ export async function compileRule(
       // `qvac/remote.ts`. Judging is not configurable in that direction.
       role: 'compiler',
       system,
-      user: `${iso.envelope}\n\nConvert the statement above into a rule.`,
+      user: compilerUser('compile', iso.envelope),
       // 640 was enough before the compliant examples were asked to be hard.
       // Three nearest-miss requests in Spanish are long, and a draft cut off
       // mid-array arrives as "examples.compliant: expected array, received
@@ -169,7 +171,7 @@ async function splitStatement(qvac: QvacAdapter, text: string, conversation?: Co
       {
         role: 'compiler',
         system,
-        user: `${iso.envelope}\n\nSplit the instruction above.`,
+        user: compilerUser('split', iso.envelope),
         // Eight statements of ordinary length in Spanish are inside this, and
         // the margin is deliberate: a split that overran the cap would come
         // back as truncated JSON, fail to parse, and be caught below as
@@ -251,7 +253,7 @@ async function splitStatement(qvac: QvacAdapter, text: string, conversation?: Co
  * is still a person reading a list and deciding, which is the boundary, and
  * it is on the administrator that the list is short enough to read.
  */
-export async function compilePolicy(
+async function compilePolicyBody(
   qvac: QvacAdapter,
   text: string,
   policy: PolicySpec,
@@ -338,4 +340,13 @@ function slug(text: string): string {
     .filter(Boolean)
     .slice(0, 4)
     .join('-');
+}
+
+/** The splitter and its child drafts share one prompt revision and one model
+ * lease. A saved edit can affect the next operation, never half of this one. */
+export function compileRule(qvac: QvacAdapter, text: string, policy: PolicySpec, options: CompileOptions = {}): ReturnType<typeof compileRuleBody> {
+  return withModelRole('compiler', () => withPromptSnapshot(() => compileRuleBody(qvac, text, policy, options)));
+}
+export function compilePolicy(qvac: QvacAdapter, text: string, policy: PolicySpec, options: CompileOptions = {}): ReturnType<typeof compilePolicyBody> {
+  return withModelRole('compiler', () => withPromptSnapshot(() => compilePolicyBody(qvac, text, policy, options)));
 }

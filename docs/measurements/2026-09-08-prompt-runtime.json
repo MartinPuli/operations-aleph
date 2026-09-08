@@ -1,0 +1,54 @@
+{
+  "started": "2026-09-08T08:30:41.311Z",
+  "model": "Qwen3-0.6B-Q4_0.gguf",
+  "hardware": {
+    "cpu": "Apple M1 Pro",
+    "memoryBytes": 17179869184,
+    "node": "v26.8.1"
+  },
+  "checks": [
+    {
+      "name": "Saved compiler template reached actual compileRule/QVAC; RuleDraft schema and resulting Rule parsed",
+      "ok": true,
+      "ms": 3901
+    },
+    {
+      "name": "Saved analyzer template reached actual adjudicate/QVAC; fixed verdict schema parsed COMPLIES",
+      "ok": true,
+      "ms": 1171
+    },
+    {
+      "name": "All saved overrides reset; effective prompt hash restored to shipped defaults",
+      "ok": true
+    }
+  ],
+  "accuracyClaim": false,
+  "customRevision": "d8b72f33-f744-4e1d-9d85-7e1a21701c98",
+  "submitted": [
+    {
+      "role": "compiler",
+      "systemSha256": "c2b4e6ce84c6a0578e7cd3bc91c78bf94e3389e14360ab616967ff8fa3675ea5",
+      "userSha256": "e5e03dfe82da39b41ea6fd1324015d295897de11d67153d4984bc49fe36a1e2d",
+      "customMarkerPresent": true
+    },
+    {
+      "role": "adjudicator",
+      "systemSha256": "f807b38646cc647ce0e6ffec3174bebe56fb7e9ce33019238da69e5e07f4ce6e",
+      "userSha256": "45bfe102aa945ab60a6f3a07144665fe5ad3e1ca612325294e2de91ca0921a61",
+      "customMarkerPresent": true
+    }
+  ],
+  "finished": "2026-09-08T08:30:46.467Z",
+  "temporaryInstallationRemoved": true,
+  "modelSha256": "33bcc57074ec7b6eada5a90651ee546ec0c2b271002c22baf9f1b2dd1e8f75cb",
+  "protocol": "One prescribed RuleDraft completion and one prescribed COMPLIES completion using administrator-saved synthetic templates and real QVAC. Submitted requests were captured to assert custom markers and literal context substitution. Both overrides were reset and the temporary installation was removed. This verifies plumbing and schema compatibility; it does not measure policy accuracy.",
+  "sourceFiles": {
+    "src/prompts/store.ts": "f884e32ea3e6db226ece171beb7be7040a9f4354f169513a51606e9e1bf3a053",
+    "src/prompts/catalog.ts": "18092cf628e541b4eaa0ec9898674c949edd4461edd6969c2730103d513c662a",
+    "src/policy/prompts.ts": "c2bc374267b874bb56c77a14eeb799d5f038918a831a2702dd5c8faf0c0543e1",
+    "src/policy/compile.ts": "15ca0ab837748c5930a59a9fa4dbeb43a76f215a4e1a8d2041319586d816bbb3",
+    "src/guard/passes/forms.ts": "ca9cc5223a4b1cf2994138ceb80803adfaac4ac7b4d9896a2e13478c4240f83d",
+    "src/guard/passes/adjudicate.ts": "c28fb11ff9f02123246c3638f4afe677710961eebc661a4375cbc2bec9320303",
+    "src/guard/rewrite.ts": "2779a3f3e06a58ebfeb0f57c3a02246f62cf4a4482aa41385ab9ece47dc0ce58"
+  }
+}

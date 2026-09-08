@@ -10,6 +10,7 @@ const model = resolve(process.argv[2] ?? 'models/Qwen3-1.7B-Q4_0.gguf');
 const form = /dynaguard/i.test(basename(model)) ? 'dynaguard' : 'compliance';
 const output = resolve(process.argv[3] ?? 'docs/measurements/2026-09-08-documents-qwen3-1.7b.json');
 const temporary = mkdtempSync(join(tmpdir(), 'warden-document-pairs-'));
+process.env['WARDEN_PROMPT_TEMPLATES_PATH'] = join(temporary, 'prompt-templates.json');
 for (const [key, file] of Object.entries({ WARDEN_SETTINGS_PATH: 'settings.json', WARDEN_MODEL_CATALOG_PATH: 'models.json',
   WARDEN_AUDIT_PATH: 'audit.jsonl', WARDEN_PROMPT_PATH: 'prompts.jsonl', WARDEN_POLICY_PATH: 'policy.json', WARDEN_COMPANY_PATH: 'company.json' })) {
   process.env[key] = join(temporary, file);
@@ -48,7 +49,7 @@ function sources(): Record<string, string> {
   function walk(dir: string) { for (const file of readdirSync(dir, { withFileTypes: true })) {
     const path = `${dir}/${file.name}`; if (file.isDirectory()) walk(path); else if (path.endsWith('.ts')) files.push(path);
   } }
-  for (const dir of ['src/guard', 'src/documents', 'src/qvac', 'src/policy', 'src/audit', 'src/models']) walk(dir);
+  for (const dir of ['src/guard', 'src/documents', 'src/qvac', 'src/policy', 'src/audit', 'src/models', 'src/prompts']) walk(dir);
   return Object.fromEntries(files.sort().map((file) => [file, createHash('sha256').update(readFileSync(file)).digest('hex')]));
 }
 const sourceFiles = sources();

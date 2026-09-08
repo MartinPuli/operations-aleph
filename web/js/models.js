@@ -5,6 +5,7 @@ import { refreshAdjudicator, refreshCompiler } from './data.js';
 import { bindGetModels } from './engine.js';
 import { modelLabel } from './format.js';
 import { bindLibrary, library, libraryMarkup, loadLibrary } from './model-library.js';
+import { bindPromptEditor, closePromptEditor, hasPromptChanges, loadPrompts, promptEditor, promptEditorMarkup, togglePromptEditor } from './prompt-editor.js';
 import { render } from './render.js';
 import { VIEWS } from './views.js';
 
@@ -15,6 +16,7 @@ let refreshing = false;
 
 async function refreshSelections() {
   await Promise.all([refreshCompiler(), refreshAdjudicator()]);
+  if (promptEditor.catalog) await loadPrompts();
 }
 
 async function enterModels() {
@@ -49,9 +51,10 @@ function activeRole(role) {
     <div class="active-model-row">
       <div class="active-role-title"><h2 id="${role}Title">${title}</h2><p>${compiler ? 'Turns your instructions into rules' : 'Checks employee requests and documents'}</p></div>
       <div class="active-role-value"><b data-active-model="${role}">${esc(custom?.name || modelLabel(inForce) || 'Status unavailable')}</b><span>${esc(active?.where ?? 'Refresh to read the current model')}</span>${overridden ? '<span class="model-status warn">Environment override</span>' : ''}</div>
-      <button type="button" class="btn" id="edit-${role}" data-edit-role="${role}" aria-expanded="${open}" aria-controls="${role}Editor">${open ? 'Close' : 'Change'}</button>
+      <div class="active-role-actions"><button type="button" class="btn" id="edit-${role}" data-edit-role="${role}" aria-expanded="${open}" aria-controls="${role}Editor">${open ? 'Close' : 'Change model'}</button><button type="button" class="btn quiet" id="prompts-${role}" data-prompt-role="${role}" aria-expanded="${promptEditor.openRole === role}" aria-controls="${role}Prompts">${promptEditor.openRole === role ? 'Close prompts' : 'Edit prompts'}</button>${hasPromptChanges(role) ? '<span class="note warn">Unsaved prompt changes</span>' : ''}</div>
     </div>
     ${open ? `<div id="${role}Editor" class="active-model-editor">${compiler ? compilerSettings() : analyzerSettings()}</div>` : ''}
+    ${promptEditorMarkup(role)}
   </section>`;
 }
 
@@ -76,7 +79,7 @@ function analyzerSettings() {
 
 function modelsPage() {
   return `<div class="sheet settings models-page">
-    <div class="models-page-head"><div><h1>Models</h1><p>Choose what writes your rules and what checks each request.</p></div><button type="button" class="btn quiet" id="refreshModels"${refreshing ? ' disabled' : ''}>${refreshing ? 'Refreshing…' : 'Refresh'}</button></div>
+    <div class="models-page-head"><div><h1>Models</h1><p>Choose what writes your rules and what checks each request. Edit the prompts each role uses.</p></div><button type="button" class="btn quiet" id="refreshModels"${refreshing ? ' disabled' : ''}>${refreshing ? 'Refreshing…' : 'Refresh'}</button></div>
     <div class="models-runtime-line">${runtimeNote()}<button type="button" class="linkbtn" data-go="engine">Runtime details</button></div>
     <div class="active-models">${activeRole('compiler')}${activeRole('adjudicator')}</div>
     ${libraryMarkup()}
@@ -86,7 +89,8 @@ function modelsPage() {
 
 function bindModels() {
   if ($('refreshModels')) $('refreshModels').onclick = () => { void enterModels(); render(); };
-  for (const button of document.querySelectorAll('[data-edit-role]')) button.onclick = () => { clearCompilerSecret(); expanded = expanded === button.dataset.editRole ? null : button.dataset.editRole; render(); $(button.id)?.focus(); };
+  for (const button of document.querySelectorAll('[data-edit-role]')) button.onclick = () => { clearCompilerSecret(); closePromptEditor(); expanded = expanded === button.dataset.editRole ? null : button.dataset.editRole; render(); $(button.id)?.focus(); };
+  for (const button of document.querySelectorAll('[data-prompt-role]')) button.onclick = () => { clearCompilerSecret(); expanded = null; togglePromptEditor(button.dataset.promptRole); render(); $(button.id)?.focus(); };
   if (expanded === 'compiler') bindCompiler(loadLibrary);
   for (const button of document.querySelectorAll('[data-analyzer-choice]')) button.onclick = async () => {
     if (changingAnalyzer) return;
@@ -101,6 +105,7 @@ function bindModels() {
   };
   bindGetModels();
   bindLibrary(refreshSelections);
+  bindPromptEditor();
 }
 
 VIEWS.models = { body: modelsPage, bind: bindModels, onEnter: enterModels, onLeave: clearCompilerSecret };

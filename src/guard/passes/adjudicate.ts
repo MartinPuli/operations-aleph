@@ -1,4 +1,5 @@
 import { withModelRole } from '../../qvac/coordination.js';
+import { promptMetadata, withPromptSnapshot } from '../../prompts/store.js';
 /**
  * Pass 3 — does this message violate one specific rule?
  *
@@ -29,6 +30,8 @@ import {
   parseNative,
   schemaFor,
   systemPrompt,
+  analyzerUser,
+  dynaguardSystem,
   toLabel,
   type Form,
   type FormOptions,
@@ -234,10 +237,10 @@ async function sampleLabel(
     // The whole thing is the user turn: the model card's template has no
     // separate system role, so the system slot carries only the thinking
     // marker, and only when the resolved weights are a Qwen3 that reads it.
-    return ask(qvac, form, thinkingMarker('adjudicator'), dynaguardUser(rule, iso, shots, opts), sampling);
+    return ask(qvac, form, dynaguardSystem(form), dynaguardUser(rule, iso, shots, opts), sampling);
   }
   const system = systemPrompt(rule, iso.nonce, form, shots);
-  return ask(qvac, form, system, `${iso.envelope}\n\nLabel the message against the rule.`, sampling);
+  return ask(qvac, form, system, analyzerUser(form, iso.envelope), sampling);
 }
 
 /**
@@ -291,7 +294,7 @@ export async function adjudicate(
   rule: Rule,
   options?: AdjudicateOptions
 ): Promise<{ verdict: RuleVerdict; trace: PassTrace }> {
-  return withModelRole('adjudicator', async () => {
+  return withModelRole('adjudicator', () => withPromptSnapshot(async () => {
   const started = Date.now();
   const opts = resolve(options);
 
@@ -324,13 +327,14 @@ export async function adjudicate(
       verdict: label === 'VIOLATES' ? (rule.severity === 'block' ? 'BLOCK' : 'ESCALATE') : 'ALLOW',
       detail: {
         label,
+        ...promptMetadata(),
         ...(votes.length > 1 ? { votes } : {}),
         ...(windowCount > 1 ? { windows: windowCount } : {}),
         ruleText: rule.text
       }
     }
   };
-  });
+  }));
 }
 
 /**
@@ -349,10 +353,10 @@ async function screenPolicy(
 ): Promise<{ screen: Screen | null; trace: PassTrace }> {
   const started = Date.now();
   try {
-    const label = await ask(qvac, opts.form, thinkingMarker('adjudicator'), dynaguardPolicyUser(rules, iso, opts));
+    const label = await ask(qvac, opts.form, dynaguardSystem(opts.form), dynaguardPolicyUser(rules, iso, opts));
     return {
       screen: { label, rules: rules.length },
-      trace: { pass: 'screen', ms: Date.now() - started, verdict: 'ALLOW', detail: { label, rules: rules.length } }
+      trace: { pass: 'screen', ms: Date.now() - started, verdict: 'ALLOW', detail: { label, rules: rules.length, ...promptMetadata() } }
     };
   } catch (err) {
     return {
@@ -392,7 +396,7 @@ export async function adjudicateAll(
   rules: Rule[],
   options?: AdjudicateOptions & { screenOver?: Rule[] }
 ): Promise<{ verdicts: RuleVerdict[]; traces: PassTrace[]; screen: Screen | null }> {
-  return withModelRole('adjudicator', async () => {
+  return withModelRole('adjudicator', () => withPromptSnapshot(async () => {
   const opts = resolve(options);
   const traces: PassTrace[] = [];
   let screen: Screen | null = null;
@@ -438,6 +442,6 @@ export async function adjudicateAll(
     traces: [...traces, ...settled.map((s) => s.trace)],
     screen
   };
-  });
+  }));
 }
 
