@@ -1462,6 +1462,11 @@ select.mini {
 .library-head .note { max-width: var(--prose); }
 .library-head .btn { flex: none; }
 .tbl.models .thead, .tbl.models .trow { grid-template-columns: minmax(0, 1fr) 150px 120px 190px 72px; }
+.tbl.prompts .thead, .tbl.prompts .trow { grid-template-columns: minmax(0, 1fr) 170px 200px 72px; }
+.c-prompt-state { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+/* The lede a tab needs before its table, aligned with the table's own inset. */
+.tab-lede { display: block; padding: var(--s-6) var(--s-3) var(--s-5); max-width: var(--prose); }
+.tab-back { padding: var(--s-6) var(--s-3) 0; }
 .c-model { display: grid; gap: 2px; min-width: 0; padding: var(--s-3) 0; }
 .c-model b { font-weight: var(--fw-medium); color: var(--ink); overflow-wrap: anywhere; }
 .c-model .mono { font-size: var(--fs-1); color: var(--muted); overflow-wrap: anywhere; }
@@ -1475,6 +1480,7 @@ select.mini {
 .trow-note .note { max-width: var(--prose); }
 .tbl > .trow-note:last-child { border-bottom: none; }
 .library .model-editor, .library .model-transfers, .library > .banner, .library > .note { margin: 0 var(--s-3) var(--s-5); }
+.models-page .prompt-editor { margin: var(--s-5) var(--s-3) var(--s-6); }
 .library .empty { margin: 0 var(--s-3); }
 
 .model-section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-5); margin-bottom: var(--s-3); }

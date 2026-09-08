@@ -1,11 +1,11 @@
 /** The two model roles, their actual runtime selections, and your saved models. */
-import { $, esc, post, state } from './core.js';
+import { $, attr, esc, post, state } from './core.js';
 import { bindCompiler, clearCompilerSecret, compilerNeedsSetup, compilerSettings } from './compiler.js';
 import { refreshAdjudicator, refreshCompiler } from './data.js';
 import { bindGetModels } from './engine.js';
 import { modelLabel, plural } from './format.js';
 import { bindLibrary, library, libraryMarkup, loadLibrary } from './model-library.js';
-import { bindPromptEditor, closePromptEditor, hasPromptChanges, loadPrompts, promptEditor, promptEditorMarkup, togglePromptEditor } from './prompt-editor.js';
+import { bindPromptEditor, closePromptEditor, hasPromptChanges, loadPrompts, promptEditor, promptEditorMarkup, promptIsDirty, togglePromptEditor } from './prompt-editor.js';
 import { render } from './render.js';
 import { go } from './router.js';
 import { VIEWS } from './views.js';
@@ -198,8 +198,47 @@ function activeTab() {
   return `<div class="jobs">${jobCard('compiler')}${jobCard('adjudicator')}</div>`;
 }
 
+/**
+ * Prompts: a template list, and the editor behind one row.
+ *
+ * The prompt editor used to open inline under whichever role you were looking
+ * at on what is now Active, which put a 22-rem textarea and its variable
+ * reference in the middle of the page you go to to read one status. It is the
+ * thing on this screen that is touched least often, so it is a tab, and the
+ * tab opens on the list rather than on a text box.
+ *
+ * Editing keeps the machinery it always had — a draft per template, the
+ * revision conflict, restore-default — by choosing the template through
+ * `promptEditor.selected[role]`, which is the same field the editor's own
+ * picker writes.
+ */
 function promptsTab() {
-  return promptEditorMarkup(promptEditor.openRole ?? 'compiler');
+  const templates = promptEditor.catalog?.templates ?? [];
+  if (promptEditor.openRole) {
+    return `<div class="tab-back"><button type="button" class="btn quiet" id="closePromptTemplate">← All templates</button></div>
+      ${promptEditorMarkup(promptEditor.openRole)}`;
+  }
+  if (!templates.length) {
+    return promptEditor.loading
+      ? '<div class="model-loading" role="status"><span class="skeleton-line"></span><span class="skeleton-line short"></span><span class="sr-only">Loading prompt templates…</span></div>'
+      : `<p class="note bad tab-lede" role="alert">${esc(promptEditor.error || 'No prompt templates are available. Refresh to try again.')}</p>`;
+  }
+  return `<p class="note tab-lede">Full templates each job uses. Edits apply to new work only; defaults stay untouched until you change them.</p>
+    ${promptEditor.error ? `<p class="note bad tab-lede" role="alert">${esc(promptEditor.error)} Your drafts are kept.</p>` : ''}
+    <div class="tbl prompts">
+      <div class="thead"><span>Template</span><span>Job</span><span>Status</span><span></span></div>
+      ${templates.map(promptRow).join('')}
+    </div>`;
+}
+
+function promptRow(item) {
+  const unsaved = promptIsDirty(item.id);
+  return `<div class="trow">
+    <span class="c-model"><b>${esc(item.name)}</b><span class="mono">${esc(item.id)}</span></span>
+    <span>${item.role === 'compiler' ? 'Rule writer' : 'Request judge'}</span>
+    <span class="c-prompt-state">${unsaved ? '<span class="chip warn">Unsaved changes</span>' : item.custom ? '<span class="chip warn">Customized</span>' : '<span class="c-status">Default</span>'}${item.active ? '' : '<span class="c-status">· not in use</span>'}</span>
+    <span class="c-model-act"><button type="button" class="btn" data-prompt-template="${attr(item.id)}" data-role="${esc(item.role)}">Edit</button></span>
+  </div>`;
 }
 
 function modelsPage() {
@@ -215,9 +254,18 @@ function modelsPage() {
 
 function bindModels() {
   const tab = tabOf();
-  // Interim: the Prompts tab still shows the per-role editor, which only draws
-  // for the role it has open. The table that replaces this picks per template.
-  if (tab === 'prompts' && !promptEditor.openRole) { togglePromptEditor('compiler'); render(); return; }
+  // The list needs the catalogue the per-role editor used to fetch on opening.
+  if (tab === 'prompts' && !promptEditor.catalog && !promptEditor.loading) void loadPrompts();
+  for (const button of document.querySelectorAll('[data-prompt-template]')) button.onclick = () => {
+    const role = button.dataset.role;
+    promptEditor.selected[role] = decodeURIComponent(button.dataset.promptTemplate);
+    if (promptEditor.openRole !== role) togglePromptEditor(role);
+    render();
+    // Without preventScroll the caret lands below the fold and takes the tabs
+    // and the way back off the screen with it.
+    $('promptTemplateText')?.focus({ preventScroll: true });
+  };
+  if ($('closePromptTemplate')) $('closePromptTemplate').onclick = () => { closePromptEditor(); render(); };
   if ($('refreshModels')) $('refreshModels').onclick = () => { void enterModels(); render(); };
   for (const button of document.querySelectorAll('[data-edit-role]')) button.onclick = () => { clearCompilerSecret(); closePromptEditor(); expanded = expanded === button.dataset.editRole ? null : button.dataset.editRole; render(); $(button.id)?.focus(); };
   for (const button of document.querySelectorAll('[data-prompt-role]')) button.onclick = () => {
