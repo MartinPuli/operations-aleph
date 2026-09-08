@@ -198,13 +198,15 @@ async function main(): Promise<void> {
   writeFileSync(settings, '{}');
   let entries = (await fix()).hooks.UserPromptSubmit.flatMap((e) => e.hooks);
   assert.equal(entries.length, 1);
-  assert.equal(entries[0]?.timeout, 120);
+  assert.equal(entries[0]?.timeout, 300);
+  const referenceSettings = JSON.parse(readFileSync(resolve('integrations/claude-code/settings.json'), 'utf8'));
+  assert.equal(referenceSettings.hooks.UserPromptSubmit[0].hooks[0].timeout, entries[0]?.timeout, 'the reference settings and installer must allow the same document budget');
   writeFileSync(settings, JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node /old/.warden-hook.mjs' }] }] } }));
   const repaired = await fix();
   entries = repaired.hooks.UserPromptSubmit.flatMap((e) => e.hooks);
   assert.equal(entries.length, 1);
   assert.equal(entries[0]?.command, 'node /old/.warden-hook.mjs');
-  assert.equal(entries[0]?.timeout, 120);
+  assert.equal(entries[0]?.timeout, 300);
   // A Claude Code opened from the desktop app never reads the shell profile,
   // so the gateway address and key have to be in settings.json's env block
   // for its hook to reach anything. Both writes put them there; a value the
@@ -213,6 +215,7 @@ async function main(): Promise<void> {
   assert.equal(repaired.env?.WARDEN_API_KEY, 'wk-test-key');
   writeFileSync(settings, JSON.stringify({ env: { OTHER: 'kept', WARDEN_URL: 'http://stale:1' }, hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node /old/.warden-hook.mjs', timeout: 120 }] }] } }));
   const refreshed = await fix();
+  assert.equal(refreshed.hooks.UserPromptSubmit.flatMap((entry) => entry.hooks)[0]?.timeout, 300, 'repair the old 120-second entry for document checks');
   assert.deepEqual(refreshed.env, { OTHER: 'kept', WARDEN_URL: 'http://gw.test:8080', WARDEN_API_KEY: 'wk-test-key' });
   console.log('✓ --fix writes the Claude Code hook timeout, repairs an entry without one, and puts the gateway in env');
 

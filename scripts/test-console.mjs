@@ -10,7 +10,7 @@ globalThis.document = { addEventListener() {}, getElementById: (id) => elements.
 globalThis.window = { prompt: () => { throw new Error('An employee request must never request an admin key.'); } };
 globalThis.sessionStorage = { getItem: () => 'administrator-secret' };
 const { api, post, state } = await import('../web/js/core.js');
-const { documentMetadataMarkup, documentReason } = await import('../web/js/documents.js');
+const { documentAnalysisNotice, documentMetadataMarkup, documentReason, documentReviewPendingMarkup } = await import('../web/js/documents.js');
 const { library, libraryMarkup } = await import('../web/js/model-library.js');
 const { compilerNeedsSetup, compilerSetupNudge, compilerSettings, bindModelPicker } = await import('../web/js/compiler.js');
 const { compileFailure } = await import('../web/js/answers.js');
@@ -402,4 +402,33 @@ test('an invalid compiler environment shows its escaped configuration error with
     assert.ok(!html.includes('Old active connection') && !html.includes('<script>'));
     assert.match(html, /Fix the compiler environment\. &lt;script&gt;/);
   } finally { state.models = previous; }
+});
+
+test('document waiting feedback explains longer policy checks without claiming a reading result', () => {
+  const html = documentReviewPendingMarkup([{ name: 'scan.png' }], true);
+  assert.match(html, /role="status"/);
+  assert.match(html, /Files are read first, then checked against the rules/);
+  assert.match(html, /few minutes/);
+  assert.ok(!html.includes('The files were read') && !html.includes('Could not read'));
+  assert.equal(documentReviewPendingMarkup([], true), '');
+  assert.equal(documentReviewPendingMarkup([{ name: 'scan.png' }], false), '');
+});
+
+test('document analysis timeouts preserve successful OCR status and stay separate from extraction failures', () => {
+  const read = { name: 'scan.png', status: 'read', method: 'ocr', chars: 220, bytes: 1024 };
+  const timeout = { pass: 'adjudicate:rule-1', failedClosed: true, detail: { error: 'Document analysis timed out before all content and rules were checked. The document was not cleared.' } };
+  const decision = { documents: [read], passes: [timeout] };
+  const notice = documentAnalysisNotice(decision);
+  assert.match(notice, /Policy analysis ran out of time/);
+  assert.match(notice, /The files were read/);
+  assert.match(notice, /request was not cleared/);
+  const metadata = documentMetadataMarkup(decision.documents);
+  assert.match(metadata, />Read<\/span>/);
+  assert.match(metadata, /Offline OCR/);
+  assert.ok(!metadata.includes('Could not read'));
+  const unread = { ...read, status: 'unreadable', reason: 'document-reader-timeout' };
+  assert.ok(!documentAnalysisNotice({ documents: [read, unread], passes: [timeout] }).includes('The files were read'));
+  assert.equal(documentAnalysisNotice({ documents: [unread], passes: [{ ...timeout, pass: 'documents', detail: { error: 'document-reader-timeout' } }] }), '');
+  assert.match(documentMetadataMarkup([unread]), /document reader ran out of time/);
+  assert.match(documentAnalysisNotice({ documents: [read], passes: [{ ...timeout, detail: { error: 'Document analysis was cancelled before all content and rules were checked. The document was not cleared.' } }] }), /Policy analysis was cancelled/);
 });

@@ -13,7 +13,7 @@
  * this is a trim.
  */
 import type { ZodType } from 'zod';
-import { FailClosedError, type CompleteRequest, type GenStats, type StructuredResult } from './types.js';
+import { FailClosedError, throwIfCompletionCancelled, type CompleteRequest, type GenStats, type StructuredResult } from './types.js';
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -60,7 +60,9 @@ export async function completeWithRepair<T>(
   schema: ZodType<T>,
   who: string
 ): Promise<StructuredResult<T>> {
+  throwIfCompletionCancelled(req);
   const first = await run(req);
+  throwIfCompletionCancelled(req);
   const parsed = parseStructured(first.text, schema);
   if (parsed.ok) return { value: parsed.value, attempts: 1, repaired: false, stats: first.stats };
 
@@ -68,6 +70,7 @@ export async function completeWithRepair<T>(
     ...req,
     user: [req.user, '', 'Your previous answer was rejected:', parsed.error, 'Answer again, correcting exactly that. Output the JSON object and nothing else.'].join('\n')
   });
+  throwIfCompletionCancelled(req);
   const retry = parseStructured(second.text, schema);
   const stats: GenStats = { ...second.stats, ms: first.stats.ms + second.stats.ms };
   if (retry.ok) return { value: retry.value, attempts: 2, repaired: true, stats };

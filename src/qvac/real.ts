@@ -21,6 +21,7 @@ import { completeWithRepair } from './json.js';
 import { withDeadline } from './deadline.js';
 import {
   FailClosedError,
+  throwIfCompletionCancelled,
   type CompleteRequest,
   type GenStats,
   type QvacAdapter,
@@ -66,6 +67,74 @@ const OCR_TIMEOUT_MS = 30_000;
  * defensible if a rerun reproduces them.
  */
 const DEFAULT_SEED = 42;
+
+/**
+ * Loading is shared between requests, so cancelling one waiter must not cancel
+ * the shared load. Its continuation is a factory: an abandoned waiter can never
+ * launch a generation later, even if cold weights eventually finish loading.
+ * Once native work starts, retain the caller's queue/role lease until it settles
+ * or the cancellation grace expires. The SDK may finish with partial output or
+ * even success after cancellation; neither is evidence that the call completed.
+ *
+ * The narrow injected boundary also lets the lifecycle be checked without a GPU.
+ */
+export async function runCancellableGeneration<T>(
+  req: CompleteRequest,
+  prepare: () => Promise<() => { requestId: string; result: Promise<T> }>,
+  cancelRequest: (requestId: string) => Promise<unknown>,
+  timeoutMs: number,
+  cancelGraceMs = CANCEL_GRACE_MS
+): Promise<T> {
+  throwIfCompletionCancelled(req);
+  const cancelled = () => new FailClosedError(`generation was cancelled for role "${req.role}"`, { role: req.role, attempts: 0 });
+  let stopLoading: (() => void) | undefined;
+  let start: () => { requestId: string; result: Promise<T> };
+  try {
+    const loading = prepare();
+    if (req.signal) {
+      const aborted = new Promise<never>((_, reject) => {
+        stopLoading = () => reject(cancelled());
+        req.signal!.addEventListener('abort', stopLoading, { once: true });
+        if (req.signal!.aborted) stopLoading();
+      });
+      start = await Promise.race([loading, aborted]);
+    } else start = await loading;
+  } finally {
+    if (stopLoading) req.signal!.removeEventListener('abort', stopLoading);
+  }
+  throwIfCompletionCancelled(req);
+  const run = start();
+  let stopped: FailClosedError | undefined;
+  let grace: NodeJS.Timeout | undefined;
+  let rejectHardStop!: (error: Error) => void;
+  const hardStop = new Promise<never>((_, reject) => { rejectHardStop = reject; });
+  const stop = (error: FailClosedError) => {
+    if (stopped) return;
+    stopped = error;
+    clearTimeout(timeout);
+    // Cancel only this request. Other roles may share the same loaded weights.
+    try { void cancelRequest(run.requestId).catch(() => {}); } catch { /* Best effort; the hard stop still applies. */ }
+    grace = setTimeout(() => rejectHardStop(error), cancelGraceMs);
+  };
+  const timeout = setTimeout(() => stop(new FailClosedError(
+    `generation timed out after ${timeoutMs}ms for role "${req.role}"`, { role: req.role, attempts: 0 }
+  )), timeoutMs);
+  const onAbort = () => stop(cancelled());
+  req.signal?.addEventListener('abort', onAbort, { once: true });
+  if (req.signal?.aborted) onAbort();
+  try {
+    const value = await Promise.race([run.result, hardStop]);
+    if (stopped) throw stopped;
+    throwIfCompletionCancelled(req);
+    return value;
+  } catch (error) {
+    throw stopped ?? error;
+  } finally {
+    clearTimeout(timeout);
+    if (grace) clearTimeout(grace);
+    req.signal?.removeEventListener('abort', onAbort);
+  }
+}
 
 export class RealQvacAdapter implements QvacAdapter {
   #firstTry = 0;
@@ -138,81 +207,60 @@ export class RealQvacAdapter implements QvacAdapter {
     jsonSchema: Record<string, unknown> | undefined,
     candidateModelId?: string
   ): Promise<{ text: string; stats: GenStats }> {
-    const modelId = candidateModelId ?? await modelFor(req.role);
-    const started = Date.now();
+    return runCancellableGeneration(req, async () => {
+      const modelId = candidateModelId ?? await modelFor(req.role);
+      return () => {
+        const started = Date.now();
+        const run = completion({
+          modelId,
+          stream: true,
+          history: [
+            { role: 'system', content: req.system },
+            { role: 'user', content: req.user }
+          ],
+          generationParams: {
+            temp: req.temp ?? 0,
+            seed: req.seed ?? DEFAULT_SEED,
+            predict: req.maxTokens ?? DEFAULT_MAX_TOKENS,
+            // Qwen3 emits <think> blocks by default. In guard passes that is pure
+            // latency spent on a closed yes/no question, so it is switched off
+            // here and with a /no_think marker in the pass prompts.
+            reasoning_budget: 0
+          },
+          ...(req.kvKey ? { kvCache: req.kvKey } : {}),
+          ...(jsonSchema
+            ? {
+                responseFormat: {
+                  type: 'json_schema' as const,
+                  json_schema: { name: 'response', strict: true, schema: jsonSchema }
+                }
+              }
+            : {})
+        });
 
-    const run = completion({
-      modelId,
-      stream: true,
-      history: [
-        { role: 'system', content: req.system },
-        { role: 'user', content: req.user }
-      ],
-      generationParams: {
-        temp: req.temp ?? 0,
-        seed: req.seed ?? DEFAULT_SEED,
-        predict: req.maxTokens ?? DEFAULT_MAX_TOKENS,
-        // Qwen3 emits <think> blocks by default. In guard passes that is pure
-        // latency spent on a closed yes/no question, so it is switched off
-        // here and with a /no_think marker in the pass prompts.
-        reasoning_budget: 0
-      },
-      ...(req.kvKey ? { kvCache: req.kvKey } : {}),
-      ...(jsonSchema
-        ? {
-            responseFormat: {
-              type: 'json_schema' as const,
-              json_schema: { name: 'response', strict: true, schema: jsonSchema }
-            }
+        const finalResult = run.final;
+        void finalResult.catch(() => {});
+        const consume = async () => {
+          for await (const _event of run.events) {
+            // Drained for its side effect; the aggregate arrives via `final`.
           }
-        : {})
-    });
+          const final = await finalResult;
+          return {
+            text: final.contentText,
+            stats: {
+              ms: Date.now() - started,
+              ...(final.stats?.timeToFirstToken !== undefined && { ttftMs: final.stats.timeToFirstToken }),
+              ...(final.stats?.tokensPerSecond !== undefined && { tps: final.stats.tokensPerSecond }),
+              ...(final.stats?.promptTokens !== undefined && { promptTokens: final.stats.promptTokens }),
+              ...(final.stats?.generatedTokens !== undefined && { genTokens: final.stats.generatedTokens }),
+              ...(final.stats?.backendDevice !== undefined && { backend: final.stats.backendDevice })
+            }
+          };
+        };
 
-    const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const timeout = setTimeout(() => {
-      void cancel({ requestId: run.requestId }).catch(() => {});
-    }, timeoutMs);
-
-    const consume = async () => {
-      for await (const _event of run.events) {
-        // Drained for its side effect; the aggregate arrives via `final`.
-      }
-      const final = await run.final;
-      return {
-        text: final.contentText,
-        stats: {
-          ms: Date.now() - started,
-          ...(final.stats?.timeToFirstToken !== undefined && { ttftMs: final.stats.timeToFirstToken }),
-          ...(final.stats?.tokensPerSecond !== undefined && { tps: final.stats.tokensPerSecond }),
-          ...(final.stats?.promptTokens !== undefined && { promptTokens: final.stats.promptTokens }),
-          ...(final.stats?.generatedTokens !== undefined && { genTokens: final.stats.generatedTokens }),
-          ...(final.stats?.backendDevice !== undefined && { backend: final.stats.backendDevice })
-        }
+        return { requestId: run.requestId, result: consume() };
       };
-    };
-
-    // `cancel()` is a request, not a guarantee: if the worker never ends the
-    // stream, `run.final` would park this call — and the guard request behind
-    // it — forever. The hard deadline turns that hang into a thrown error,
-    // which every caller already resolves to ESCALATE. Stricter, never stuck.
-    let deadline: NodeJS.Timeout | undefined;
-    const hardStop = new Promise<never>((_, reject) => {
-      deadline = setTimeout(
-        () => reject(new Error(`generation did not end within ${timeoutMs + CANCEL_GRACE_MS}ms of starting`)),
-        timeoutMs + CANCEL_GRACE_MS
-      );
-    });
-
-    try {
-      const pending = consume();
-      // If the deadline wins, the abandoned generation may still settle later;
-      // swallow that so it cannot surface as an unhandled rejection.
-      pending.catch(() => {});
-      return await Promise.race([pending, hardStop]);
-    } finally {
-      clearTimeout(timeout);
-      if (deadline) clearTimeout(deadline);
-    }
+    }, (requestId) => cancel({ requestId }), req.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   }
 
 }

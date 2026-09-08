@@ -22,9 +22,25 @@ export class RoleCoordinator {
     }
   }
 
-  async run<T>(write: boolean, work: () => Promise<T>): Promise<T> {
-    await new Promise<void>((enter) => { this.#queue.push({ write, enter }); this.#drain(); });
-    try { return await work(); }
+  async run<T>(write: boolean, work: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+    await new Promise<void>((resolve, reject) => {
+      const entry = { write, enter: () => { signal?.removeEventListener('abort', abort); resolve(); } };
+      const abort = () => {
+        const index = this.#queue.indexOf(entry);
+        if (index < 0) return;
+        this.#queue.splice(index, 1);
+        signal?.removeEventListener('abort', abort);
+        reject(signal?.reason);
+        this.#drain();
+      };
+      if (signal?.aborted) { reject(signal.reason); return; }
+      this.#queue.push(entry);
+      signal?.addEventListener('abort', abort, { once: true });
+      this.#drain();
+    });
+    // Cancellation only removes queued admission. Once entered, native work
+    // owns the lease until it settles; abort must never unload weights under it.
+    try { signal?.throwIfAborted(); return await work(); }
     finally {
       if (write) this.#writer = false;
       else this.#readers--;
@@ -40,10 +56,11 @@ function coordinator(role: ModelRole): RoleCoordinator {
   return roles.get(role)!;
 }
 
-export function withModelRole<T>(role: ModelRole, work: () => Promise<T>): Promise<T> {
+export function withModelRole<T>(role: ModelRole, work: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (signal?.aborted) return Promise.reject(signal.reason);
   const held = context.getStore();
   if (held?.has(role)) return work();
-  return coordinator(role).run(false, () => context.run(new Set([...(held ?? []), role]), work));
+  return coordinator(role).run(false, () => context.run(new Set([...(held ?? []), role]), work), signal);
 }
 
 export function withRoleChange<T>(role: ModelRole, work: () => Promise<T>): Promise<T> {

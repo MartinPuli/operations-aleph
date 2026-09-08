@@ -374,9 +374,9 @@ async function screenPolicy(
 /**
  * Judge a message against several rules at once.
  *
- * Concurrency is what makes multi-rule policy viable: the adjudicator model is
- * loaded with `parallel: 4`, so four of these share one model instance instead
- * of queueing.
+ * Rules are submitted together. The adapter determines actual concurrency;
+ * document requests use explicit admission because the current QVAC runtime
+ * serializes completions despite its native `parallel: 4` setting.
  *
  * With the screen on, `screenOver` is the whole applicable policy and `rules`
  * the retrieved few: the screen reads every rule the actor is bound by in one
@@ -444,4 +444,3 @@ export async function adjudicateAll(
   };
   }));
 }
-

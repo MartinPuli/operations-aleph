@@ -35,9 +35,10 @@ export const WardenPlugin = async () => ({
     try {
       const child = run('node', [HOOK], {
         env: process.env,
-        // Includes the gateway's health probe before its 90-second decision.
+        // Covers the health probe plus a 240-second document check. The
+        // standalone hook still uses the shorter 90-second text deadline.
         // Async execution keeps the editor responsive while the guard works.
-        timeout: 120_000,
+        timeout: 300_000,
         maxBuffer: 1024 * 1024
       });
       child.child.stdin.end(JSON.stringify({ parts, source: 'opencode' }));

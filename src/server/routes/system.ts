@@ -72,7 +72,9 @@ systemRoutes.get('/health', (_req, res) =>
      * needs on their machine is a URL and a key, which is the whole point of
      * identity being the key and only the key.
      */
-    deadlines: { decisionMs: hookDecisionDeadlineMs() },
+    // 45 s extraction + 180 s analysis + 5 s cancellation grace, with 10 s
+    // left to deliver and validate the response. Text retains its own budget.
+    deadlines: { decisionMs: hookDecisionDeadlineMs(), documentMs: 240_000 },
     /*
      * Whether a hook that cannot reach this gateway may let the prompt through.
      *

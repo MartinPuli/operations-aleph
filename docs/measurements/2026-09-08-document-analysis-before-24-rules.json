@@ -1,0 +1,238 @@
+{
+  "title": "Isolated synthetic OCR image across 24 applicable rules",
+  "started": "2026-09-08T16:26:05.806Z",
+  "finished": "2026-09-08T16:26:46.562Z",
+  "implementation": "dist",
+  "sourceHashes": {
+    "dist/guard/pipeline.js": "869189a0db568b4f7597d461745190ce8710c00b2bdb6b1becd185d13f78d6de",
+    "dist/guard/passes/adjudicate.js": "649eceeb106c9edcf55d12d233df40adb68c3c505b69b4884e6c07b8a643a52c",
+    "dist/documents/extract.js": "dba8926d340f1f9527b7325baa8bf1f73b8f35c1587b1ea09b118cfe03b80ad5",
+    "dist/documents/runner.js": "9470d32027f0660646cb73186390a45074130bbf7a235db05b86e8f2391b6d04",
+    "dist/qvac/real.js": "d0c6398da238042715cbce12eaeaf5fcb7028494e9b3f037d5d609d58f130c1a",
+    "dist/qvac/client.js": "a91379e111b51fc14485d8bc8e8c1bb038efeb983ad7bb723b3b52e0d0706311"
+  },
+  "sourceUnchanged": true,
+  "model": "DynaGuard-8B.Q4_K_M.gguf",
+  "modelSha256": "692a65b2e1cf5ddecdbbc67b1ace71e3a571173383e44c059d2b4d8e2fac05c3",
+  "rules": 24,
+  "form": "dynaguard",
+  "warmingMs": 10336,
+  "hardware": {
+    "platform": "darwin",
+    "release": "25.5.0",
+    "arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "memoryBytes": 17179869184,
+    "node": "v26.8.1"
+  },
+  "limitation": "One synthetic image, one warm request on a shared machine. Processing and latency diagnostic only; no policy accuracy estimate.",
+  "fatal": null,
+  "verdict": "ESCALATE",
+  "totalMs": 26221,
+  "documents": [
+    {
+      "mimeType": "image/png",
+      "bytes": 34645,
+      "status": "read",
+      "pages": 1,
+      "chars": 112,
+      "method": "ocr",
+      "redactions": 0
+    }
+  ],
+  "passes": [
+    {
+      "pass": "quota",
+      "ms": 0,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "budget",
+      "ms": 0,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "sanitize",
+      "ms": 13,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "documents",
+      "ms": 1180,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "isolate",
+      "ms": 3,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "retrieve",
+      "ms": 0,
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-1",
+      "ms": 1602,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-2",
+      "ms": 3027,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-3",
+      "ms": 4338,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-4",
+      "ms": 5654,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-5",
+      "ms": 6970,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-6",
+      "ms": 8281,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-7",
+      "ms": 9972,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-8",
+      "ms": 11490,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-9",
+      "ms": 12898,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-10",
+      "ms": 14310,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-11",
+      "ms": 15621,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-12",
+      "ms": 16932,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-13",
+      "ms": 18361,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-14",
+      "ms": 20923,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-15",
+      "ms": 22737,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-16",
+      "ms": 24520,
+      "verdict": "ALLOW",
+      "failedClosed": false
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-17",
+      "ms": 25005,
+      "verdict": "ESCALATE",
+      "failedClosed": true,
+      "error": "Document judgement was cancelled or timed out; remaining content was not cleared"
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-18",
+      "ms": 25006,
+      "verdict": "ESCALATE",
+      "failedClosed": true,
+      "error": "Document judgement was cancelled or timed out; remaining content was not cleared"
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-19",
+      "ms": 25007,
+      "verdict": "ESCALATE",
+      "failedClosed": true,
+      "error": "Document judgement was cancelled or timed out; remaining content was not cleared"
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-20",
+      "ms": 25008,
+      "verdict": "ESCALATE",
+      "failedClosed": true,
+      "error": "Document judgement was cancelled or timed out; remaining content was not cleared"
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-21",
+      "ms": 25008,
+      "verdict": "ESCALATE",
+      "failedClosed": true,
+      "error": "Document judgement was cancelled or timed out; remaining content was not cleared"
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-22",
+      "ms": 25008,
+      "verdict": "ESCALATE",
+      "failedClosed": true,
+      "error": "Document judgement was cancelled or timed out; remaining content was not cleared"
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-23",
+      "ms": 25008,
+      "verdict": "ESCALATE",
+      "failedClosed": true,
+      "error": "Document judgement was cancelled or timed out; remaining content was not cleared"
+    },
+    {
+      "pass": "adjudicate:synthetic-document-rule-24",
+      "ms": 25009,
+      "verdict": "ESCALATE",
+      "failedClosed": true,
+      "error": "Document judgement was cancelled or timed out; remaining content was not cleared"
+    },
+    {
+      "pass": "aggregate",
+      "ms": 6,
+      "verdict": "ESCALATE",
+      "failedClosed": false
+    }
+  ]
+}

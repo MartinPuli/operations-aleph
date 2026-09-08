@@ -57,6 +57,8 @@ export type CompleteRequest = {
   kvKey?: string;
   /** Abort the call after this many ms and fail closed. */
   timeoutMs?: number;
+  /** Cancel queued/loading work and any active generation when the caller ends. */
+  signal?: AbortSignal;
 };
 
 export type StructuredResult<T> = {
@@ -80,6 +82,13 @@ export class FailClosedError extends Error {
   ) {
     super(message);
     this.name = 'FailClosedError';
+  }
+}
+
+/** Cancellation reasons can contain caller data; errors deliberately do not. */
+export function throwIfCompletionCancelled(req: CompleteRequest): void {
+  if (req.signal?.aborted) {
+    throw new FailClosedError(`generation was cancelled for role "${req.role}"`, { role: req.role, attempts: 0 });
   }
 }
 

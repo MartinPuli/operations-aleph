@@ -74,14 +74,15 @@ function vectorTextPaths(text: string): string {
 }
 
 /** PDF objects, content streams and xref offsets; image bytes are a real JPEG. */
-export function pdfFixture(pages: Array<{ text?: string; image?: Buffer; width?: number; height?: number; vectorText?: string }>): Buffer {
+export function pdfFixture(pages: Array<{ text?: string; image?: Buffer; width?: number; height?: number; vectorText?: string; imageBox?: { x: number; y: number; width: number; height: number } }>): Buffer {
   const objects: Buffer[] = [Buffer.from('<< /Type /Catalog /Pages 2 0 R >>'), Buffer.alloc(0), Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')];
   const pageRefs: string[] = [];
   for (const page of pages) {
     const pageNumber = objects.length + 1;
     const contentNumber = pageNumber + 1;
     const imageNumber = pageNumber + 2;
-    const commands = [page.text ? `BT /F1 18 Tf 40 740 Td (${page.text.replace(/[\\()]/g, '\\$&')}) Tj ET` : '', page.image ? 'q 540 0 0 125 36 480 cm /Im0 Do Q' : '', page.vectorText ? vectorTextPaths(page.vectorText) : ''].join('\n');
+    const box = page.imageBox ?? { x: 36, y: 480, width: 540, height: 125 };
+    const commands = [page.text ? `BT /F1 18 Tf 40 740 Td (${page.text.replace(/[\\()]/g, '\\$&')}) Tj ET` : '', page.image ? `q ${box.width} 0 0 ${box.height} ${box.x} ${box.y} cm /Im0 Do Q` : '', page.vectorText ? vectorTextPaths(page.vectorText) : ''].join('\n');
     objects.push(Buffer.from(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> ${page.image ? `/XObject << /Im0 ${imageNumber} 0 R >>` : ''} >> /Contents ${contentNumber} 0 R >>`));
     objects.push(stream(Buffer.from(commands)));
     if (page.image) objects.push(stream(page.image, `/Type /XObject /Subtype /Image /Width ${page.width ?? 1400} /Height ${page.height ?? 320} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode`));

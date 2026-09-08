@@ -6,6 +6,7 @@ import { join, win32 } from 'node:path';
 import { documentCapabilities, DOCUMENT_LIMITS, DocumentInputError, extractDocuments, parseDocumentAttachments, withoutDocumentText } from '../src/documents/index.js';
 import type { InlineDocument } from '../src/documents/types.js';
 import { pdfAssetPaths } from '../src/documents/pdf-assets.js';
+import { DOCUMENT_ANALYSIS_LIMITS } from '../src/guard/document-budget.js';
 import type { CompleteRequest, QvacAdapter } from '../src/qvac/types.js';
 import type { PolicySpec, Rule } from '../src/policy/types.js';
 import { docxFixture, imageFixture, pdfFixture, zipFixture } from './fixtures/documents.js';
@@ -147,7 +148,36 @@ try {
   assert.equal(blocked.verdict, 'BLOCK');
   assert.equal(blocked.firedRules.length, 5, 'all applicable rules get the final document window');
   assert.ok(calls.length > 5, 'long documents were actually split into multiple windows');
-  assert.ok(calls.every((call) => (call.timeoutMs ?? Infinity) <= 25_000));
+  assert.ok(calls.every((call) => (call.timeoutMs ?? Infinity) <= DOCUMENT_ANALYSIS_LIMITS.callTimeoutMs));
+  assert.ok(calls.every((call) => call.signal), 'document cancellation must reach the runtime');
+
+  const { withRoleChange } = await import('../src/qvac/coordination.js');
+  let releaseWriter!: () => void;
+  let writerEntered!: () => void;
+  const entered = new Promise<void>((resolve) => { writerEntered = resolve; });
+  const writer = withRoleChange('adjudicator', async () => {
+    writerEntered(); await new Promise<void>((resolve) => { releaseWriter = resolve; });
+  });
+  await entered;
+  const previousTimeout = DOCUMENT_ANALYSIS_LIMITS.timeoutMs;
+  const callsBeforeAdmission = calls.length;
+  DOCUMENT_ANALYSIS_LIMITS.timeoutMs = 10;
+  try {
+    const admissionHeld = await evaluate(adapter, { actor, prompt: 'Review', documents: [inline('waiting.txt', 'Ordinary business notes')] }, policy);
+    assert.equal(admissionHeld.verdict, 'ESCALATE', 'a model-change wait must return a normal held decision, not throw');
+    assert.equal(admissionHeld.documents?.[0]?.status, 'read', 'the fixture must reach analysis after complete extraction');
+    assert.equal(calls.length, callsBeforeAdmission, 'expired role admission cannot launch generation');
+    const missing = admissionHeld.passes.filter((pass) => pass.pass.startsWith('adjudicate:'));
+    assert.equal(missing.length, rules.length);
+    assert.ok(missing.every((pass) => pass.failedClosed && pass.verdict === 'ESCALATE' && pass.ms >= 0
+      && (pass.detail as { error?: unknown } | undefined)?.error === 'Document analysis timed out before all content and rules were checked. The document was not cleared.'));
+    assert.ok(admissionHeld.auditId, 'admission failures are recorded through the normal decision path');
+  } finally {
+    DOCUMENT_ANALYSIS_LIMITS.timeoutMs = previousTimeout;
+    releaseWriter(); await writer;
+  }
+  await withRoleChange('adjudicator', async () => {});
+  console.log('✓ Full guard: expired model-change admission returns audited ESCALATE traces for every rule without inference');
 
   const secret = `sk-${'A'.repeat(40)}`;
   const clean = await evaluate(adapter, { actor, prompt: 'Review', documents: [inline('secret.txt', `Contact code ${secret}`), inline('duplicate.txt', `Contact code ${secret}`)] }, { ...policy, rules: [] });
