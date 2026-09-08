@@ -16,7 +16,7 @@ Open `http://localhost:8080`. Serve over HTTP so the local JavaScript modules lo
 
 | Part | What it shows |
 | --- | --- |
-| Centered hero | An immediately available download leads the page. The light gate animates below the download; supporting links appear after it settles. |
+| Centered hero | An immediately available download leads the page. A typed request and “Blocked by Warden” sit directly above the light gate, without a workspace card; supporting links appear after the verdict settles. |
 | Policy handoff | A request, the official 3D shield and a decision record connect the hero to the workday. |
 | 01 · Write | A compact graphite policy editor sits beside the narration on desktop. Whole proposal planes assemble from the instruction; titles open to the full policy and ID. Human activation remains separate. |
 | 02 · Hit | A later request hits the policy; the same refusal is shown in Claude Code, Codex and OpenCode. |

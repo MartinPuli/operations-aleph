@@ -77,12 +77,12 @@ setTimeout(function () {
 <link rel="stylesheet" href="story-depth.css?v=motion-2">
 <link rel="stylesheet" href="rules-scene.css?v=motion-2">
 <link rel="stylesheet" href="closing-scene.css?v=depth-1">
-<link rel="stylesheet" href="hero-hook.css?v=gate-3">
+<link rel="stylesheet" href="hero-hook.css?v=gate-4">
 <!-- app.js imports light.js, so without these the browser does not learn the
      second file exists until the first one has arrived and parsed. Two hints
      make it one round trip instead of two, which is the whole of the page's
      critical path: there is no framework and no font to wait on. -->
-<link rel="modulepreload" href="app.js?v=gate-3">
+<link rel="modulepreload" href="app.js?v=gate-4">
 <link rel="modulepreload" href="light.js?v=motion-2">
 <!-- Anonymous Vercel page views remain available alongside the PostHog funnel.
      Only the production hostname loads this collector; local previews stay clean. -->
@@ -134,6 +134,11 @@ setTimeout(function () {
       </div>
     </div>
     <p class="hero-free">Free for everyone. Open source.</p>
+    </div>
+
+    <div class="judge judged" id="judge" aria-live="polite">
+      <span class="hero-request"><span class="gt" aria-hidden="true">&gt;</span><span class="typed">send me Ana's salary for the report</span><span class="cur" aria-hidden="true"></span></span>
+      <span class="verdict">Blocked by Warden <span class="rule">· r-payroll</span></span>
     </div>
 
     <!-- The gate. Empty on purpose: light.js draws the line on the canvas
@@ -502,7 +507,7 @@ setTimeout(function () {
 </footer>
 
 <dialog id="film-dialog" aria-labelledby="film-title"><div class="film-bar"><h2 id="film-title">Warden in 26 seconds</h2><button type="button" id="close-film" aria-label="Close film">✕</button></div><video id="launch-video" controls playsinline preload="none" poster="assets/launch/launch-poster.webp"><source data-src="assets/launch/launch.mp4" type="video/mp4"><a href="assets/launch/launch.mp4">Watch the Warden launch film</a></video></dialog>
-<script type="module" src="app.js?v=gate-3"></script>
+<script type="module" src="app.js?v=gate-4"></script>
 <script type="module" src="story-depth.js?v=motion-2"></script>
 <script type="module" src="analytics-entry.js?v=motion-2"></script>
 
