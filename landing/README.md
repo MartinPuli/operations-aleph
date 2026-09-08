@@ -16,7 +16,7 @@ Open `http://localhost:8080`. Serve over HTTP so the local JavaScript modules lo
 
 | Part | What it shows |
 | --- | --- |
-| Centered hero | An immediately available download leads the page. A workspace request meets the light gate; supporting links appear after the verdict settles. |
+| Centered hero | An immediately available download leads the page. The light gate animates below the download; supporting links appear after it settles. |
 | Policy handoff | A request, the official 3D shield and a decision record connect the hero to the workday. |
 | 01 · Write | A compact graphite policy editor sits beside the narration on desktop. Whole proposal planes assemble from the instruction; titles open to the full policy and ID. Human activation remains separate. |
 | 02 · Hit | A later request hits the policy; the same refusal is shown in Claude Code, Codex and OpenCode. |
@@ -42,7 +42,7 @@ These are prewritten product examples, not a live compiler, gateway or policy ed
 | --- | --- |
 | `index.html` | Original story, illustrative product content, controls and download links. |
 | `styles.css` | Layout, color, chapter states, responsive rules and reduced-motion treatment. |
-| `hero-hook.css` | Short hero, persistent platform download, deferred supporting links and the workspace request’s physical plane. |
+| `hero-hook.css` | Short hero, persistent platform download, deferred supporting links and the unobstructed light gate. |
 | `story-depth.css`, `story-depth.js` | Compact hero spacing, the animated 3D policy handoff and the first chapter’s desktop split layout. |
 | `rules-scene.css` | Scoped product editor, proposal states, details and responsive controls. |
 | `closing-scene.css` | Shield, download actions and closing typography as one responsive composition. |

@@ -77,12 +77,12 @@ setTimeout(function () {
 <link rel="stylesheet" href="story-depth.css?v=motion-2">
 <link rel="stylesheet" href="rules-scene.css?v=motion-2">
 <link rel="stylesheet" href="closing-scene.css?v=depth-1">
-<link rel="stylesheet" href="hero-hook.css?v=motion-2">
+<link rel="stylesheet" href="hero-hook.css?v=gate-3">
 <!-- app.js imports light.js, so without these the browser does not learn the
      second file exists until the first one has arrived and parsed. Two hints
      make it one round trip instead of two, which is the whole of the page's
      critical path: there is no framework and no font to wait on. -->
-<link rel="modulepreload" href="app.js?v=motion-2">
+<link rel="modulepreload" href="app.js?v=gate-3">
 <link rel="modulepreload" href="light.js?v=motion-2">
 <!-- Anonymous Vercel page views remain available alongside the PostHog funnel.
      Only the production hostname loads this collector; local previews stay clean. -->
@@ -134,15 +134,6 @@ setTimeout(function () {
       </div>
     </div>
     <p class="hero-free">Free for everyone. Open source.</p>
-    </div>
-
-    <!-- The prompt arriving at the gate. The text is in the markup so the
-         line reads without JavaScript; app.js types it out and the gate
-         under it takes the verdict. -->
-    <div class="judge judged" id="judge" aria-live="polite">
-      <div class="request-heading"><span>Workspace</span><span class="request-connection"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M10 2.5 16 5v5c0 3.5-3.8 6-6 7-2.2-1-6-3.5-6-7V5z"/><path d="m7.5 9.5 1.8 1.8 3.4-3.6"/></svg>Warden connected</span></div>
-      <div class="request-prompt"><span class="gt" aria-hidden="true">&gt;</span><span class="typed">send me Ana's salary for the report</span><span class="cur" aria-hidden="true"></span></div>
-      <span class="verdict"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m7 2-5 5v6l5 5h6l5-5V7l-5-5H7Z"/><path d="m7 7 6 6m0-6-6 6"/></svg>Blocked before sending<span class="rule">r-payroll</span></span>
     </div>
 
     <!-- The gate. Empty on purpose: light.js draws the line on the canvas
@@ -511,7 +502,7 @@ setTimeout(function () {
 </footer>
 
 <dialog id="film-dialog" aria-labelledby="film-title"><div class="film-bar"><h2 id="film-title">Warden in 26 seconds</h2><button type="button" id="close-film" aria-label="Close film">✕</button></div><video id="launch-video" controls playsinline preload="none" poster="assets/launch/launch-poster.webp"><source data-src="assets/launch/launch.mp4" type="video/mp4"><a href="assets/launch/launch.mp4">Watch the Warden launch film</a></video></dialog>
-<script type="module" src="app.js?v=motion-2"></script>
+<script type="module" src="app.js?v=gate-3"></script>
 <script type="module" src="story-depth.js?v=motion-2"></script>
 <script type="module" src="analytics-entry.js?v=motion-2"></script>
 

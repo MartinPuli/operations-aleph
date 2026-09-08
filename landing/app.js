@@ -71,24 +71,20 @@ try { if (zone) light = mountLight(zone, {
   onUnavailable: () => { if (zone.classList.contains('judged')) showHeroChoices(); }
 }); }
 catch (error) { zone?.classList.add('nogl'); console.warn(error.message); }
-const judge = document.getElementById('judge');
-const heroTyper = makeTyper(judge ? [judge.querySelector('.typed')] : []);
 const heroPlayback = new AbortController();
 function heroVerdict(on) {
-  judge?.classList.toggle('judged', on);
   zone?.classList.toggle('judged', on);
   light?.set(on);
 }
-if (judge && !motion.matches) {
+if (zone && !motion.matches) {
   heroVerdict(false);
   if (zone) zone.dataset.heroPhase = 'request';
   // Secondary links must still become available if the GPU or a tab stops
   // producing frames. The primary action is never in this delayed group.
   heroFallback = setTimeout(showHeroChoices, 2500);
   (async () => {
-    if (!await wait(140, heroPlayback.signal)) return;
-    await heroTyper?.run(620, heroPlayback.signal);
-    if (await wait(140, heroPlayback.signal)) {
+    // Keep the light's original opening beat independently of the removed card.
+    if (await wait(900, heroPlayback.signal)) {
       heroVerdict(true);
       if (zone && !heroReady) zone.dataset.heroPhase = 'verdict';
       if (!light && await wait(500, heroPlayback.signal)) showHeroChoices();
@@ -235,7 +231,7 @@ else {
 }
 motion.addEventListener('change', () => {
   if (!motion.matches) return;
-  heroPlayback.abort(); heroTyper?.finish(); heroVerdict(true);
+  heroPlayback.abort(); heroVerdict(true);
   showHeroChoices();
   revealObserver?.disconnect(); revealables.forEach(el => el.classList.add('is-in'));
   chapters.forEach(complete);
