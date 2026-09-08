@@ -1,12 +1,14 @@
 /** Capture what actually reaches an upstream; an ALLOW alone is insufficient. */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { once } from 'node:events';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { EventEmitter, once } from 'node:events';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import express from 'express';
+import { imageFixture } from './fixtures/documents.js';
 
 const folder = mkdtempSync(join(tmpdir(), 'warden-proxy-documents-'));
 Object.assign(process.env, {
@@ -24,10 +26,19 @@ writeFileSync(process.env.WARDEN_COMPANY_PATH!, JSON.stringify({
 }));
 const forwarded: Record<string, any>[] = [];
 let outputChoices: unknown[] | null = null;
+let upstreamMode: 'reply' | 'wait-headers' | 'wait-body' | 'stream' = 'reply';
+const upstreamEvents = new EventEmitter();
 const upstream = createServer(async (req, res) => {
   const chunks: Buffer[] = [];
   for await (const chunk of req) chunks.push(Buffer.from(chunk));
   forwarded.push(JSON.parse(Buffer.concat(chunks).toString()));
+  if (upstreamMode !== 'reply') {
+    res.once('close', () => upstreamEvents.emit('closed'));
+    if (upstreamMode === 'wait-body') { res.setHeader('content-type', 'application/json'); res.write('{"choices":['); }
+    if (upstreamMode === 'stream') { res.setHeader('content-type', 'text/event-stream'); res.write('data: {"partial":true}\n\n'); }
+    upstreamEvents.emit('opened');
+    return;
+  }
   res.setHeader('content-type', 'application/json');
   res.end(JSON.stringify({ choices: outputChoices ?? [{ message: { role: 'assistant', content: 'Received the inspected document.' } }] }));
 });
@@ -41,8 +52,15 @@ const { forwardedMessages, parseConversation } = await import('../src/proxy/cont
 const { verifyChain } = await import('../src/audit/log.js');
 const { savePolicy } = await import('../src/policy/store.js');
 const app = express();
+const requestEvents = new EventEmitter();
+const requestErrors: unknown[] = [];
 app.use(express.json({ limit: '24mb' }));
-app.post('/v1/chat/completions', (req, res, next) => { void handleChatCompletion(req, res, () => {}).catch(next); });
+app.post('/v1/chat/completions', (req, res, next) => {
+  let decision: any;
+  void handleChatCompletion(req, res, (value) => { decision = value; })
+    .catch((err) => { requestErrors.push(err); next(err); })
+    .finally(() => { if (req.header('x-test-request')) requestEvents.emit(req.header('x-test-request')!, decision); });
+});
 const gateway = app.listen(0, '127.0.0.1');
 await once(gateway, 'listening');
 const gatewayAddress = gateway.address();
@@ -55,6 +73,13 @@ async function send(body: unknown, key = 'reader-key') {
   return { status: response.status, body: await response.json() as any };
 }
 const file = (text: string, name = 'report.txt') => ({ name, mimeType: 'text/plain', data: Buffer.from(text).toString('base64') });
+async function until(check: () => boolean): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (!check()) {
+    assert(Date.now() < deadline, 'The cancellation lifecycle did not finish within five seconds.');
+    await delay(5);
+  }
+}
 
 try {
   const secret = 'sk-testsecret123456789012345678901234567';
@@ -200,6 +225,63 @@ try {
   }
   outputChoices = null; savePolicy([], []);
   console.log('✓ output policies screen every returned choice and function argument; returned secrets are masked and unsupported output is held');
+
+  // Use an actual HTTP disconnect after the real document child process has
+  // started. This exercises the route's signal wiring and worker cleanup, not
+  // a mocked abort or the 45-second reader timeout.
+  const knownDirs = new Set(readdirSync(tmpdir()));
+  let extractionDir: string | undefined;
+  const beforeCancel = forwarded.length;
+  const cancel = new AbortController();
+  const completed = once(requestEvents, 'cancel-ocr', { signal: AbortSignal.timeout(5_000) });
+  const cancelledRequest = fetch(url, {
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer reader-key', 'x-test-request': 'cancel-ocr' },
+    body: JSON.stringify({ messages: [{ role: 'user', content: 'Review this scan.' }], attachments: [{
+      name: 'cancel.png', mimeType: 'image/png', data: imageFixture('Read this ordinary report.').toString('base64')
+    }] }), signal: cancel.signal
+  }).then(() => assert.fail('A disconnected request must not receive a response.'), (err: Error) => assert.equal(err.name, 'AbortError'));
+  await until(() => {
+    extractionDir = readdirSync(tmpdir()).find((name) => name.startsWith('warden-document-models-') && !knownDirs.has(name));
+    // These files are created inside the real child only after recognizing
+    // an image and entering offline OCR initialization.
+    return extractionDir !== undefined && existsSync(join(tmpdir(), extractionDir, 'eng.traineddata.gz')) && existsSync(join(tmpdir(), extractionDir, 'spa.traineddata.gz'));
+  });
+  cancel.abort();
+  const [[cancelledDecision]] = await Promise.all([completed, cancelledRequest]);
+  assert.equal(cancelledDecision.documents[0].reason, 'cancelled');
+  assert.equal(cancelledDecision.documents[0].status, 'unreadable');
+  assert.equal(existsSync(join(tmpdir(), extractionDir!)), false, 'cancelled extraction cleans up its temporary model directory');
+  assert.equal(forwarded.length, beforeCancel, 'a disconnected inspection never starts an upstream request');
+
+  // Aborting before upstream headers, during a held output body, and during a
+  // live stream must all close the upstream socket and finish the handler.
+  for (const mode of ['wait-headers', 'wait-body', 'stream'] as const) {
+    upstreamMode = mode;
+    if (mode === 'wait-body') savePolicy([{ id: 'cancel-output', text: 'Do not disclose confidential payroll.', scope: 'output', appliesTo: ['employee'], severity: 'block',
+      examples: { violating: ['Reveal payroll'], compliant: ['Discuss office hours'] } }], []);
+    const controller = new AbortController();
+    const opened = once(upstreamEvents, 'opened', { signal: AbortSignal.timeout(5_000) });
+    const closed = once(upstreamEvents, 'closed', { signal: AbortSignal.timeout(5_000) });
+    const finished = once(requestEvents, mode, { signal: AbortSignal.timeout(5_000) });
+    const relayed = mode === 'stream' ? once(requestEvents, 'stream-data', { signal: AbortSignal.timeout(5_000) }) : null;
+    const pending = fetch(url, {
+      method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer reader-key', 'x-test-request': mode },
+      body: JSON.stringify({ stream: mode === 'stream', messages: [{ role: 'user', content: 'Hello' }] }), signal: controller.signal
+    }).then(async (response) => {
+      assert.equal(mode, 'stream', 'a held response cannot send headers before inspection');
+      const reader = response.body!.getReader();
+      try { while (!(await reader.read()).done) { requestEvents.emit('stream-data'); } }
+      finally { reader.releaseLock(); }
+    }).catch((err: Error) => assert.equal(err.name, 'AbortError'));
+    await opened;
+    if (relayed) await relayed;
+    controller.abort();
+    await Promise.all([pending, closed, finished]);
+    savePolicy([], []);
+  }
+  upstreamMode = 'reply';
+  assert.equal(requestErrors.length, 0, 'disconnects must not try to send an error response');
+  console.log('✓ real client disconnects cancel document workers and upstream fetches, clean up, and never forward a cancelled inspection');
 
   const audit = readFileSync(process.env.WARDEN_AUDIT_PATH!, 'utf8');
   assert(!audit.includes('PRIVATE_DOC_MARKER'));

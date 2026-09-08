@@ -82,6 +82,11 @@ including duplicates. That field is removed from HTTP guard replies, SSE events
 and the audit log. A prompt-submit hook cannot replace a file that its host tool
 already owns, so the hook holds an attachment whose report requires redaction.
 
+Closing a proxy request cancels its document reader and upstream fetch. A client
+that disconnects during inspection cannot cause that request to be forwarded
+later. Tests cover real disconnects during OCR, before upstream headers, during
+buffered output, and while streaming.
+
 The chat proxy accepts bounded standard generation settings, function tool
 definitions/calls, legacy functions and JSON response schemas. Descriptions,
 schemas and decoded function arguments join the inspected content and are

@@ -63,6 +63,27 @@ export async function handleChatCompletion(
   res: Response,
   emit: (decision: unknown) => void
 ): Promise<void> {
+  const controller = new AbortController();
+  const abort = () => { if (!res.writableEnded) controller.abort(); };
+  res.once('close', abort);
+  if (res.destroyed) controller.abort();
+  try {
+    if (!controller.signal.aborted) await handleConnectedChatCompletion(req, res, emit, controller.signal);
+  } catch (err) {
+    // A disconnected client has nowhere to receive an error. Fetch body reads
+    // also reject on abort, including while an output is being held to screen.
+    if (!controller.signal.aborted && !res.destroyed) throw err;
+  } finally {
+    res.off('close', abort);
+  }
+}
+
+async function handleConnectedChatCompletion(
+  req: Request,
+  res: Response,
+  emit: (decision: unknown) => void,
+  signal: AbortSignal
+): Promise<void> {
   const actor = resolveActor(req);
   if (!actor) {
     res.status(401).json({
@@ -89,9 +110,10 @@ export async function handleChatCompletion(
 
   if (MODE === 'warden') {
     const decision: Decision = await evaluate(adapter(), {
-      actor, prompt: conversation.prompt, documents: conversation.documents
+      actor, prompt: conversation.prompt, documents: conversation.documents, signal
     }, loadPolicy());
     emit(decision);
+    if (signal.aborted || res.destroyed) return;
 
     if (decision.verdict === 'BLOCK') {
       const quotaHit = decision.quota && decision.quota.limit > 0 && decision.quota.used >= decision.quota.limit;
@@ -143,6 +165,7 @@ export async function handleChatCompletion(
   }
 
   const payload = { ...conversation.options, messages: outbound, model: conversation.options.model ?? UPSTREAM_MODEL };
+  if (signal.aborted || res.destroyed) return;
 
   /**
    * Screening the answer costs the stream, so it is bought only when the policy
@@ -155,11 +178,11 @@ export async function handleChatCompletion(
    * by token exactly as before.
    */
   if (MODE === 'warden' && screensOutput(loadPolicy(), actor)) {
-    await forwardScreened(res, payload, actor, emit);
+    await forwardScreened(res, payload, actor, emit, signal);
     return;
   }
 
-  await forward(res, payload);
+  await forward(res, payload, signal);
 }
 
 /**
@@ -174,8 +197,10 @@ async function forwardScreened(
   res: Response,
   payload: { messages: unknown[]; model: string; stream?: boolean },
   actor: Actor,
-  emit: (decision: unknown) => void
+  emit: (decision: unknown) => void,
+  signal: AbortSignal
 ): Promise<void> {
+  if (signal.aborted || res.destroyed) return;
   const wantsStream = payload.stream === true;
 
   let upstream: globalThis.Response;
@@ -183,9 +208,11 @@ async function forwardScreened(
     upstream = await fetch(`${UPSTREAM}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${UPSTREAM_KEY}` },
-      body: JSON.stringify({ ...payload, stream: false })
+      body: JSON.stringify({ ...payload, stream: false }),
+      signal
     });
   } catch (err) {
+    if (signal.aborted || res.destroyed) return;
     res.status(502).json({
       error: {
         code: 'upstream_unreachable',
@@ -198,6 +225,7 @@ async function forwardScreened(
   }
 
   const raw = await upstream.text();
+  if (signal.aborted || res.destroyed) return;
   if (!upstream.ok) {
     // Upstream's own error, passed through untouched. Judging it would be
     // judging a failure message as if the model had said it.
@@ -249,6 +277,7 @@ async function forwardScreened(
     // and any instructions placed in function-call arguments.
     const decision = await screenOutput(adapter(), { actor, text: conversation.prompt, policy: loadPolicy() });
     emit(decision);
+    if (signal.aborted || res.destroyed) return;
     auditId = decision.auditId;
     if (decision.verdict !== 'ALLOW') {
       res.status(decision.verdict === 'BLOCK' ? 403 : 202).json({ error: {
@@ -297,15 +326,18 @@ function safeUsage(value: unknown): Record<string, number> | null {
  * Real clients stream, so buffering the whole response would make the gateway
  * feel broken even when it is working.
  */
-async function forward(res: Response, payload: unknown): Promise<void> {
+async function forward(res: Response, payload: unknown, signal: AbortSignal): Promise<void> {
+  if (signal.aborted || res.destroyed) return;
   let upstream: globalThis.Response;
   try {
     upstream = await fetch(`${UPSTREAM}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${UPSTREAM_KEY}` },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal
     });
   } catch (err) {
+    if (signal.aborted || res.destroyed) return;
     res.status(502).json({
       error: {
         code: 'upstream_unreachable',
@@ -317,6 +349,7 @@ async function forward(res: Response, payload: unknown): Promise<void> {
     return;
   }
 
+  if (signal.aborted || res.destroyed) return;
   res.status(upstream.status);
   const contentType = upstream.headers.get('content-type');
   if (contentType) res.setHeader('content-type', contentType);
@@ -328,19 +361,17 @@ async function forward(res: Response, payload: unknown): Promise<void> {
 
   // Headers are already out, so a mid-stream failure cannot become a status
   // code — but it must still end the response rather than park the client on a
-  // connection nobody will ever close. And a client that walks away stops the
-  // upstream read instead of draining it to nowhere.
+  // connection nobody will ever close. The request's abort signal also stops
+  // the upstream read when the client walks away.
   const reader = upstream.body.getReader();
-  res.on('close', () => {
-    void reader.cancel().catch(() => {});
-  });
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done || signal.aborted || res.destroyed) break;
       res.write(Buffer.from(value));
     }
   } finally {
-    res.end();
+    reader.releaseLock();
+    if (!signal.aborted && !res.destroyed) res.end();
   }
 }
