@@ -52,8 +52,8 @@ async function refreshChain() {
   state.chain = ok ? j : null;
 }
 
-export async function refreshCompiler() {
-  const { ok, j } = await api('/api/settings/compiler').catch(() => ({ ok: false }));
+export async function refreshCompiler(refreshCliStatus = false) {
+  const { ok, j } = await api(`/api/settings/compiler${refreshCliStatus ? '?refresh=1' : ''}`).catch(() => ({ ok: false }));
   state.compiler = ok ? j : null;
   const inv = await api('/api/models').catch(() => ({ ok: false }));
   state.models = inv.ok ? inv.j : null;

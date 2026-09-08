@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import type { Request, Response } from 'express';
 import { PORT } from './config.js';
+import { CompilerSetupRequiredError } from '../qvac/types.js';
 
 /**
  * Is this failure the model not running, rather than the model not answering?
@@ -45,6 +46,10 @@ export function asyncRoute(fn: (req: Request, res: Response) => Promise<unknown>
       // where "audience names nobody…" reads as the instruction it is.
       if (!res.headersSent) {
         const message = err instanceof Error ? err.message : String(err);
+        if (err instanceof CompilerSetupRequiredError) {
+          res.status(409).json({ error: message, kind: 'compiler-setup-required' });
+          return;
+        }
         res.status(500).json({
           error: message,
           // The console renders different advice for each, so the classification

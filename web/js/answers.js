@@ -92,6 +92,9 @@ export function limitsPlan(j) {
  */
 export function compileFailure(j) {
   const why = esc(j?.error ?? 'the model did not answer');
+  if (j?.kind === 'compiler-setup-required') {
+    return `<b>Configure the compiler first.</b> ${why}<div><button type="button" class="btn primary" data-go="models" data-q="setup=compiler">Configure Claude Code</button></div>`;
+  }
   if (j?.kind !== 'model-down') {
     return `I could not compile that: ${why}. Try saying it more plainly.`;
   }
@@ -118,4 +121,3 @@ export function bindLogPeek() {
     }));
   };
 }
-

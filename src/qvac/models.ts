@@ -73,9 +73,9 @@ export const MODEL_SPECS: ModelSpec[] = [
      * Rule compilation needs weights that can write a rule, and DynaGuard can
      * only say PASS or FAIL. Until the 4B took the seat the compiler borrowed
      * the adjudicator's Qwen3-1.7B; it keeps those exact weights as its own
-     * required download, so drafting on a machine with no CLI and no endpoint
-     * behaves as it did before. The same file is the `base` adjudicator seat,
-     * which is why that seat needs no download of its own.
+     * local option. Setup downloads it when the administrator selects local
+     * compilation or the `base` adjudicator seat, which shares this file.
+     * New Claude Code compiler installations do not need these weights.
      */
     role: 'compiler',
     entry: QWEN3_1_7B_INST_Q4 as unknown as RegistryEntry,
@@ -318,7 +318,7 @@ export const ADJUDICATOR_CHOICES: AdjudicatorChoice[] = [
     falsePositives: '72%',
     perDecision: 'About 2.5 s a decision on an Apple GPU; 10 s on four CPU cores.',
     trade: 'The old default. Strict: stops the most attacks and turns away most honest requests.',
-    note: 'Always on disk, because the compiler uses these weights. 63% refused on the CPU run, 72% on the GPU run, with 23 verdicts moving between machines on identical code. Rules with a boundary sentence bring it to 52%.'
+    note: 'Shares weights with the optional local compiler; selecting this seat downloads them when absent. 63% refused on the CPU run, 72% on the GPU run, with 23 verdicts moving between machines on identical code. Rules with a boundary sentence bring it to 52%.'
   },
   {
     id: 'large',

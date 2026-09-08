@@ -35,8 +35,13 @@ pnpm install
 pnpm run setup
 ```
 
-`pnpm run setup` diagnostica tu máquina, baja cuatro modelos por HTTPS (~5.4 GB) y
-prueba que la inferencia funcione de verdad. Al final imprime esto:
+`pnpm run setup` diagnostica tu máquina, baja los modelos locales necesarios por
+HTTPS (~4.3 GB con la configuración inicial de Claude Code) y prueba que la
+inferencia funcione de verdad. El compilador se configura desde **Models**:
+instalá Claude Code en la computadora del gateway, iniciá sesión, probá la
+conexión y aplicala. Si elegís el compilador local, se agrega su descarga de
+~1.1 GB. Ver [configuración del compilador](COMPILER-SETUP.md).
+Al final imprime un informe como este:
 
 ```
 === WARDEN SETUP REPORT ===

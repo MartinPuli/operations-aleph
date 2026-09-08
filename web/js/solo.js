@@ -5,7 +5,7 @@ import { $, api, attr, del, esc, post, state } from './core.js';
 import { TOOL_NAMES, plural } from './format.js';
 import { soloIsPureInstall } from './nav.js';
 import { render } from './render.js';
-import { notARuleAnswer, readable } from './answers.js';
+import { compileFailure, notARuleAnswer, readable } from './answers.js';
 import { VIEWS } from './views.js';
 
 // ═══ SOLO ════════════════════════════════════════════════════════════════════
@@ -201,6 +201,13 @@ function soloBody() {
   </div>`;
 }
 
+/** A setup refusal did not use up the rule the person typed. A later edit
+ * owns the field, so an older request must never replace that newer text. */
+export function restoreSoloRuleText(originalText) {
+  const input = $('soloRuleText');
+  if (input && input.value === '') input.value = originalText;
+}
+
 function bindSolo() {
   const pane = $('pane');
 
@@ -245,7 +252,8 @@ function bindSolo() {
 
   const addRule = async () => {
     const box = $('soloRuleText');
-    const text = box?.value.trim();
+    const originalText = box?.value;
+    const text = originalText?.trim();
     if (!text || state.soloBusy) return;
     box.value = '';
     state.soloBusy = true;
@@ -262,12 +270,13 @@ function bindSolo() {
     if (ok && j.notARule) {
       state.soloRuleNote = notARuleAnswer(j);
     } else if (!ok) {
-      state.soloRuleNote = `<b>Could not add that.</b> ${esc(readable(j?.error))}`;
+      state.soloRuleNote = j?.kind === 'compiler-setup-required' ? compileFailure(j) : `<b>Could not add that.</b> ${esc(readable(j?.error))}`;
     } else {
       state.soloRuleNote = '';
       await refreshSoloRules();
     }
     render();
+    if (!ok && j?.kind === 'compiler-setup-required') restoreSoloRuleText(originalText);
   };
   const send = $('soloRuleSend');
   if (send) send.onclick = addRule;

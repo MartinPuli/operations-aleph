@@ -2,6 +2,7 @@
  * The render loop: carry the fields across the swap, draw the shell, let the view draw itself, then bind.
  */
 import { $, esc, post, state, val } from './core.js';
+import { compilerSetupNudge } from './compiler.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindGetModels } from './engine.js';
 import { captureFieldValues, restoreFieldValues } from './form-state.js';
@@ -80,7 +81,7 @@ export function render() {
   // someone in demo mode needs to know nothing here is real no matter which
   // product surface they are looking at.
   const isSoloView = state.view === 'soloRules' || state.view === 'soloSettings';
-  $('pane').innerHTML = (state.mock ? mockBanner() : '') + (isSoloView ? '' : firstRunBanner()) + view.body();
+  $('pane').innerHTML = compilerSetupNudge() + (state.mock ? mockBanner() : '') + (isSoloView ? '' : firstRunBanner()) + view.body();
 
   restoreFields(fields);
   bindDisclosures();

@@ -1,6 +1,6 @@
 /** The two model roles, their actual runtime selections, and your saved models. */
 import { $, esc, post, state } from './core.js';
-import { bindCompiler, clearCompilerSecret, compilerSettings } from './compiler.js';
+import { bindCompiler, clearCompilerSecret, compilerNeedsSetup, compilerSettings } from './compiler.js';
 import { refreshAdjudicator, refreshCompiler } from './data.js';
 import { bindGetModels } from './engine.js';
 import { modelLabel } from './format.js';
@@ -20,11 +20,17 @@ async function refreshSelections() {
 }
 
 async function enterModels() {
-  if (state.view === 'compiler') expanded = 'compiler';
+  const setupLink = state.view === 'compiler' || state.query?.setup === 'compiler';
+  if (setupLink || (compilerNeedsSetup() && !promptEditor.openRole)) expanded = 'compiler';
+  if (setupLink) closePromptEditor();
   if (refreshing) return;
   refreshing = true;
   try { await Promise.all([loadLibrary(), refreshSelections()]); }
-  finally { refreshing = false; if (['models', 'compiler'].includes(state.view)) render(); }
+  finally {
+    refreshing = false;
+    if (compilerNeedsSetup() && !expanded && !promptEditor.openRole) expanded = 'compiler';
+    if (['models', 'compiler'].includes(state.view)) render();
+  }
 }
 
 function runtimeNote() {
@@ -45,12 +51,13 @@ function activeRole(role) {
   const custom = library.catalog?.models.find((model) => model.kind === 'local' && (basename === `${model.id}.gguf` || basename === model.filename))
     ?? library.catalog?.models.find((model) => model.activeRoles?.includes(role));
   const overridden = compiler ? state.compiler?.overriddenByEnv : state.adjudicator?.overriddenByEnv;
+  const configurationError = compiler ? state.compiler?.configurationError : null;
   const title = compiler ? 'Compiler' : 'Analyzer';
   const open = expanded === role;
   return `<section class="active-model-role" aria-labelledby="${role}Title">
     <div class="active-model-row">
       <div class="active-role-title"><h2 id="${role}Title">${title}</h2><p>${compiler ? 'Turns your instructions into rules' : 'Checks employee requests and documents'}</p></div>
-      <div class="active-role-value"><b data-active-model="${role}">${esc(custom?.name || modelLabel(inForce) || 'Status unavailable')}</b><span>${esc(active?.where ?? 'Refresh to read the current model')}</span>${overridden ? '<span class="model-status warn">Environment override</span>' : ''}</div>
+      <div class="active-role-value"><b data-active-model="${role}">${esc(configurationError ? 'Compiler unavailable' : custom?.name || modelLabel(inForce) || 'Status unavailable')}</b>${configurationError ? `<span class="note bad">${esc(configurationError)}</span>` : `<span>${esc(active?.where ?? 'Refresh to read the current model')}</span>`}${overridden ? '<span class="model-status warn">Environment override</span>' : ''}</div>
       <div class="active-role-actions"><button type="button" class="btn" id="edit-${role}" data-edit-role="${role}" aria-expanded="${open}" aria-controls="${role}Editor">${open ? 'Close' : 'Change model'}</button><button type="button" class="btn quiet" id="prompts-${role}" data-prompt-role="${role}" aria-expanded="${promptEditor.openRole === role}" aria-controls="${role}Prompts">${promptEditor.openRole === role ? 'Close prompts' : 'Edit prompts'}</button>${hasPromptChanges(role) ? '<span class="note warn">Unsaved prompt changes</span>' : ''}</div>
     </div>
     ${open ? `<div id="${role}Editor" class="active-model-editor">${compiler ? compilerSettings() : analyzerSettings()}</div>` : ''}
