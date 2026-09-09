@@ -140,7 +140,9 @@ function jobChip(role) {
     const c = state.compiler;
     if (c?.configurationError) return chip('bad', 'Needs attention');
     if (c?.overriddenByEnv) return chip('warn', 'Environment override');
-    if (compilerNeedsSetup()) return chip('warn', 'Needs setup');
+    // A passed test with nothing applied is one click from done, and calling
+    // that "Needs setup" next to three green ticks reads as a contradiction.
+    if (compilerNeedsSetup()) return chip('warn', state.compilerTest?.ok ? 'Tested · apply to finish' : 'Needs setup');
     const label = (c?.providers ?? []).find((p) => p.id === c.provider)?.label;
     return chip('good', `${label ? label.replace(' on this machine', '') : 'Configured'} · connected`);
   }

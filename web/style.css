@@ -173,8 +173,10 @@ nav { display: flex; align-items: center; gap: var(--s-1); min-width: 0; }
    of a flush pane an equal share of the column, which is right for the one
    view that fills the screen and wrong for anything stacked above it — the
    demo-mode and first-run banners are rendered by the shell, so they became
-   direct children and grew to half the window with nothing in them. */
-.pane.flush > .banner { flex: 0 0 auto; }
+   direct children and grew to half the window with nothing in them. The
+   compiler-setup nudge is rendered by the same shell line and stretched the
+   same way on the New rule and Test conversations. */
+.pane.flush > .banner, .pane.flush > .compiler-setup-nudge { flex: 0 0 auto; }
 
 .sheet {
   max-width: var(--read);
