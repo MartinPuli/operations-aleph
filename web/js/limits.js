@@ -1,70 +1,15 @@
 /**
- * Limits by role: the cards, the editor, and the save that goes through the policy like any ratified change.
+ * Limits by role: the editor, and the save that goes through the policy like any ratified change.
+ *
+ * The grid of cards this used to draw lived on Rules, which is not where roles
+ * are administered — Team's Roles tab already listed the same daily limit in a
+ * column. The editor moved to that column rather than being deleted with the
+ * grid: it is the only place in the console where a role's token ceilings can
+ * be changed at all, and the duplicated thing was the number, not the form.
  */
 import { $, esc, post, state } from './core.js';
 import { refreshPolicy } from './data.js';
 import { render } from './render.js';
-
-/** Compact number for a ceiling: 500000 -> 500k. Ceilings are round by nature. */
-function tokens(n) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 ? 1 : 0)}M`;
-  if (n >= 1000) return `${Math.round(n / 1000)}k`;
-  return String(n);
-}
-
-/**
- * One role's ceilings.
- *
- * A role with no token ceiling says so rather than showing a bar at zero — an
- * empty bar reads as "plenty left", which is the opposite of "nobody is
- * counting".
- */
-function quotaCard(q) {
-  const rows = [`<div class="quota-row"><span>requests</span><b>${q.maxRequestsPerDay}/day</b></div>`];
-  if (q.maxSessionOutputTokens) {
-    rows.push(`<div class="quota-row"><span>output</span><b>${tokens(q.maxSessionOutputTokens)}/session</b></div>`);
-  }
-  if (q.maxContextTokens) {
-    rows.push(`<div class="quota-row"><span>context</span><b>${tokens(q.maxContextTokens)}</b></div>`);
-  }
-  if (q.maxPromptChars) {
-    rows.push(`<div class="quota-row"><span>prompt</span><b>${tokens(q.maxPromptChars)} chars</b></div>`);
-  }
-  if (!q.maxSessionOutputTokens && !q.maxContextTokens && !q.maxPromptChars) {
-    rows.push('<div class="quota-row unmetered"><span>tokens</span><b>no limit</b></div>');
-  }
-  return `<button type="button" class="quota" data-quota="${esc(q.role)}">
-    <span class="quota-role">${esc(q.role)}</span>${rows.join('')}</button>`;
-}
-
-/**
- * Every role, with or without a limit, and one of them possibly open for edit.
- *
- * Both halves of that matter. The grid used to render `policy.quotas`, so a
- * role that had never been given a limit was simply absent — which reads as
- * "this role does not exist" rather than "nobody is counting what it spends",
- * and left no way to give it one. And every card was static text: a limit could
- * be set at the moment a role was created and never again, so an administrator
- * who typed 20 and meant 200 had to delete the role, which deletes the people
- * standing in it.
- */
-export function limitsGrid() {
-  const all = state.company.roles ?? [];
-  const byRole = new Map(state.policy.quotas.map((q) => [q.role, q]));
-  const roles = all.length ? all : state.policy.quotas.map((q) => q.role);
-  if (!roles.length) return '<div class="note">No roles yet.</div>';
-
-  return `<div class="quota-grid">${roles.map((role) => {
-    if (state.quotaEdit === role) return quotaEditor(byRole.get(role) ?? { role });
-    const q = byRole.get(role);
-    return q
-      ? quotaCard(q)
-      : `<button type="button" class="quota none" data-quota="${esc(role)}">
-          <span class="quota-role">${esc(role)}</span>
-          <div class="quota-row unmetered"><span>requests</span><b>no limit</b></div>
-        </button>`;
-  }).join('')}</div>`;
-}
 
 /**
  * One role's limits, open.
@@ -74,13 +19,13 @@ export function limitsGrid() {
  * giving "no limit" a second spelling (0, or an unchecked box) would put two
  * representations of one state into a file that is hashed.
  */
-function quotaEditor(q) {
+export function limitEditor(role) {
+  const q = state.policy.quotas.find((item) => item.role === role) ?? { role };
   // `step="1"` on the token boxes, not the round 1000 that reads better. With
   // `min="1"`, a step of 1000 makes the valid values 1, 1001, 2001… so 250000
   // is invalid and the browser refuses the submit — with a tooltip, no error,
   // and no request. Caught in a browser; it cannot be caught by reading.
   return `<form class="quota editing" id="quotaForm" data-role="${esc(q.role)}">
-    <span class="quota-role">${esc(q.role)}</span>
     <label class="quota-row"><span>requests</span>
       <input type="number" min="1" step="1" id="qDay" value="${q.maxRequestsPerDay ?? ''}" placeholder="none"></label>
     <label class="quota-row"><span>output</span>
@@ -107,11 +52,8 @@ function quotaEditor(q) {
  * allowed to spend should have to mean it.
  */
 export function bindLimits() {
-  const grid = document.querySelector('.quota-grid');
-  if (grid) grid.onclick = (e) => {
-    const card = e.target.closest('[data-quota]');
-    if (!card) return;
-    state.quotaEdit = card.dataset.quota;
+  for (const button of document.querySelectorAll('[data-quota]')) button.onclick = () => {
+    state.quotaEdit = button.dataset.quota;
     state.quotaError = '';
     render();
   };

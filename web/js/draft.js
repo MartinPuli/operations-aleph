@@ -9,7 +9,7 @@ import { bindLimits } from './limits.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
 import { compileFailure, limitsPlan, notARuleAnswer, readable } from './answers.js';
-import { bindSweeps, composing, isExempt, rulesTabs } from './rules.js';
+import { bindRuleFilters, bindSweeps, composing, isExempt, rulesHead } from './rules.js';
 import { bindSet, runSetPreviews, setCards } from './draft-set.js';
 
 // ── the conversation ─────────────────────────────────────────────────────────
@@ -24,9 +24,11 @@ import { bindSet, runSetPreviews, setCards } from './draft-set.js';
  *  bottom and the turns take the space it was holding. */
 export function ruleChatPane() {
   return `<div class="chatwrap">
+    <div class="sheet chat-head">
+      ${rulesHead('<button type="button" class="btn quiet" id="cancelDraft">Start over</button>')}
+    </div>
     <div class="chat" id="ruleChat">
       <div class="sheet">
-        ${rulesTabs('<button type="button" class="btn quiet" id="cancelDraft">Start over</button>')}
         ${state.ruleChat.map(renderTurn).join('')}
         ${state.draft ? draftCard() : ''}
         ${state.set ? setCards() : ''}
@@ -489,6 +491,7 @@ export function bindPolicy() {
 
   bindLimits();
   bindSweeps();
+  bindRuleFilters();
   bindModelPicker();
 
   const apply = $('applyLimits');

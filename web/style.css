@@ -139,6 +139,8 @@ nav { display: flex; align-items: center; gap: var(--s-1); min-width: 0; }
   align-items: center;
   gap: var(--s-2);
   border: none;
+  /* Carried in both states so selecting an item cannot move the row by 2px. */
+  border-bottom: 2px solid transparent;
   border-radius: var(--r-sm);
   background: none;
   color: var(--muted);
@@ -149,7 +151,11 @@ nav { display: flex; align-items: center; gap: var(--s-1); min-width: 0; }
   white-space: nowrap;
 }
 .nav-item:hover { background: var(--hover); color: var(--ink); }
-.nav-item.on { background: var(--selected); color: var(--ink); font-weight: var(--fw-medium); }
+/* Selected is an underline, never a pill — the same mark the sub-tabs under
+   Team and Models use, so "where I am" reads the same at both levels. A filled
+   pill up here competed with the sub-tab it sat above and the two disagreed
+   about which was the stronger signal. */
+.nav-item.on { color: var(--ink); font-weight: var(--fw-medium); border-radius: 0; border-bottom-color: var(--ink); }
 .nav-count {
   font-family: var(--mono);
   font-size: var(--fs-1);
@@ -360,7 +366,6 @@ button, input, select, textarea { font: inherit; font-size: var(--fs-3); color: 
   overflow-wrap: anywhere;
 }
 
-.row-actions { display: flex; gap: var(--s-2); margin-top: var(--s-4); flex-wrap: wrap; align-items: center; }
 
 .btn.danger { color: var(--block); }
 .btn.danger:hover { background: var(--block-bg); border-color: var(--block); color: var(--block); }
@@ -446,6 +451,11 @@ input.inline.wide { min-width: 320px; flex: 1 1 320px; }
 .badge.warn { background: var(--escalate-bg); color: var(--escalate); }
 .badge.block    { background: var(--block-bg);    color: var(--block); }
 .badge.escalate { background: var(--escalate-bg); color: var(--escalate); }
+/* `.block` is also a layout class further down this file, so at equal
+   specificity it wins and hands the severity badge its `display: grid`. In a
+   flex row that went unnoticed — a flex item shrinks to its content either way
+   — but in a table cell the badge grew to the full column. */
+.badge.block, .badge.escalate, .badge.warn { display: inline-flex; }
 
 .chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .chip {
@@ -628,10 +638,6 @@ input.inline.wide { min-width: 320px; flex: 1 1 320px; }
 .row.roomy .dot, .row.roomy .avatar { margin-top: 3px; }
 .row.roomy .col { min-width: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
 .row.roomy .t { color: var(--ink); font-weight: var(--fw-medium); line-height: var(--lh-snug); }
-.row.roomy .m2 {
-  font-size: var(--fs-2); color: var(--muted); line-height: var(--lh-snug);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
 .row.roomy .m {
   display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
   font-size: var(--fs-2); color: var(--faint);
@@ -768,6 +774,14 @@ input.inline.wide { min-width: 320px; flex: 1 1 320px; }
 /* ═══ conversation ═══════════════════════════════════════════════════════ */
 
 .chatwrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+/* The header stays out of the scrolling half. It is the same header on all
+   three tabs and moving between them must not move it — and a conversation
+   that opens scrolled to its newest turn would otherwise take the title with
+   it on the way down. */
+/* width:100% for the same reason `.blank-fill` needs it: a flex item with auto
+   side margins sizes to its content instead of stretching, so the header would
+   be narrower than the conversation under it. */
+.chatwrap > .chat-head { flex: none; width: 100%; padding-bottom: 0; }
 .chat { flex: 1; overflow-y: auto; }
 .chat .sheet { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-7); align-content: start; }
 
@@ -985,7 +999,6 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .section { padding: var(--s-7) var(--s-3) 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
 .section + .section { border-top: 1px solid var(--line); margin-top: var(--s-7); }
 
-.quota-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--s-2); }
 .quota {
   display: flex; flex-direction: column; gap: var(--s-1);
   border: 1px solid var(--line);
@@ -994,15 +1007,8 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: var(--fs-2);
   color: var(--muted);
 }
-.quota-role { font-weight: var(--fw-semi); color: var(--ink); }
 .quota-row { display: flex; align-items: baseline; gap: var(--s-3); }
-.quota-row b { margin-left: auto; font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: var(--fw-normal); color: var(--ink-2); }
-/* Nobody is counting is a different statement from a bar at zero. */
-.quota-row.unmetered b { color: var(--muted); }
 
-/* A card is now a button, so it has to stop looking like one: no browser
-   chrome, the same box as before, and the affordance carried by the hover
-   rather than by a border that would put six outlines on the page. */
 /* Offered, and honest about not being there. Still clickable: somebody who is
    about to install Claude Code can set it up first and have it work when they
    do, and refusing the click would only make that a puzzle. */
@@ -1011,11 +1017,10 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 /* The action a banner is about, on the banner. */
 .banner-act { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-2); flex-wrap: wrap; }
 
-button.quota { text-align: left; background: var(--bg); font: inherit; font-size: var(--fs-2); cursor: pointer; }
-button.quota:hover { border-color: var(--ink-3); }
-button.quota .quota-row b { margin-left: auto; }
-
-.quota.editing { gap: var(--s-2); }
+/* Open under the role it belongs to. Bounded, because the label and its box
+   belong beside each other: across the full width of the table they read as
+   two unrelated columns. */
+.quota.editing { gap: var(--s-2); border: none; padding: 0; max-width: 320px; }
 .quota.editing .quota-row { gap: var(--s-2); }
 .quota.editing input {
   margin-left: auto; width: 5.5rem; min-width: 0; padding: 2px var(--s-2);
@@ -1203,6 +1208,41 @@ button.quota .quota-row b { margin-left: auto; }
   padding: 0 var(--s-4) 0 var(--s-5);
 }
 .tbl.roles .thead, .tbl.roles .trow { grid-template-columns: minmax(0, 1fr) 90px 140px 220px 32px; }
+/* The rules table drops the box. A row opens its detail underneath, and a
+   detail inside a rounded, bordered container has to pretend it is a row —
+   hairlines between the rows carry the same structure and let the open one
+   breathe. */
+.tbl.rules { margin-top: var(--s-4); border: none; border-radius: 0; }
+.tbl.rules .thead, .tbl.rules .trow { grid-template-columns: minmax(0, 1fr) 150px 130px 220px; }
+.tbl.rules .thead { height: auto; padding: 0 var(--s-4) var(--s-3) var(--s-5); background: none; border-radius: 0; }
+.rule-row { width: 100%; border: none; border-bottom: 1px solid var(--line); background: none; font: inherit; text-align: left; cursor: pointer; }
+.tbl.rules > .rule-row:last-child { border-bottom: 1px solid var(--line); border-radius: 0; }
+.rule-row.on { background: var(--selected); }
+.c-rule { display: flex; align-items: baseline; gap: var(--s-3); min-width: 0; padding: var(--s-3) 0; }
+.c-rule .nm { color: var(--ink); font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-aud, .c-activity { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-activity { color: var(--muted); font-size: var(--fs-2); }
+.tbl.rules .detail { padding: var(--s-5) var(--s-5) var(--s-6); border-bottom: 1px solid var(--line); }
+
+/* Who the test is sent as, under the header on the Test tab. It is the
+   identity being borrowed, and the rules that apply depend on it, so it stays
+   even though a single-person install has only one answer. */
+.send-as { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-3); padding: 0 var(--s-3); }
+
+/* The counts and the search box, between the tabs and the table. */
+.filters { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); flex-wrap: wrap; padding: var(--s-6) var(--s-3) var(--s-2); }
+.filter-counts { display: flex; align-items: center; gap: var(--s-5); flex-wrap: wrap; }
+.filter-count { border: none; background: none; padding: 0; font: inherit; font-size: var(--fs-3); color: var(--muted); cursor: pointer; white-space: nowrap; }
+.filter-count:hover { color: var(--ink); }
+.filter-count.on { color: var(--ink); font-weight: var(--fw-medium); }
+/* Scoped past `input[type="text"]`, which sets width: 100% at the same
+   specificity and would otherwise push the box onto its own line. */
+.filters .rule-search { width: 220px; flex: none; padding: var(--s-2) var(--s-3); font-size: var(--fs-2); }
+
+/* One destructive action, under a hairline, in the colour of what it does. */
+.wipe { margin: var(--s-8) var(--s-3) 0; padding-top: var(--s-6); border-top: 1px solid var(--line); }
+.linkbtn.danger { color: var(--block); text-decoration: none; }
+.linkbtn.danger:hover { text-decoration: underline; text-decoration-color: var(--block); }
 .tbl .thead {
   height: 36px;
   background: var(--sunken);
@@ -1391,22 +1431,43 @@ select.mini {
 .claude-login-command { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); }
 .claude-login-command > code { padding: var(--s-3); border: 1px solid var(--line-firm); border-radius: var(--r-md); background: var(--bg); overflow-wrap: anywhere; }
 .compiler-local-missing { display: grid; justify-items: start; gap: var(--s-3); }
-.models-page-head { display: flex; align-items: flex-start; gap: var(--s-5); justify-content: space-between; padding: var(--s-5) 0 var(--s-6); }
-.models-page-head p { margin-top: var(--s-3); color: var(--ink-2); max-width: var(--prose); }
-.models-page-head .btn { flex: none; }
-.models-runtime-line { display: flex; align-items: baseline; gap: var(--s-5); justify-content: space-between; padding-bottom: var(--s-6); }
-.models-runtime-line .note { max-width: var(--prose); }
-.models-runtime-line .linkbtn { flex: none; font-size: var(--fs-2); }
-.active-models { border-top: 1px solid var(--line-firm); }
-.active-model-role { border-bottom: 1px solid var(--line-firm); }
-.active-model-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) auto; align-items: center; gap: var(--s-6); padding: var(--s-6) 0; }
-.active-role-title p { color: var(--muted); font-size: var(--fs-2); margin-top: var(--s-1); }
-.active-role-value { display: grid; gap: var(--s-1); min-width: 0; }
-.active-role-value b { font-size: var(--fs-3); font-weight: var(--fw-medium); overflow-wrap: anywhere; }
-.active-role-value > span { color: var(--muted); font-size: var(--fs-2); overflow-wrap: anywhere; }
-.active-role-actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--s-1); }
-.active-role-actions > .note { max-width: 12rem; text-align: center; }
-.active-model-editor { padding-bottom: var(--s-6); }
+/* Active is two cards, one per job: a title, the line that says what the job
+   is, the state it is in and one action. The three levels of nested grey panel
+   that used to be here had almost everything at 13px regular, so nothing on
+   the page won and the page said nothing about what to do first. */
+.jobs { display: grid; gap: var(--s-5); padding: var(--s-6) var(--s-3) 0; }
+.job { padding: var(--s-6); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.job-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); }
+.models-page .job-head h2 { font-size: var(--fs-4); font-weight: var(--fw-semi); }
+.models-page .job-what { margin: var(--s-3) 0 0; max-width: var(--prose); font-size: var(--fs-3); color: var(--ink-2); line-height: var(--lh-snug); }
+.job-body { margin-top: var(--s-5); padding-top: var(--s-5); border-top: 1px solid var(--line); }
+.job-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); flex-wrap: wrap; }
+.job-model { display: flex; align-items: baseline; gap: var(--s-2); min-width: 0; flex-wrap: wrap; }
+.job-model b { font-size: var(--fs-3); font-weight: var(--fw-medium); color: var(--ink); overflow-wrap: anywhere; }
+.job-model > span { font-size: var(--fs-2); color: var(--muted); overflow-wrap: anywhere; }
+.job-act { display: flex; align-items: center; gap: var(--s-5); flex: none; }
+.job-act .linkbtn { font-size: var(--fs-2); color: var(--ink-2); }
+.models-page .job-note { display: block; margin-top: var(--s-4); max-width: var(--prose); }
+.job-editor { margin-top: var(--s-5); }
+/* A state chip reports; it is not a button, and nothing here opens on hover. */
+.job .chip { cursor: default; font-size: var(--fs-2); }
+.chip.good, .chip.good:hover { background: var(--allow-bg); border-color: transparent; color: var(--allow); }
+.chip.bad, .chip.bad:hover { background: var(--block-bg); border-color: transparent; color: var(--block); }
+.chip.warn:hover { background: var(--escalate-bg); color: var(--escalate); }
+
+/* First run: the finished steps collapse to a tick on one line, and the next
+   thing to do is the only button with weight. */
+.job-setup { display: grid; gap: var(--s-4); justify-items: start; }
+.setup-rec { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.models-page .setup-rec h3 { font-size: var(--fs-3); font-weight: var(--fw-medium); }
+.setup-steps { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-6); margin: 0; padding: 0; list-style: none; font-size: var(--fs-2); color: var(--muted); }
+.setup-steps li { display: inline-flex; align-items: center; gap: var(--s-2); }
+.setup-steps li.done { color: var(--ink-2); }
+.setup-steps .mark { color: var(--faint); }
+.setup-steps li.done .mark { color: var(--allow); }
+.setup-steps .linkbtn { font-size: var(--fs-2); color: var(--muted); }
+.job-actions { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.job-actions > .note { margin-left: var(--s-2); max-width: var(--prose); }
 .models-page .model-editor { background: var(--sunken); padding: var(--s-6); border-radius: var(--r-lg); }
 .model-fields { min-width: 0; margin: var(--s-5) 0 0; padding: 0; border: 0; }
 .models-page .model-editor .field { max-width: none; }
@@ -1424,37 +1485,55 @@ select.mini {
 .models-page .note.bad, .model-status.bad { color: var(--block); }
 .models-page .note.warn, .model-status.warn, .model-metadata .warn, .document-record .note.warn { color: var(--escalate); }
 #compilerFeedback:not(:empty) { margin-top: var(--s-4); }
-.models-section { padding-top: var(--s-8); }
+/* Library: the inventory, as one table. Local weights and endpoint
+   connections share the rows because the question an administrator brings here
+   — what have I saved, what may it do, can I use it — has the same shape for
+   both. The built-in analyzer choices are not duplicated in it: they are
+   options of the Request judge editor on Active, and two lists claiming to be
+   the same catalogue with different activation rules is the stacking this
+   redesign is undoing. */
+.library-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-5); padding: var(--s-6) var(--s-3) var(--s-5); }
+.library-head .note { max-width: var(--prose); }
+.library-head .btn { flex: none; }
+.tbl.models .thead, .tbl.models .trow { grid-template-columns: minmax(0, 1fr) 150px 120px 190px 72px; }
+.tbl.prompts .thead, .tbl.prompts .trow { grid-template-columns: minmax(0, 1fr) 170px 200px 72px; }
+.c-prompt-state { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+/* The lede a tab needs before its table, aligned with the table's own inset. */
+.tab-lede { display: block; padding: var(--s-6) var(--s-3) var(--s-5); max-width: var(--prose); }
+.tab-back { padding: var(--s-6) var(--s-3) 0; }
+.c-model { display: grid; gap: 2px; min-width: 0; padding: var(--s-3) 0; }
+.c-model b { font-weight: var(--fw-medium); color: var(--ink); overflow-wrap: anywhere; }
+.c-model .mono { font-size: var(--fs-1); color: var(--muted); overflow-wrap: anywhere; }
+.c-format { font-size: var(--fs-2); color: var(--muted); }
+.c-status { font-size: var(--fs-2); color: var(--muted); }
+.c-model-act { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+.c-model-act .btn { flex: none; }
+/* A row's own feedback belongs under that row, inside the table, not in a
+   column that would have to be as wide as the longest error in the list. */
+.trow-note { padding: var(--s-3) var(--s-5) var(--s-4); border-bottom: 1px solid var(--line); }
+.trow-note .note { max-width: var(--prose); }
+.tbl > .trow-note:last-child { border-bottom: none; }
+.library .model-editor, .library .model-transfers, .library > .banner, .library > .note { margin: 0 var(--s-3) var(--s-5); }
+.models-page .prompt-editor { margin: var(--s-5) var(--s-3) var(--s-6); }
+.library .empty { margin: 0 var(--s-3); }
+
 .model-section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-5); margin-bottom: var(--s-3); }
 .model-section-head > div { min-width: 0; }
 .model-section-head .note { margin-top: var(--s-2); max-width: var(--prose); }
 .model-section-head .btn { flex: none; }
 .model-form-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--s-4); }
-.models-page .library-editor { margin-top: var(--s-5); }
+.models-page .library-editor { margin-top: 0; }
 .model-role-fields { min-width: 0; padding: 0; border: 0; margin: 0 0 var(--s-5); }
 .models-page .model-role-fields .check { margin: var(--s-2) 0; font-size: var(--fs-3); }
 .models-page .model-file-input { width: 100%; font: inherit; color: var(--ink-2); }
 .model-file-input::file-selector-button { font: inherit; color: var(--ink-2); background: var(--bg); border: 1px solid var(--line-firm); padding: var(--s-3) var(--s-4); border-radius: var(--r-sm); margin-right: var(--s-3); cursor: pointer; }
 .model-file-input::file-selector-button:hover { background: var(--hover); }
-.model-library, .analyzer-options { padding: 0; list-style: none; margin: var(--s-5) 0 0; }
-.library-row { padding: var(--s-6) 0; border-bottom: 1px solid var(--line); }
-.library-row:first-child { border-top: 1px solid var(--line); }
+.analyzer-options { padding: 0; list-style: none; margin: var(--s-5) 0 0; }
 .library-model-name { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s-3); }
 .model-status { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--fs-2); font-weight: var(--fw-medium); color: var(--muted); }
-.model-description { color: var(--ink-2); overflow-wrap: anywhere; font-size: var(--fs-2); margin-top: var(--s-2) !important; }
 .model-metadata { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: var(--s-4); row-gap: var(--s-1); margin-top: var(--s-2); color: var(--muted); font-size: var(--fs-2); font-variant-numeric: tabular-nums; }
-.library-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); margin-top: var(--s-4); }
-.role-action { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.library-manage { display: flex; margin-left: auto; }
-.library-row > .note { margin-top: var(--s-3); }
-.model-library-empty { margin-top: var(--s-5); padding: var(--s-6) 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.model-library-empty > p { font-weight: var(--fw-medium); }
-.model-library-empty .note { display: block; margin-top: var(--s-2); max-width: var(--prose); }
 .model-delete-confirm { margin-top: var(--s-4); padding: var(--s-4); background: var(--block-bg); border-radius: var(--r-md); }
 .model-delete-confirm .actions { margin-top: var(--s-3); }
-.models-document-note { display: flex; align-items: center; gap: var(--s-6); margin-top: var(--s-8); padding-top: var(--s-7); border-top: 1px solid var(--line); }
-.models-document-note .note { margin-top: var(--s-2); max-width: var(--prose); }
-.models-document-note .btn { flex: none; }
 .analyzer-option { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-5); padding: var(--s-5) 0; border-top: 1px solid var(--line-firm); }
 .analyzer-option > div > p { margin-top: var(--s-2); color: var(--ink-2); font-size: var(--fs-2); }
 .analyzer-option-action { align-self: center; }
@@ -1535,13 +1614,10 @@ select.mini {
   nav { overflow-x: auto; padding-bottom: var(--s-1); }
   .compiler-setup-nudge, .claude-setup-head { flex-direction: column; align-items: flex-start; }
   .compiler-setup-nudge > .btn { white-space: normal; }
-  .active-model-row { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3); }
-  .active-role-title { grid-column: 1; }
-  .active-role-value { grid-column: 1; }
-  .active-model-row > .btn { grid-column: 2; grid-row: 1 / 3; }
-  .active-role-actions { grid-column: 1 / -1; flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
-  .active-role-actions > .note { max-width: none; text-align: left; }
-  .models-runtime-line, .models-document-note { flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+  .job { padding: var(--s-5); }
+  .job-head { align-items: flex-start; }
+  .job-meta { flex-direction: column; align-items: flex-start; gap: var(--s-4); }
+  .job-act { width: 100%; justify-content: space-between; }
   .models-page .model-editor { padding: var(--s-4); }
   .prompt-editor { padding: var(--s-4); }
   .prompt-editor-heading { flex-direction: column; }
@@ -1552,9 +1628,36 @@ select.mini {
   .analyzer-option { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
   .model-transfer { flex-wrap: wrap; }
   .model-transfer progress { width: 100%; order: 3; }
+  /* A four-column table has no four columns on a phone. The name keeps the
+     row, the facts under it stack, and the actions stay beside the name where
+     a thumb expects them. The header goes: with one item per line there is
+     nothing left for it to head. */
+  .tbl.models .thead, .tbl.prompts .thead, .tbl.rules .thead { display: none; }
+  /* The rule keeps the line and wraps; the severity stays beside it because
+     it is the one thing you scan a policy for. Who it applies to and what it
+     has done go underneath. */
+  .tbl.rules .trow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--s-2) var(--s-4);
+    padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5);
+  }
+  .tbl.rules .trow > :nth-child(3) { grid-column: 2; grid-row: 1; justify-self: end; }
+  .tbl.rules .trow > .c-aud, .tbl.rules .trow > .c-activity { grid-column: 1 / -1; font-size: var(--fs-2); color: var(--muted); }
+  .c-rule { padding: 0; flex-wrap: wrap; }
+  .c-rule .nm { white-space: normal; }
+  .tbl.models .trow, .tbl.prompts .trow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--s-2) var(--s-4);
+    padding: var(--s-4) var(--s-4) var(--s-4) var(--s-5);
+  }
+  .tbl.models .trow > span:not(.c-model):not(.c-model-act),
+  .tbl.prompts .trow > span:not(.c-model):not(.c-model-act) { grid-column: 1; font-size: var(--fs-2); color: var(--muted); }
+  .tbl.models .trow > .c-model-act, .tbl.prompts .trow > .c-model-act { grid-column: 2; grid-row: 1; }
+  .library-head { flex-direction: column; align-items: flex-start; }
   .models-page .btn { min-height: 40px; }
   .models-page input[type="text"], .models-page input[type="password"], .models-page select, #prompt { font-size: var(--fs-4); }
-  .library-manage { margin-left: 0; }
   .document-formats { margin-left: var(--s-3); }
   .document-selection { max-height: 140px; }
   .row .who { flex-basis: 70px; }

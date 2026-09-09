@@ -9,28 +9,27 @@ import { say } from './draft.js';
 import { personById, plural, ruleName, sendOnEnter } from './format.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
-import { isExempt, sendAsOptions } from './rules.js';
+import { isExempt, rulesHead, sendAsOptions } from './rules.js';
 import { VIEWS } from './views.js';
 
 // ═══ SIMULATOR ═══════════════════════════════════════════════════════════════
-
-export const backToRules = '<button type="button" class="btn quiet" data-go="policy">← Rules</button>';
 
 VIEWS.simulator = {
   railParent: 'policy',
   onEnter: loadDocumentCapabilities,
   flush: true,
   body: () => `<div class="chatwrap">
+    <div class="sheet chat-head">
+      ${rulesHead()}
+      <div class="send-as">
+        <span class="label">Send as</span>
+        <select class="inline" id="who" aria-label="Employee to send as"${state.company.employees.length ? '' : ' disabled'}>
+          ${sendAsOptions() || '<option value="">No identity set up</option>'}
+        </select>
+      </div>
+    </div>
     <div class="chat" id="chat">
       <div class="sheet">
-        <div class="toolbar" style="padding-top:0">
-          ${backToRules}
-          <span class="spacer"></span>
-          <span class="label">Send as</span>
-          <select class="inline" id="who" aria-label="Employee to send as"${state.company.employees.length ? '' : ' disabled'}>
-            ${sendAsOptions() || '<option value="">No identity set up</option>'}
-          </select>
-        </div>
         ${state.chat.length
           ? state.chat.map(renderMessage).join('')
           : state.company.employees.length ? '<div class="empty"><b>See what Warden would do</b><span>Check a prompt, a document, or both as somebody on your team. The same policy and identity checks apply.</span></div>' : '<div class="empty"><b>Set up an identity to check requests</b><span>Choose who Warden should check as. Protect this device to create your own identity, or add people to your team.</span><div class="actions"><button type="button" class="btn primary" data-go="soloRules">Set up this device</button><button type="button" class="btn" data-go="people">Add people</button></div></div>'}
@@ -40,8 +39,8 @@ VIEWS.simulator = {
     <div class="composer">
       <div class="sheet">
         <div class="hero-box">
-          <textarea id="prompt" rows="2" aria-label="Prompt to check" placeholder="${state.sending ? 'Waiting for the verdict…' : 'Write a prompt, or attach a document…'}"${state.sending ? ' disabled' : ''}></textarea>
-          <button type="button" class="btn primary send" id="send"${state.sending || documentsBusy() || !state.company.employees.length ? ' disabled' : ''}>${state.sending ? 'Checking…' : 'Check request'}</button>
+          <textarea id="prompt" rows="2" aria-label="Prompt to check" placeholder="${state.sending ? 'Waiting for the verdict…' : 'Drop a file, or paste a request to test…'}"${state.sending ? ' disabled' : ''}></textarea>
+          <button type="button" class="btn primary send" id="send"${state.sending || documentsBusy() || !state.company.employees.length ? ' disabled' : ''}>${state.sending ? 'Checking…' : 'Test'}</button>
         </div>
         ${documentComposer()}
       </div>

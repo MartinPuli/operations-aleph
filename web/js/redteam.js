@@ -3,7 +3,6 @@
  */
 import { $, api, esc, post, state } from './core.js';
 import { render } from './render.js';
-import { backToRules } from './simulator.js';
 import { VIEWS } from './views.js';
 
 // ═══ RED TEAM ════════════════════════════════════════════════════════════════
@@ -25,7 +24,7 @@ VIEWS.redteam = {
   body: () => {
     const s = state.rtReport;
     const toolbar = `<div class="toolbar">
-      ${backToRules}
+      <button type="button" class="btn quiet" data-go="policy">← Rules</button>
       <span class="spacer"></span>
       <button type="button" class="btn" id="loadRt">Load last report</button>
       <button type="button" class="btn primary" id="runRt"${state.rtBusy ? ' disabled' : ''}>${state.rtBusy ? 'Running…' : 'Run suite'}</button>

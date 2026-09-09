@@ -22,6 +22,11 @@ function draftFor(template) {
   return promptEditor.drafts[template.id] ??= { text: template.template, base: template.template, revision: promptEditor.catalog.revision, errors: [], note: null, conflict: false, start: 0, end: 0 };
 }
 
+/** Whether one template has an edit that has not been saved. */
+export function promptIsDirty(id) {
+  return dirty(promptEditor.drafts[id]);
+}
+
 export function hasPromptChanges(role) {
   return (promptEditor.catalog?.templates ?? []).some((item) => (!role || item.role === role) && dirty(promptEditor.drafts[item.id]));
 }

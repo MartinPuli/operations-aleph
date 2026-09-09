@@ -130,12 +130,16 @@ test('a retained custom runtime keeps its name and edit protection while a built
   try {
     for (const actual of ['/gateway/models/model-1.gguf', 'unmapped-runtime']) {
       library.catalog.inForce.adjudicator = actual;
+      // The name is read on Active and the protection is enforced on Library,
+      // so each is asserted on the tab that shows it.
+      state.sel = null;
+      assert.match(VIEWS.models.body(), /data-active-model="adjudicator">Our analyzer<\/b>/);
+      state.sel = 'library';
       const html = VIEWS.models.body();
-      assert.match(html, /data-active-model="adjudicator">Our analyzer<\/b>/);
       assert.ok(html.match(/<button[^>]*data-model-edit="model-1"[^>]*>/)?.[0].includes(' disabled'));
       assert.ok(html.match(/<button[^>]*data-model-remove="model-1"[^>]*>/)?.[0].includes(' disabled'));
     }
-  } finally { state.models = previous; }
+  } finally { state.models = previous; state.sel = null; }
 });
 
 function promptTemplate(id, role, overrides = {}) {
@@ -277,7 +281,8 @@ test('compiler setup appears in solo and team until an explicit provider or envi
   for (const view of ['soloRules', 'soloSettings', 'activity', 'policy']) {
     state.view = view;
     const html = compilerSetupNudge();
-    assert.match(html, /Configure Claude Code/);
+    assert.match(html, /Choose what writes your rules/);
+    assert.match(html, /Set up the rule writer/);
     assert.match(html, /data-go="models" data-q="setup=compiler"/);
     assert.match(html, /keep exploring/);
   }
@@ -293,13 +298,13 @@ test('opening a Claude compiler keeps its blank CLI model and separates auth sta
   state.compiler = compilerConfiguration();
   const html = compilerSettings();
   assert.equal(state.compilerDraft.model, '');
-  assert.match(html, /id="cModel"[^>]*value=""[^>]*placeholder="Claude Code default"/);
+  assert.match(html, /Use Claude Code on this machine/);
   assert.match(html, /claude auth login/);
-  assert.match(html, /code\.claude\.com\/docs\/en\/setup#install-claude-code/);
+  assert.ok(!html.includes('code.claude.com'), 'an installed CLI is not asked to be installed again');
   assert.ok(!html.match(/<button[^>]*id="cTest"[^>]*>/)?.[0].includes('disabled'));
-  assert.match(html, /id="cSave"[^>]*disabled/);
+  assert.ok(!html.includes('id="cSave"'));
   state.compiler.claude.auth = 'signed-in';
-  assert.match(compilerSettings(), /id="cSave"[^>]*disabled/);
+  assert.ok(!compilerSettings().includes('id="cSave"'));
 });
 
 test('Claude Apply requires a successful check for the current model and error text is escaped', () => {
@@ -307,13 +312,13 @@ test('Claude Apply requires a successful check for the current model and error t
   state.compilerTest = { ok: false, error: '<script>account error</script>' };
   let html = compilerSettings();
   assert.ok(!html.includes('<img') && !html.includes('<script>'));
-  assert.match(html, /Not found/);
-  assert.match(html, /id="cSave"[^>]*disabled/);
+  assert.match(html, /code\.claude\.com\/docs\/en\/setup#install-claude-code/);
+  assert.ok(!html.includes('id="cSave"'));
   state.compilerTest = { ok: true, provider: 'claude-cli', model: '', ms: 25 };
   html = compilerSettings();
   assert.ok(!html.match(/<button[^>]*id="cSave"[^>]*>/)?.[0].includes('disabled'));
   state.compilerDraft.model = 'a-different-model';
-  assert.match(compilerSettings(), /id="cSave"[^>]*disabled/);
+  assert.ok(!compilerSettings().includes('id="cSave"'));
 });
 
 test('existing provider and explicit model preferences survive opening the setup form', () => {
@@ -361,7 +366,7 @@ test('missing local weights offer download only after the local compiler is sele
 test('a compiler setup refusal offers configuration instead of asking to rephrase the rule', () => {
   const html = compileFailure({ kind: 'compiler-setup-required', error: 'Apply the compiler before drafting. <script>x</script>' });
   assert.match(html, /data-go="models" data-q="setup=compiler"/);
-  assert.match(html, /Configure Claude Code/);
+  assert.match(html, /Set up the rule writer/);
   assert.ok(!html.includes('<script>'));
   assert.ok(!html.includes('more plainly') && !html.includes('showLog'));
 });

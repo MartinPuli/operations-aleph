@@ -6,8 +6,7 @@ import { modelPicker } from './compiler.js';
 import { $, attr, del, esc, post, severityMeans, state } from './core.js';
 import { refreshPeople, refreshPolicy } from './data.js';
 import { bindPolicy, ruleChatPane } from './draft.js';
-import { audienceLabel, clip, isPersonal, plural, ruleName } from './format.js';
-import { limitsGrid } from './limits.js';
+import { audienceLabel, clip, dayKey, isPersonal, plural, ruleName } from './format.js';
 import { disclosure, render } from './render.js';
 import { go } from './router.js';
 import { VIEWS } from './views.js';
@@ -15,13 +14,18 @@ import { VIEWS } from './views.js';
 // ═══ RULES ═══════════════════════════════════════════════════════════════════
 
 /**
- * Rules is two tabs, not one page.
+ * Rules is three tabs, not one page.
  *
- * Writing a rule is a conversation with Warden; the policy is a list. Those are
- * different modes of using the screen, and stacking them meant that the moment
- * you sent the first message the list underneath was orphaned — still there,
- * no longer part of what you were doing. So they became peers: the list you
- * come back to, and the conversation you start.
+ * Writing a rule is a conversation with Warden; the policy is a list; testing
+ * it is a third thing again. Stacking them meant that the moment you sent the
+ * first message the list underneath was orphaned — still there, no longer part
+ * of what you were doing — and that testing the policy lived behind a button
+ * here and a second button at the foot of Models. So they are peers: the
+ * conversation you start, the list you come back to, and the tester.
+ *
+ * New rule is a tab rather than a button, which is the declared exception to
+ * "creations open from a button": it is the daily action of this view and the
+ * top nav already lands on it.
  */
 function onNewRule() { return state.view === 'policy' && state.sel === 'new'; }
 function inConversation() { return onNewRule() && (state.ruleChat.length > 0 || Boolean(state.draft) || Boolean(state.set)); }
@@ -33,42 +37,122 @@ VIEWS.policy = {
   bind: bindPolicy
 };
 
-/** The switch between the two, at the top of the column in both. A dot on the
- *  New rule side when a draft is waiting there — leaving the tab does not
- *  throw the conversation away. */
-export function rulesTabs(right = '') {
-  const on = onNewRule();
-  return `<div class="toolbar">
-    <span class="seg">
-      <button type="button" class="${on ? 'on' : ''}" data-go="policy" data-sel="new">New rule${!on && (state.draft || state.set) ? ' •' : ''}</button>
-      <button type="button" class="${on ? '' : 'on'}" data-go="policy">Rules</button>
-    </span>
-    <span class="spacer"></span>
-    ${right}
+/**
+ * The three ways of using this screen, and the one line that says where the
+ * policy stands.
+ *
+ * Writing a rule, reading the policy and testing it are different modes, and
+ * they used to be a two-way segmented pill plus a button that led to a
+ * different view entirely. They are peers, so they are three tabs of the
+ * component Team established, under one header that does not move between
+ * them. Test is a `data-go="simulator"` — it crosses views, and the
+ * simulator's `railParent` keeps the top nav on Rules while you are there.
+ *
+ * A dot on New rule when a draft is waiting: leaving the tab does not throw
+ * the conversation away, and nothing else on the screen would say so.
+ *
+ * Exported because the simulator draws the same header. One definition, or the
+ * count of active rules is right on two tabs out of three. It returns one
+ * element rather than two: `.chat .sheet` is a grid, and a header and a tab
+ * strip landing there as separate items are pushed apart by the gap meant for
+ * turns in a conversation.
+ */
+const TABS = [['new', 'New rule'], ['rules', 'Rules'], ['test', 'Test']];
+
+export function rulesTab() {
+  if (state.view === 'simulator') return 'test';
+  return onNewRule() ? 'new' : 'rules';
+}
+
+export function rulesHead(right = '') {
+  const tab = rulesTab();
+  const today = dayKey(new Date().toISOString());
+  const checks = state.audit.filter((a) => dayKey(a.ts) === today).length;
+  return `<div class="rules-frame">
+    <header class="page-head">
+      <div>
+        <h1 class="page-title">Rules</h1>
+        <div class="page-status">
+          <span>${state.policy.rules.length} active</span><i>·</i>
+          <span class="muted">${plural(checks, 'check')} today</span>
+          ${tab === 'test' ? '' : '<i>·</i><button type="button" class="linkbtn strong" data-go="simulator">test anything →</button>'}
+        </div>
+      </div>
+      ${right}
+    </header>
+    <nav class="tabs" aria-label="Rules sections">
+      ${TABS.map(([id, label]) => `<button type="button" class="tab${tab === id ? ' on' : ''}" ${
+        id === 'test' ? 'data-go="simulator"' : id === 'new' ? 'data-go="policy" data-sel="new"' : 'data-go="policy"'
+      }>${label}${id === 'new' && tab !== 'new' && (state.draft || state.set) ? ' •' : ''}</button>`).join('')}
+    </nav>
+  </div>`;
+}
+
+/**
+ * The policy you have, as a table you can sweep.
+ *
+ * It was a stack of rows three lines deep — name, the rule's whole text, then
+ * badges — which is a lot of ink for a list whose job is "which rules do I
+ * have, on whom, and what have they done". The full text belongs to the rule's
+ * own detail, which is one click away and always was.
+ *
+ * Filtering is local to the module and never touches the hash: `#/policy/<id>`
+ * means "this rule is open", and a severity filter is not a place you link
+ * somebody to.
+ */
+let severity = 'all';
+let search = '';
+
+function matches(rule) {
+  if (severity !== 'all' && rule.severity !== severity) return false;
+  const q = search.trim().toLowerCase();
+  if (!q) return true;
+  return `${ruleName(rule)} ${rule.text} ${audienceLabel(rule.appliesTo)}`.toLowerCase().includes(q);
+}
+
+function filterRow() {
+  const rules = state.policy.rules;
+  const counts = [['all', 'All', rules.length], ...['block', 'escalate', 'warn'].map((s) => [s, s.replace(/^./, (c) => c.toUpperCase()), rules.filter((r) => r.severity === s).length])];
+  return `<div class="filters">
+    <div class="filter-counts">
+      ${counts.map(([id, label, n]) => `<button type="button" class="filter-count${severity === id ? ' on' : ''}" data-severity="${id}">${label} ${n}</button>`).join('')}
+    </div>
+    <input type="text" id="ruleSearch" class="rule-search" placeholder="Search rules…" aria-label="Search rules" autocomplete="off" value="${esc(search)}">
   </div>`;
 }
 
 /** The policy you have. */
 function rulesBody() {
+  const rules = state.policy.rules;
+  const shown = rules.filter(matches);
   return `<div class="sheet">
-    ${rulesTabs(`
-      <button type="button" class="btn" data-go="simulator">Try a prompt</button>`)}
-
-    ${state.policy.rules.length
-      ? state.policy.rules.map(ruleRow).join('')
-      : '<div class="empty"><b>No rules yet, so nothing gets stopped</b><span>Every prompt your team sends goes straight through until you write one.</span></div>'}
-
-    ${state.policy.rules.length ? `<div class="row-actions">
-      <button type="button" class="btn quiet" id="clearSample">Take out what came with Warden</button>
-      <button type="button" class="btn quiet danger" id="wipeRules">Delete every rule</button>
-    </div>` : ''}
-
-    <div class="section">
-      <div class="label">Limits by role</div>
-      ${limitsGrid()}
-      <div class="note">Token counts are reported by the tool, not measured here.</div>
-    </div>
+    ${rulesHead()}
+    ${sampleBanner()}
+    ${rules.length ? filterRow() : ''}
+    ${!rules.length
+      ? '<div class="empty"><b>No rules yet, so nothing gets stopped</b><span>Every prompt your team sends goes straight through until you write one.</span></div>'
+      : shown.length
+        ? `<div class="tbl rules">
+            <div class="thead"><span>Rule</span><span>Applies to</span><span>If it fires</span><span>Activity</span></div>
+            ${shown.map(ruleRow).join('')}
+          </div>`
+        : `<div class="empty"><b>No rule matches</b><span>Nothing here is ${severity === 'all' ? 'called that' : `a ${esc(severity)} rule that matches`}.</span><div class="actions"><button type="button" class="btn" id="clearRuleFilter">Show every rule</button></div></div>`}
+    ${rules.length ? `<div class="wipe"><button type="button" class="linkbtn danger" id="wipeRules">Delete every rule</button></div>` : ''}
   </div>`;
+}
+
+/**
+ * A seeded policy says so where the seeded rules are, and the way out of it is
+ * in the banner rather than beside the table.
+ *
+ * It used to be a permanent button — a one-time action, on screen for the
+ * whole life of the installation, next to the one that deletes everything.
+ * Most of the time it was a no-op wearing the clothes of a feature.
+ */
+function sampleBanner() {
+  if (!state.company.demo) return '';
+  return `<div class="banner warn demo"><b>Sample data.</b> These rules, and the people they judge, came with Warden.
+    <button type="button" class="linkish" id="clearSample">Take out what came with Warden</button></div>`;
 }
 
 /** Roles the policy declines to govern. Read from the policy, never guessed. */
@@ -110,6 +194,19 @@ export function sendAsOptions() {
  * not touch because naming your company cleared the flag it reads. "Delete
  * every rule" is the blunt one, and it asks first.
  */
+/** The filters are module state: they change what is on the screen and nothing
+ *  about where you are, so they stay out of the hash. */
+export function bindRuleFilters() {
+  for (const button of document.querySelectorAll('[data-severity]')) button.onclick = () => {
+    severity = button.dataset.severity;
+    render();
+  };
+  const box = $('ruleSearch');
+  if (box) box.oninput = () => { search = box.value; render(); };
+  const clear = $('clearRuleFilter');
+  if (clear) clear.onclick = () => { severity = 'all'; search = ''; render(); };
+}
+
 export function bindSweeps() {
   bindLogPeek();
   const clear = $('clearSample');
@@ -143,7 +240,7 @@ export function bindSweeps() {
  *  centred in whatever is left, the way an empty chat sits on the screen. */
 function newRulePage() {
   return `<div class="blank">
-    <div class="sheet">${rulesTabs()}</div>
+    <div class="sheet">${rulesHead()}</div>
     <div class="blank-fill">${heroComposer()}</div>
   </div>`;
 }
@@ -256,31 +353,47 @@ function heroComposer() {
 
 function ruleRow(r) {
   const open = state.sel === r.id;
-  return `<button type="button" class="row roomy${open ? ' on' : ''}" data-toggle="policy" data-sel="${attr(r.id)}" aria-expanded="${open}">
-      <span class="dot ${esc(r.severity)}"></span>
-      <span class="col">
-        <span class="t">${esc(ruleName(r))}</span>
-        <span class="m2">${esc(r.text)}</span>
-        <span class="m">
-          <span class="badge ${esc(r.severity)}">${esc(r.severity)}</span>
-          <span>${esc(audienceLabel(r.appliesTo))}</span>
-          ${r.pinned ? '<span class="badge">always checked</span>' : ''}
-          ${isPersonal(r) ? '<span class="badge">personal</span>' : ''}
-        </span>
-      </span>
+  return `<button type="button" class="trow rule-row${open ? ' on' : ''}" data-toggle="policy" data-sel="${attr(r.id)}" aria-expanded="${open}">
+      <span class="c-rule"><span class="nm">${esc(ruleName(r))}</span>${r.pinned ? '<span class="badge">always checked</span>' : ''}${isPersonal(r) ? '<span class="badge">personal</span>' : ''}</span>
+      <span class="c-aud">${esc(audienceLabel(r.appliesTo))}</span>
+      <span><span class="badge ${esc(r.severity)}">${esc(r.severity)}</span></span>
+      <span class="c-activity">${esc(activityPhrase(r))}</span>
     </button>
     ${open ? ruleDetail(r) : ''}`;
 }
 
-function ruleDetail(rule) {
+/**
+ * What a rule has actually done. The row and the detail read it from here
+ * rather than each counting for itself: the row is a summary of the detail,
+ * and a summary that computes its own numbers is a second implementation of
+ * them waiting to disagree.
+ *
+ * Disputes are the only false-positive signal the console has — in the audit
+ * log a correct block and an incorrect one are the same record — so a rule
+ * that has any says so in the list, not only once you open it.
+ */
+function ruleActivity(rule) {
   const hits = state.audit.filter((a) => (a.decision?.firedRules ?? []).some((r) => r.ruleId === rule.id));
+  return {
+    hits,
+    blocked: hits.filter((h) => h.decision?.verdict !== 'ALLOW').length,
+    disputed: state.appeals.filter((a) => a.ruleId === rule.id)
+  };
+}
+
+function activityPhrase(rule) {
+  const { hits, blocked, disputed } = ruleActivity(rule);
+  if (!hits.length) return 'Has not fired yet';
+  if (disputed.length) return `${blocked} of ${hits.length} · ${disputed.length} disputed`;
+  // A warn rule stops nothing by design, so "stopped 0 of 3" would read as a
+  // rule that is failing rather than one doing exactly what it was set to do.
+  if (rule.severity === 'warn') return `Noted ${plural(hits.length, 'time')}, blocked none`;
+  return `${rule.severity === 'escalate' ? 'Held' : 'Stopped'} ${blocked} of ${hits.length}`;
+}
+
+function ruleDetail(rule) {
+  const { hits, blocked, disputed } = ruleActivity(rule);
   const guidance = hits[0]?.decision.firedRules.find((r) => r.ruleId === rule.id)?.guidance;
-  const blocked = hits.filter((h) => h.decision?.verdict !== 'ALLOW').length;
-  // How many of those the person on the other end said were wrong. This is the
-  // only false-positive signal the console actually has: in the audit log a
-  // correct block and an incorrect one are the same record. Counting how much
-  // a rule catches without counting what it costs makes every rule look good.
-  const disputed = state.appeals.filter((a) => a.ruleId === rule.id);
 
   // An active rule is an object you consult, not a decision you take, so it
   // gets the property-list shape rather than the draft's decide-first one.

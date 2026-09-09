@@ -9,7 +9,15 @@ import { VIEWS } from './views.js';
 // A tested key can be applied without asking the administrator to paste it
 // twice. It is scoped to the tested host and never reinserted into an input.
 let testedKey = null;
-export function clearCompilerSecret() { testedKey = null; }
+/**
+ * First run offers the one path that works out of the box and puts the rest of
+ * the providers behind a button. The whole list as the opening screen is what
+ * made "which of these am I supposed to pick" the first question the product
+ * asked, when the answer for almost everybody is the CLI already signed in on
+ * the machine.
+ */
+let choosingProvider = false;
+export function clearCompilerSecret() { testedKey = null; choosingProvider = false; }
 
 export function compilerNeedsSetup() {
   return state.compiler?.setupRequired === true && !state.compiler.overriddenByEnv;
@@ -18,7 +26,7 @@ export function compilerNeedsSetup() {
 /** Shared by solo and team: a setup step, with the rest of the console open. */
 export function compilerSetupNudge() {
   if (!compilerNeedsSetup() || ['models', 'compiler'].includes(state.view)) return '';
-  return `<section class="compiler-setup-nudge" aria-labelledby="compilerSetupTitle"><div><h2 id="compilerSetupTitle">Configure Claude Code</h2><p>Before drafting a new rule, connect Warden to Claude Code on the machine running this gateway. You can keep exploring or use the existing rule presets.</p></div><button type="button" class="btn primary" data-go="models" data-q="setup=compiler">Configure Claude Code</button></section>`;
+  return `<section class="compiler-setup-nudge" aria-labelledby="compilerSetupTitle"><div><h2 id="compilerSetupTitle">Choose what writes your rules</h2><p>Warden needs a model to turn your instructions into rules. Nothing drafts until you pick one; you can keep exploring, or start from the rule presets. Employee requests are analyzed on this machine either way.</p></div><button type="button" class="btn primary" data-go="models" data-q="setup=compiler">Set up the rule writer</button></section>`;
 }
 
 const defaultProviderModel = (provider) => provider?.id.endsWith('-cli') ? '' : provider?.models?.[0] ?? '';
@@ -52,7 +60,7 @@ function localCompilerMissing() {
 }
 
 function localCompilerNote() {
-  if (!localCompilerMissing()) return '<p class="note">Uses the compiler weights installed on this machine. Choose a model from Your models below to use your own local weights.</p>';
+  if (!localCompilerMissing()) return '<p class="note">Uses the compiler weights installed on this machine. Your own local weights live on the Library tab.</p>';
   const selected = state.compiler?.provider === 'local' && !compilerNeedsSetup();
   return `<div class="compiler-local-missing"><p class="note warn">The local compiler model is not downloaded. ${selected ? 'Download its weights before drafting a rule.' : 'Apply this selection, then download its weights before drafting a rule.'}</p>${state.canLeaveDemo ? `<button type="button" class="btn js-get-models"${selected ? '' : ' disabled'}>Download models</button>` : '<p class="note">After applying, run <code>pnpm run setup</code> on the gateway to download the local compiler.</p>'}</div>`;
 }
@@ -68,6 +76,46 @@ function compilerFeedback() {
   else if (t.ok) text = `Connection answered in ${Number.isFinite(t.ms) ? t.ms : 0} ms. Apply the compiler when you are ready.`;
   else text = String(t.error ?? 'The compiler could not be updated. Try again.');
   return `<p class="note ${t.ok ? 'good' : 'bad'}">${esc(text)}</p>`;
+}
+
+/**
+ * The same four steps, first run, with the finished ones collapsed to a check.
+ *
+ * The guided list never collapsed: somebody who had Claude Code installed and
+ * signed in still read two paragraphs telling them how to install and sign in
+ * before reaching the one control that had anything to do. What is done is a
+ * tick, what is next is the primary button, and the rest of the providers are
+ * behind "Use another model" rather than in front of it.
+ *
+ * Apply is not rendered at all until the connection has been checked for the
+ * model in the draft — the gate is the same one the full form has always had,
+ * said by absence rather than by a disabled button.
+ */
+function claudeQuickSetup(draft) {
+  const status = state.compiler?.claude;
+  const installed = status?.installed ?? cliFor('claude-cli')?.found;
+  const signedIn = status?.auth === 'signed-in';
+  const connected = claudeConnected(draft);
+  const busy = state.compilerBusy;
+  const step = (done, label) => `<li${done ? ' class="done"' : ''}><span class="mark" aria-hidden="true">${done ? '✓' : '○'}</span>${label}</li>`;
+  return `<div class="job-setup">
+    <div class="setup-rec"><h3>Use Claude Code on this machine</h3><span class="chip static">Recommended</span></div>
+    <ul class="setup-steps">
+      ${step(installed === true, 'Installed')}${step(signedIn, 'Signed in')}${step(connected, 'Connection tested')}
+      <li><button type="button" class="linkbtn" id="cRefresh">${busy === 'refresh' ? 'Checking…' : 'Refresh status'}</button></li>
+    </ul>
+    ${status?.message ? `<p class="note${['install-required', 'sign-in-required'].includes(status.status) ? ' warn' : ''}" role="status">${esc(status.message)}</p>` : ''}
+    ${installed === false ? `<p class="note">Install the command-line app on this gateway, as the same user running Warden, then refresh its status.</p>
+      <a class="btn" href="https://code.claude.com/docs/en/setup#install-claude-code" target="_blank" rel="noopener noreferrer">Open installation guide<span class="sr-only"> in a new tab</span></a>` : ''}
+    ${installed !== false && !signedIn ? `<div class="claude-login-command"><code>claude auth login</code><button type="button" class="btn quiet" data-copy="${attr('claude auth login')}">Copy sign-in command</button></div>` : ''}
+    <div class="job-actions">
+      ${connected
+        ? `<button type="submit" class="btn primary" id="cSave"${state.compilerTest?.saved ? ' disabled' : ''}>${busy === 'save' ? 'Applying…' : 'Apply the rule writer'}</button>`
+        : `<button type="button" class="btn primary" id="cTest">${busy === 'test' ? 'Testing connection…' : 'Test connection'}</button>`}
+      <button type="button" class="btn quiet" id="cAnother">Use another model</button>
+      <span class="note">Uses your Claude Code account and plan. The check sends one short test request.</span>
+    </div>
+  </div>`;
 }
 
 function claudeSetup(draft) {
@@ -101,6 +149,13 @@ export function compilerSettings() {
   const claude = d.provider === 'claude-cli';
   const remote = d.provider !== 'local' && !cli;
   const busy = state.compilerBusy;
+  if (claude && compilerNeedsSetup() && !choosingProvider) {
+    return `<form id="compilerForm" aria-label="Rule writer setup" aria-busy="${Boolean(busy)}">
+      ${c.configurationError ? `<div class="banner bad" role="alert"><b>Compiler configuration needs attention.</b> ${esc(c.configurationError)}</div>` : ''}
+      ${claudeQuickSetup(d)}
+      <div id="compilerFeedback" role="status" aria-live="polite">${compilerFeedback()}</div>
+    </form>`;
+  }
   return `<form id="compilerForm" class="model-editor" aria-label="Compiler settings" aria-busy="${Boolean(busy)}">
     <p class="note">The compiler turns your instructions into rules. A provider or signed-in CLI can receive your instruction, role names and staff list. Employee requests are analyzed locally.</p>
     ${c.configurationError ? `<div class="banner bad" role="alert"><b>Compiler configuration needs attention.</b> ${esc(c.configurationError)}</div>` : ''}
@@ -138,7 +193,8 @@ export function bindCompiler(onChanged = async () => {}) {
     if ($('cModel')) $('cModel').value = d.model;
     delete d.adopt;
   }
-  $('cProvider').onchange = (event) => {
+  if ($('cAnother')) $('cAnother').onclick = () => { choosingProvider = true; render(); $('cProvider')?.focus(); };
+  if ($('cProvider')) $('cProvider').onchange = (event) => {
     testedKey = null;
     const next = (state.compiler?.providers ?? []).find((p) => p.id === event.target.value);
     if (!next) return;
