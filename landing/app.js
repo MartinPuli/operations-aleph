@@ -302,8 +302,6 @@ if (onWindows) {
     primary.classList.add('on-windows');
     const label = primary.querySelector('.txt');
     if (label) label.textContent = WIN.label;
-    const build = primary.querySelector('.download-build');
-    if (build) build.textContent = 'Windows x64 · .exe';
     primary.href = WIN.href;
   });
   if (alt) { alt.textContent = MAC.other; alt.href = MAC.href; }
@@ -328,3 +326,6 @@ if (!motion.matches && !lowCapability) {
   } else mount();
 }
 }
+
+const heroArt = document.querySelector('[data-hero-replay]');
+if (heroArt) import('./hero-trace.js?v=hero-flow-1').then(({mountHeroTrace}) => mountHeroTrace(heroArt)).catch(() => { heroArt.disabled = true; });

@@ -83,11 +83,11 @@ components:
     padding: "0.75rem 1.125rem"
     height: "48px"
   button-primary-hero:
-    backgroundColor: "{colors.white}"
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.white-ink}"
-    rounded: "0.65rem"
-    padding: "0.85rem 1rem 0.85rem 1.25rem"
-    height: "82px"
+    rounded: "0.35rem"
+    padding: "0.9rem 1.2rem"
+    height: "56px"
   button-primary-hover:
     backgroundColor: "{colors.white-hover}"
     textColor: "{colors.white-ink}"
@@ -138,11 +138,11 @@ Manrope is self-hosted in `landing/assets/brand/Manrope-Variable.ttf`, with its 
 
 ## Composition
 
-The hero reads **“Your AI. Your rules.”** above one short explanation and an immediate cast-silver download control, beside the unboxed official shield. The control pairs a platform icon and label with the matching installer type and a trailing download arrow; its pressed movement follows the shallow lower edge. A compact compatibility strip names Claude Code, Codex and OpenCode and leads into the story. The alternate platform, film and free/open-source line reserve their space and begin appearing at 1.9 seconds. The sticky header keeps a download available while scrolling.
+The hero reads **“Your AI. Your rules.”** above one short explanation and an immediate, flat 56px download link with a platform icon, label and trailing arrow. Beside it, the native `.hero-art` replay button combines an unboxed request trace with the official 3D shield. A compact compatibility strip names Claude Code, Codex and OpenCode and leads into the story. The alternate platform, film and free/open-source line reserve their space and begin appearing at 1.9 seconds. The sticky header keeps a download available while scrolling.
 
-The main story has three chapters. Write presents the instruction and proposed rules, with review and activation visibly separate. Hit blocks a request to include one client’s private pricing in another client’s email. Log carries that request and the same contract-terms rule into the decision record, followed by an allowed email using public pricing. Keep usage limits as a compact follow-up below this sequence. A compact footer closes with **“Put your rules to work.”** and explicit macOS, Windows and other-build links.
+The main story has three chapters. Write presents the instruction and proposed rules, with review and activation visibly separate. Hit blocks a request to include one client’s private pricing in another client’s email. Log carries that request and the same contract-terms rule into the decision record, followed by an allowed email using public pricing. Keep usage limits as a compact follow-up below this sequence. The footer closes with **“Download Warden”** and one continuous charcoal download tray containing the native macOS, Windows and other-build links. The heading stays smaller than the hero, and the free/open-source line sits alongside it; no separate white platform cards.
 
-The frame supports a 20rem minimum viewport and a 90rem content width. Gutters grow from 1.125rem to 2rem at 48rem. Content stacks on small screens; at 64rem the hero uses equal columns with larger type and a viewport-constrained shield; the product story pairs a narrower text column with a wider panel. Wrap request text and technical strings. Full rule definitions stay inside native disclosures to keep the resting page concise.
+The frame supports a 20rem minimum viewport and a 90rem content width. Gutters grow from 1.125rem to 2rem at 48rem. Content stacks on small screens; at 64rem the hero gives its request trace and shield a wider column beside the copy. Write pairs a narrower text column with a wider panel; Hit reverses those columns, and Log places its heading above a full-width panel. Larger gaps and top padding separate the chapters. Wrap request text and technical strings. Full rule definitions stay inside native disclosures to keep the resting page concise.
 
 Product surfaces use one outer hairline, quiet charcoal chrome and restrained elevation. Separate rows with spacing and fine rules. Product panels use 0.25rem corners, actions 0.2rem and badges 0.15rem. Preserve the official shield silhouette and internal mark.
 
@@ -151,6 +151,8 @@ Product surfaces use one outer hairline, quiet charcoal chrome and restrained el
 Write and Hit use a short native scroll sequence, adding half a viewport of scroll with a sticky stage only at desktop widths of at least 64rem, viewport heights of at least 40rem, and when the whole stage fits beneath the header. The other chapters stay in ordinary flow. Mobile and shorter layouts use a finite sequence on entry, then hold the result. Wheel, touch and keyboard scrolling remain native.
 
 Write retains native Describe, Review and Activate buttons, Replay, and explicit Draft/Activate actions. Manual choices cancel playback; keyboard focus in these controls pauses the sequence. Full rules use native `details`/`summary`; connected tools use radio inputs and labels. Keep the read-only composer out of the tab sequence and make clear that these actions only change an illustrative example. Interactive targets are at least 44px high, with a visible 2px focus outline appropriate to the surface.
+
+`hero-trace.js` plays a finite 4.4-second sequence: two blocked requests, then an allowed request, before resting on the first blocked result. The native `.hero-art` button replays it with pointer or keyboard activation. The trace stops when offscreen or hidden and stays on the static blocked result for reduced motion or without JavaScript. The download remains available throughout.
 
 The hero’s shield has a finite 1.9-second entrance and a subtle fine-pointer rotation/reflection response that settles. The hero also has a slight drift with native scroll. Rendering sleeps when settled, offscreen or in a hidden document. Keep the local `shield-fallback.png` for reduced-motion, low-capability, no-JavaScript and WebGL failure paths.
 

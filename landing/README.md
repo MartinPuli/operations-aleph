@@ -1,6 +1,6 @@
 # Warden landing
 
-Static, same-origin files with no build step or package installation. A continuous graphite background, white text and restrained charcoal product surfaces frame the official silver shield, an immediate download, and one client confidentiality example. The hero reads **“Your AI. Your rules.”**; the page closes with **“Put your rules to work.”**
+Static, same-origin files with no build step or package installation. A continuous graphite background, white text and restrained charcoal product surfaces frame the official silver shield, an immediate download, and one client confidentiality example. The hero reads **“Your AI. Your rules.”**; the page closes with a compact **“Download Warden”** heading and **“Free for everyone. Open source.”**
 
 ## Run locally
 
@@ -16,20 +16,21 @@ Open [localhost:8080](http://localhost:8080). Serve over HTTP so local JavaScrip
 
 | Part | What it shows |
 | --- | --- |
-| Hero | Larger type beside the official shield, a cast-silver download control with platform/build details, and a compact Claude Code, Codex and OpenCode compatibility strip. |
+| Hero | Larger type and a flat 56px download link beside an unboxed request trace and official 3D shield in the native `.hero-art` replay button. A compact strip names Claude Code, Codex and OpenCode. |
 | Write | A client confidentiality instruction becomes proposed rules. Native disclosures expose the full definitions; the visitor can review and activate the example. |
-| Hit | A request to use one client’s private pricing in another client’s email is blocked. Native radio controls show the refusal in Claude Code, Codex or OpenCode. |
-| Log | The same request and contract-terms rule appear beside an allowed follow-up using public pricing. |
+| Hit | A request to use one client’s private pricing in another client’s email is blocked. Native radio controls show the refusal in Claude Code, Codex or OpenCode. Desktop columns reverse the Write layout. |
+| Log | A full-width decision panel below the heading carries the same request and contract-terms rule alongside an allowed follow-up using public pricing. |
 | Usage | A compact secondary example shows the next request held for review after reported usage reaches its ceiling. |
-| Closing | A compact footer repeats macOS and Windows downloads, with Linux and other builds linked below. |
+| Closing | Compact “Download Warden” and “Free for everyone. Open source.” above one continuous charcoal tray for macOS, Windows, and Linux/other builds. |
 
-On desktop, Write and Hit advance over half a viewport of native scroll while their stage stays sticky below the header. This applies only at widths of at least 64rem, heights of at least 40rem, and when the whole stage fits. Other chapters stay in ordinary flow. Mobile and layouts without enough room use a finite sequence on entry, then hold the result. Scrolling remains browser-native.
+Larger gaps separate the chapters. On desktop, Write and Hit advance over half a viewport of native scroll while their stage stays sticky below the header. This applies only at widths of at least 64rem, heights of at least 40rem, and when the whole stage fits. Other chapters stay in ordinary flow. Mobile and layouts without enough room use a finite sequence on entry, then hold the result. Scrolling remains browser-native.
 
 Write has Describe, Review and Activate steps, Replay, and explicit Draft/Activate buttons. Manual interaction cancels playback; keyboard focus in its controls pauses the sequence. Tool selection is retained. These are prewritten illustrations: the read-only composer and controls change only the page’s presentation. Keep proposed rules and human activation distinct.
 
 ## Progressive enhancement
 
-- Header and hero downloads are available from the first frame. The hero control keeps a native link, switches its label, installer and build caption together on Windows, and offers visible keyboard focus. Supporting platform/film links and the free/open-source line reserve their space and begin appearing after 1.9 seconds. No-JavaScript and reduced-motion visitors see them immediately.
+- Header and hero downloads are available from the first frame. The flat hero control keeps a native link, switches its platform icon, label and installer on Windows, and offers visible keyboard focus. Supporting platform/film links and the free/open-source line reserve their space and begin appearing after 1.9 seconds. No-JavaScript and reduced-motion visitors see them immediately.
+- `hero-trace.js` runs two blocked requests and one allowed request over 4.4 seconds, then rests on the first blocked result. The native `.hero-art` button supports pointer and keyboard replay. The trace stops offscreen or in hidden tabs; reduced-motion and no-JavaScript visitors see a static blocked result.
 - `shield.js` lazily loads the vendored Three.js renderer near the hero shield. A finite 1.9-second entrance and fine-pointer reflection settle to rest; rendering pauses offscreen and in hidden tabs. The hero also drifts slightly with native scroll. A local PNG covers no-JavaScript, reduced-motion, low-capability and WebGL failure paths.
 - Reduced motion shows completed chapter content without typing, animated transitions or sticky story stages. Without JavaScript, content, full-rule disclosures and the radio-based tool selector remain readable; unavailable scripted controls are hidden. The head watchdog restores readable content if the main module cannot load, and a late module restores enhancement.
 - **Watch the film** is a normal media link enhanced into a native dialog with native video controls. Its 17-second MP4 source loads only after activation, with `preload="none"`. Closing pauses playback and restores focus. The media link remains the fallback.
@@ -43,6 +44,7 @@ Write has Describe, Review and Activate steps, Replay, and explicit Draft/Activa
 | `experience-v2.css` | Hero, responsive story layout, sticky stages and closing. |
 | `product-scenes-v2.css` | Charcoal policy composer, rules, tool selector, terminals and decision log. |
 | `app.js` | Scroll and entry playback, manual controls, film dialog and platform links. |
+| `hero-trace.js` | Finite request trace, native replay, visibility handling and reduced-motion fallback. |
 | `shield.js`, `assets/3d/` | Official-symbol renderer, vendored Three.js, license and static fallback. |
 | `analytics-entry.js`, `analytics-config.js`, `analytics.js` | Independent PostHog measurement, production-host gating and explicit local test mode. |
 | `assets/brand/` | Official lockup and self-hosted Manrope with its SIL Open Font License. |
