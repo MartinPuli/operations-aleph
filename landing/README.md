@@ -21,7 +21,7 @@ Open [localhost:8080](http://localhost:8080). Serve over HTTP so local JavaScrip
 | Hit | A request to use one client’s private pricing in another client’s email is blocked. Native radio controls show the refusal in Claude Code, Codex or OpenCode. Desktop columns reverse the Write layout. |
 | Log | A full-width decision panel below the heading carries the same request and contract-terms rule alongside an allowed follow-up using public pricing. |
 | Usage | A compact secondary example shows the next request held for review after reported usage reaches its ceiling. |
-| Closing | Compact “Download Warden” and “Free for everyone. Open source.” above one continuous charcoal tray for macOS, Windows, and Linux/other builds. |
+| Closing | “Download Warden” and the free/open-source line beside one primary platform download, with the other platform and Linux/other builds as text links beneath it. Windows visitors get Windows as the primary action. |
 
 Larger gaps separate the chapters. On desktop, Write and Hit advance over half a viewport of native scroll while their stage stays sticky below the header. This applies only at widths of at least 64rem, heights of at least 40rem, and when the whole stage fits. Other chapters stay in ordinary flow. Mobile and layouts without enough room use a finite sequence on entry, then hold the result. Scrolling remains browser-native.
 
