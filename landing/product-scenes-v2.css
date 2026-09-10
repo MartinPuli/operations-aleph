@@ -1,18 +1,18 @@
 /* Warden White — the product is a working surface, not a decorative card. */
 
 :root {
-  --product-bg: #ffffff;
-  --product-raised: #f5f5f3;
-  --product-sunken: #ededeb;
-  --product-line: #d7d7d2;
-  --product-soft-line: #e5e5df;
-  --product-ink: #17181a;
-  --product-secondary: #50535a;
-  --product-faint: #646870;
-  --product-block: #ac3036;
-  --product-block-soft: #fff0ef;
-  --product-review: #80550a;
-  --product-review-soft: #fff5df;
+  --product-bg: #17191c;
+  --product-raised: #1d1f23;
+  --product-sunken: #272a30;
+  --product-line: #3b3e44;
+  --product-soft-line: #303339;
+  --product-ink: #f2f2f0;
+  --product-secondary: #c2c5cc;
+  --product-faint: #a6aab3;
+  --product-block: #efeff1;
+  --product-block-soft: #35383f;
+  --product-review: #dddfe4;
+  --product-review-soft: #35383f;
 }
 
 .rules-scene .pstick,
@@ -25,12 +25,12 @@
   border-radius: .25rem;
   background: var(--product-bg);
   color: var(--product-ink);
-  color-scheme: light;
+  color-scheme: dark;
   box-shadow: 0 1rem 3rem rgb(23 24 26 / .045);
 }
 
 /* Policy editor. One continuous canvas with a quiet writing area. */
-.rules-scene .pstick { min-height: 40rem; }
+.rules-scene .pstick { min-height: 0; }
 
 .policy-topbar {
   display: flex;
@@ -71,7 +71,7 @@
 
 .rules-scene .console,
 .rules-scene .composer { min-width: 0; }
-.hero-box { padding: 1.5rem 1rem 1rem; }
+.hero-box { padding: 1.25rem 1rem 1rem; }
 
 .composer-meta {
   display: flex;
@@ -87,7 +87,7 @@
 #ruleMsg {
   display: block;
   width: 100%;
-  height: 9rem;
+  height: 5.8rem;
   resize: none;
   overflow: hidden;
   padding: 0;
@@ -133,12 +133,14 @@
 
 .rules-scene .send svg,
 .policy-activate svg { width: 1rem; height: 1rem; }
-.sent-label { display: none; }
 .js .rules-scene .send { display: inline-flex; }
+.sent-label { display: none; }
+.js [data-chapter="write"]:not([data-step="0"]) .send-label { display: none; }
+.js [data-chapter="write"]:not([data-step="0"]) .sent-label { display: inline; }
 
 .ruleset {
   position: relative;
-  min-height: 29rem;
+  min-height: 0;
   padding-inline: 1rem;
 }
 
@@ -160,8 +162,8 @@
 .ru {
   position: relative;
   display: grid;
-  gap: .5rem;
-  padding: 1.25rem 0 .75rem;
+  gap: .35rem;
+  padding: .85rem 0 .5rem;
   border-bottom: 1px solid var(--product-soft-line);
 }
 
@@ -302,7 +304,7 @@
 }
 
 /* Connected tools. Monochrome tabs keep the refusal itself in focus. */
-.term { min-height: 26rem; }
+.term { min-height: 22rem; }
 .term.tools { min-inline-size: 0; margin: 0; padding: 0; }
 
 .term-bar {
@@ -315,7 +317,7 @@
   background: var(--product-raised);
   color: var(--product-secondary);
   font-size: .8125rem;
-  text-transform: lowercase;
+  text-transform: none;
 }
 
 .term-bar::before {
@@ -376,7 +378,7 @@
 #tool-oc:checked ~ .panes .pane-oc { display: block; }
 
 .term pre {
-  min-height: 23rem;
+  min-height: 19rem;
   margin: 0;
   padding: 1.5rem 1rem;
   overflow: auto;
@@ -403,7 +405,7 @@
 .js [data-step="1"] .term .tg-e { opacity: 0; }
 
 /* Decision log. Rows, not stacked cards; a fixed place for each fact. */
-.shot.log { min-height: 25rem; }
+.shot.log { min-height: 0; }
 .shot.log .console { min-width: 0; }
 
 .day {
@@ -435,7 +437,7 @@
   grid-template-areas: "dot who meta" ". copy copy";
   align-items: center;
   gap: .5rem .6rem;
-  min-height: 7rem;
+  min-height: 4.5rem;
   padding: 1.1rem 1rem;
   border-bottom: 1px solid var(--product-soft-line);
   transition: opacity 240ms var(--ease-out), transform 300ms var(--ease-out), background-color 240ms var(--ease-out);
@@ -460,7 +462,7 @@
   border-top: 1px solid var(--product-line);
   border-bottom: 1px solid var(--product-line);
   background: var(--product-bg);
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 .ceilings > .label {
@@ -504,7 +506,7 @@
   .composer-scope { display: inline; }
   .composer-bottom > span { max-width: none; }
   .policy-list-head > div > span { display: inline; }
-  #ruleMsg { height: 7.5rem; }
+  #ruleMsg { height: 4.5rem; }
 }
 
 @media (min-width: 40rem) {
@@ -537,15 +539,15 @@
 }
 
 @media (min-width: 64rem) {
-  .rules-scene .pstick { min-height: 43rem; }
+  .rules-scene .pstick { min-height: 0; }
   .hero-box { padding: 2rem 1.75rem 1.5rem; }
   #ruleMsg { height: 8rem; font-size: 1.5rem; }
   .policy-topbar,
   .ruleset,
   .policy-example-note { padding-inline: 1.75rem; }
-  .term { min-height: 30rem; }
-  .term pre { min-height: 26.25rem; padding: 2rem 1.75rem; font-size: .8125rem; line-height: 1.8; }
-  .shot.log { min-height: 28rem; }
+  .term { min-height: 0; }
+  .term pre { min-height: 19rem; padding: 2rem 1.75rem; font-size: .8125rem; line-height: 1.8; }
+  .shot.log { min-height: 0; }
   .log .row { min-height: 5.8rem; }
   .ceilings { display: grid; grid-template-columns: 7.5rem 1fr; }
   .ceilings > .label { padding: 1.25rem 1rem; border-right: 1px solid var(--product-soft-line); border-bottom: 0; }
@@ -564,7 +566,7 @@
   .picker label:hover { color: var(--product-ink); background: var(--product-sunken); }
   .rule-details summary:hover { color: var(--product-ink); text-decoration: underline; text-underline-offset: .2em; }
   .rules-scene .send:hover,
-  .policy-activate:hover { border-color: #37393d; background: #37393d; }
+  .policy-activate:hover { border-color: #d5d7dc; background: #d5d7dc; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -577,4 +579,27 @@
   .picker label::after,
   .rules-scene .send,
   .policy-activate { transition: none; }
+}
+
+/* A single example, with the same rule carried into the refusal and log. */
+.status-icon { display: inline-block; width: 1rem; height: 1rem; flex: none; vertical-align: -.15em; margin-right: .45rem; }
+.term .tg { white-space: pre-wrap; }
+.term .stop, .term .hold { font-family: var(--sans); font-size: 1rem; }
+.term .rule { display: block; margin-top: .8rem; }
+.rules-scene .rtx { display: none; }
+.rules-scene .rule-definition { font-size: .875rem; }
+.log .row { opacity: 1 !important; }
+.log .row:nth-child(2) { background: #202329; }
+.log .row .txt { font-size: .95rem; }
+.log .dot.BLOCK { border: 1px solid currentColor; background: #e0e2e6; }
+.log .dot.ALLOW { border: 1px solid #70757b; background: transparent; }
+@media (min-width: 64rem) {
+ .rules-scene .hero-box { padding: 1.25rem 1.5rem 1rem; }
+ .rules-scene #ruleMsg { height: 3.4rem; font-size: 1.15rem; }
+ .rules-scene .policy-topbar { min-height: 3rem; }
+ .rules-scene .composer-bottom { margin-top: .65rem; }
+ .rules-scene .policy-list-head { min-height: 3rem; padding-block: .8rem; }
+ .rules-scene .ru { padding-block: .75rem .4rem; }
+ .rules-scene .policy-example-note { font-size: .6875rem; padding-block: .6rem; }
+ .rules-scene .policy-list-footer { min-height: 3.7rem; padding-block: .6rem; }
 }
