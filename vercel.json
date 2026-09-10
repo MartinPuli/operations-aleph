@@ -1,13 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npm ci --prefix integrations/kool --ignore-scripts --no-audit --no-fund",
-  "buildCommand": "node scripts/build-landing-kool.mjs",
+  "installCommand": "",
+  "buildCommand": "",
   "outputDirectory": "landing",
   "cleanUrls": true,
   "trailingSlash": false,
   "github": { "silent": true },
-  "functions": { "api/kool-download.js": { "maxDuration": 90 } },
   "headers": [
     {
       "source": "/(.*)",

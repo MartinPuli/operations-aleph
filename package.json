@@ -12,9 +12,6 @@
     "node": ">=22.17"
   },
   "scripts": {
-    "landing:prepare": "npm ci --prefix integrations/kool --ignore-scripts --no-audit --no-fund && node scripts/build-landing-kool.mjs",
-    "landing:dev": "node --env-file=.env.kool.local scripts/serve-landing-kool.mjs",
-    "test:landing:kool": "node --test scripts/landing-kool-browser.test.mjs scripts/landing-kool-server.test.mjs",
     "setup": "tsx scripts/setup.ts",
     "smoke": "tsx scripts/smoke.ts",
     "smoke:models": "tsx scripts/smoke-model-management.ts",
