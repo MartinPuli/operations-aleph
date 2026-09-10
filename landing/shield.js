@@ -101,7 +101,7 @@ export function mountShield(container) {
     try {
       const [THREE, { createShield }] = await Promise.all([
         import('./assets/3d/three.module.js'),
-        import('./assets/3d/official-shield.js?v=closing-20260908'),
+        import('./assets/3d/official-shield.js?v=white-studio-1'),
       ]);
       if (destroyed) return;
       scene = createShield({ THREE, canvas });

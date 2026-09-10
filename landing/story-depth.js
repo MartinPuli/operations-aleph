@@ -39,7 +39,7 @@ if (checkpoint) {
       return shieldLoad;
     }
     shieldLoad = (shield
-      ? import('./shield.js?v=policy-track-1').then(({ mountShield }) => mountShield(shield).ready)
+      ? import('./shield.js?v=white-studio-1').then(({ mountShield }) => mountShield(shield).ready)
       : Promise.resolve(false))
       .catch(() => false)
       .then(() => {

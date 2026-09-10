@@ -1,4 +1,4 @@
-import { analyticsConfig } from './analytics-config.js?v=policy-track-1';
+import { analyticsConfig } from './analytics-config.js?v=white-studio-1';
 import { initAnalytics } from './analytics.js?v=launch-1';
 
 // Analytics is deliberately independent from the animation module.

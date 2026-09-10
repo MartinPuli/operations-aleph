@@ -1,7 +1,9 @@
-import { mountLight } from './light.js?v=policy-track-1';
+import { mountLight } from './light.js?v=white-studio-1';
 
 // The head watchdog falls back to readable markup if this module cannot load.
 window.__wardenReady = true;
+// Restore enhancement if the readable fallback ran while this module was delayed.
+document.documentElement.classList.add('js');
 const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const hasIO = 'IntersectionObserver' in window;
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -293,7 +295,7 @@ if (onWindows && windowsDownload) footerDownloads.prepend(windowsDownload);
 const shieldStage = document.querySelector('.shield-stage');
 const lowCapability = (navigator.hardwareConcurrency || 8) <= 2 || (navigator.deviceMemory || 8) <= 2;
 if (shieldStage && !motion.matches && !lowCapability) {
-  const mount = () => import('./shield.js?v=policy-track-1')
+  const mount = () => import('./shield.js?v=white-studio-1')
     .then(({ mountShield }) => mountShield(shieldStage)).catch(() => {});
   if (hasIO) {
     const observer = new IntersectionObserver(entries => {

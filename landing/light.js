@@ -4,7 +4,7 @@ const EXAMPLES = [
   { outcome: 'allow', request: 'summarize our public help guide', decision: 'Allowed to continue', rule: 'no active rule stopped it', proof: 'Request continued' },
 ];
 
-const COLORS = { block: [241, 126, 139], review: [235, 196, 120], allow: [162, 237, 206] };
+const COLORS = { block: [241, 126, 139], review: [235, 196, 120], allow: [245, 245, 242] };
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 /** Pointer and touch driven policy field. Rendering sleeps while idle. */
@@ -90,7 +90,7 @@ export function mountLight(zone, { onVerdictSettled, onUnavailable } = {}) {
     context.save();
     context.globalCompositeOperation = 'lighter';
     context.lineCap = 'round';
-    context.strokeStyle = 'rgba(111, 154, 166, .16)';
+    context.strokeStyle = 'rgba(215, 217, 222, .16)';
     context.lineWidth = 1;
     curve(from, gate, -30 + slow); context.stroke();
     curve(gate, to, 26 - slow); context.stroke();
@@ -248,6 +248,11 @@ export function mountLight(zone, { onVerdictSettled, onUnavailable } = {}) {
     pointerDown = null;
     if (distance < 14 && elapsed < 650) runNext();
   }
+  // Screen readers and voice control can activate the role button with click
+  // alone. Real pointer clicks already ran on pointerup (detail > 0).
+  function clickHandler(event) {
+    if (event.detail === 0) runNext();
+  }
   function keyHandler(event) {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
@@ -289,12 +294,13 @@ export function mountLight(zone, { onVerdictSettled, onUnavailable } = {}) {
   stage.addEventListener('pointercancel', () => { pointerDown = null; }, { passive: true });
   stage.addEventListener('pointerleave', pointerLeave, { passive: true });
   stage.addEventListener('keydown', keyHandler);
+  stage.addEventListener('click', clickHandler);
   document.addEventListener('visibilitychange', visibilityChanged);
   reduced.addEventListener('change', preferenceChanged);
   fine.addEventListener('change', preferenceChanged);
 
   if (!reduced.matches && !lowCapability) {
-    import('./shield.js?v=policy-track-1')
+    import('./shield.js?v=white-studio-1')
       .then(({ mountShield }) => { if (!destroyed && shield) shieldMount = mountShield(shield); })
       .catch(() => { shield?.classList.add('fallback-only'); });
   } else shield?.classList.add('fallback-only');
@@ -324,6 +330,7 @@ export function mountLight(zone, { onVerdictSettled, onUnavailable } = {}) {
       stage.removeEventListener('pointerup', pointerUpHandler);
       stage.removeEventListener('pointerleave', pointerLeave);
       stage.removeEventListener('keydown', keyHandler);
+      stage.removeEventListener('click', clickHandler);
       document.removeEventListener('visibilitychange', visibilityChanged);
       reduced.removeEventListener('change', preferenceChanged);
       fine.removeEventListener('change', preferenceChanged);
