@@ -25,7 +25,6 @@ output
 
 # Local pairing, credentials and agent state must not be uploaded.
 .env*
-.kool
 .mcp.json
 .agents
 .codex
