@@ -113,3 +113,5 @@ design/**/*.html
 # Local browser verification evidence, kept outside release/source artifacts.
 output/playwright/
 .playwright-cli/
+/.env.kool.local
+/.env.kool.renewed.local

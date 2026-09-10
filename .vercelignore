@@ -1,4 +1,4 @@
-# Only landing/ is served — the product itself runs on the employee's machine,
+# landing/ and api/kool-download.js are served; the product runs on the employee's machine,
 # which is the whole point of it. The repo's source is ~1 MB, so this does not
 # try to allow-list its way down to nothing; it names the heavy things that a
 # CLI deploy from a working copy would otherwise upload.
@@ -22,3 +22,11 @@ desktop/dist
 # Source films, revision history and local QA are not part of the website.
 videos
 output
+
+# Local pairing, credentials and agent state must not be uploaded.
+.env*
+.kool
+.mcp.json
+.agents
+.codex
+.pnpm-store
