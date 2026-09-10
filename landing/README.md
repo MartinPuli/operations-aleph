@@ -16,7 +16,7 @@ Open [localhost:8080](http://localhost:8080). Serve over HTTP so local JavaScrip
 
 | Part | What it shows |
 | --- | --- |
-| Hero | Larger type and a flat 56px download link beside an unboxed request trace and official 3D shield in the native `.hero-art` replay button. A compact strip names Claude Code, Codex and OpenCode. |
+| Hero | A full first viewport below the header: larger type and a flat 56px download link beside an unboxed request trace and official 3D shield. The native `.hero-art` button replays the animation; a compatibility strip and scroll link sit at the bottom. Short screens can grow naturally. |
 | Write | A client confidentiality instruction becomes proposed rules. Native disclosures expose the full definitions; the visitor can review and activate the example. |
 | Hit | A request to use one client’s private pricing in another client’s email is blocked. Native radio controls show the refusal in Claude Code, Codex or OpenCode. Desktop columns reverse the Write layout. |
 | Log | A full-width decision panel below the heading carries the same request and contract-terms rule alongside an allowed follow-up using public pricing. |
