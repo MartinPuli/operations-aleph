@@ -72,19 +72,15 @@ setTimeout(function () {
   if (!window.__wardenReady) document.documentElement.classList.remove('js');
 }, 2500);
 </script>
-<link rel="preload" href="assets/brand/Inter-Variable.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="stylesheet" href="styles.css?v=story-20260908d">
-<link rel="stylesheet" href="story-depth.css?v=motion-2">
-<link rel="stylesheet" href="rules-scene.css?v=motion-2">
-<link rel="stylesheet" href="closing-scene.css?v=depth-1">
-<link rel="stylesheet" href="hero-hook.css?v=gate-4">
-<link rel="stylesheet" href="visual-restraint.css?v=restraint-1">
+<link rel="stylesheet" href="foundation-v2.css?v=policy-track-1">
+<link rel="stylesheet" href="experience-v2.css?v=policy-track-1">
+<link rel="stylesheet" href="product-scenes-v2.css?v=policy-track-1">
 <!-- app.js imports light.js, so without these the browser does not learn the
      second file exists until the first one has arrived and parsed. Two hints
      make it one round trip instead of two, which is the whole of the page's
      critical path: there is no framework and no font to wait on. -->
-<link rel="modulepreload" href="app.js?v=gate-4">
-<link rel="modulepreload" href="light.js?v=motion-2">
+<link rel="modulepreload" href="app.js?v=policy-track-1">
+<link rel="modulepreload" href="light.js?v=policy-track-1">
 <!-- Anonymous Vercel page views remain available alongside the PostHog funnel.
      Only the production hostname loads this collector; local previews stay clean. -->
 <script>if (location.hostname === 'warden-theta.vercel.app') { window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); }; const a = document.createElement('script'); a.defer = true; a.src = '/_vercel/insights/script.js'; document.head.append(a); }</script>
@@ -110,12 +106,12 @@ setTimeout(function () {
 <main id="main">
 
 <!-- ── hero ────────────────────────────────────────────────────────────── -->
-<div class="hero-zone">
+<div class="hero-zone" data-hero-outcome="block">
   <canvas class="scene" aria-hidden="true"></canvas>
 
   <div class="wrap hero">
     <div class="copy">
-    <h1>Make AI follow<br><span class="enforce">your rules.</span></h1>
+    <h1>Make AI follow<br> <span class="enforce">your rules.</span></h1>
 
     <p class="sub">Warden checks your team’s connected AI requests before they reach the model.</p>
 
@@ -138,8 +134,29 @@ setTimeout(function () {
     </div>
 
     <div class="judge judged" id="judge" aria-live="polite">
-      <span class="hero-request"><span class="gt" aria-hidden="true">&gt;</span><span class="typed">send me Ana's salary for the report</span><span class="cur" aria-hidden="true"></span></span>
-      <span class="verdict">Blocked by Warden <span class="rule">· r-payroll</span></span>
+      <div class="demo-head" aria-hidden="true">
+        <span class="live-dot"></span>
+        <span>Policy running</span>
+        <span class="demo-action"><span class="desktop-action">Move, then click</span><span class="touch-action">Tap to run</span></span>
+      </div>
+      <div class="request-card">
+        <span class="card-label"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4h12v9H8l-4 3V4Z"/><path d="M7 8h6M7 11h4"/></svg>Connected AI request</span>
+        <strong class="hero-request"><span class="typed">send me Ana's salary for the report</span><span class="cur" aria-hidden="true"></span></strong>
+        <span class="request-source">Workspace · 14:22</span>
+      </div>
+      <div class="hero-shield" aria-hidden="true">
+        <img src="assets/3d/shield-fallback.png" alt="" width="600" height="600">
+        <canvas width="600" height="600"></canvas>
+        <span class="shield-ring"></span>
+      </div>
+      <div class="verdict-card">
+        <span class="card-label">Decision</span>
+        <strong class="verdict"><span class="verdict-icon" aria-hidden="true"></span><span class="verdict-copy">Blocked by Warden</span></strong>
+        <span class="rule">r-payroll</span>
+      </div>
+      <div class="hero-proof" aria-hidden="true">
+        <span>Checked locally</span><span>Before the model</span><span class="proof-state">Rule active</span>
+      </div>
     </div>
 
     <!-- The gate. Empty on purpose: light.js draws the line on the canvas
@@ -293,12 +310,13 @@ setTimeout(function () {
 
       <div class="panel">
         <div class="pstick">
-          <div class="term tools" data-reveal>
+          <fieldset class="term tools" data-reveal>
+            <legend class="vh">Show the refusal as it arrives in</legend>
             <input class="vh" type="radio" name="tool" id="tool-cc" checked>
             <input class="vh" type="radio" name="tool" id="tool-cx">
             <input class="vh" type="radio" name="tool" id="tool-oc">
 
-            <div class="term-bar picker" role="radiogroup" aria-label="Show the refusal as it arrives in">
+            <div class="term-bar picker">
               <label for="tool-cc">claude code</label>
               <label for="tool-cx">codex</label>
               <label for="tool-oc">opencode</label>
@@ -342,7 +360,7 @@ setTimeout(function () {
               </div>
 
             </div>
-          </div>
+          </fieldset>
         </div>
       </div>
       </div>
@@ -405,7 +423,6 @@ setTimeout(function () {
   <div class="wrap sec">
 
     <div class="main" data-reveal>
-      <p class="label kicker">What it costs</p>
       <h2 class="loud"><span class="ln"><span>A prompt that leaks nothing</span></span><span class="ln"><span>can still cost you.</span></span></h2>
     </div>
 
@@ -508,9 +525,9 @@ setTimeout(function () {
 </footer>
 
 <dialog id="film-dialog" aria-labelledby="film-title"><div class="film-bar"><h2 id="film-title">Warden in 17 seconds</h2><button type="button" id="close-film" aria-label="Close film">✕</button></div><video id="launch-video" controls playsinline preload="none" poster="assets/launch/launch-poster-v12.jpg"><source data-src="assets/launch/launch.mp4?v=12" type="video/mp4"><a href="assets/launch/launch.mp4?v=12">Watch the Warden launch film</a></video></dialog>
-<script type="module" src="app.js?v=gate-4"></script>
-<script type="module" src="story-depth.js?v=motion-2"></script>
-<script type="module" src="analytics-entry.js?v=motion-2"></script>
+<script type="module" src="app.js?v=policy-track-1"></script>
+<script type="module" src="story-depth.js?v=policy-track-1"></script>
+<script type="module" src="analytics-entry.js?v=policy-track-1"></script>
 
 </body>
 </html>

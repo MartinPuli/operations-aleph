@@ -1,4 +1,4 @@
-import { mountLight } from './light.js?v=motion-2';
+import { mountLight } from './light.js?v=policy-track-1';
 
 // The head watchdog falls back to readable markup if this module cannot load.
 window.__wardenReady = true;
@@ -72,6 +72,11 @@ try { if (zone) light = mountLight(zone, {
 }); }
 catch (error) { zone?.classList.add('nogl'); console.warn(error.message); }
 const judge = document.getElementById('judge');
+if (judge && light) {
+  judge.setAttribute('role', 'button');
+  judge.tabIndex = 0;
+  judge.setAttribute('aria-label', 'Run the next example request through Warden');
+}
 const heroTyper = makeTyper(judge ? [judge.querySelector('.typed')] : []);
 const heroPlayback = new AbortController();
 function heroVerdict(on) {
@@ -114,10 +119,10 @@ const chapters = $$('.chapter');
 const ruleBox = document.getElementById('ruleMsg');
 const sendButton = document.querySelector('[data-chapter="write"] .send');
 const timings = {
-  write: { type: 620, first: 900, second: 1500 },
-  hit: { type: 480, first: 780, second: 1200 },
-  log: { type: 0, first: 850, second: 1250 },
-  spend: { type: 520, first: 850, second: 1250 }
+  write: { type: 420, first: 620, second: 880 },
+  hit: { type: 340, first: 520, second: 760 },
+  log: { type: 0, first: 520, second: 720 },
+  spend: { type: 360, first: 560, second: 800 }
 };
 const states = new Map(chapters.map(chapter => [chapter, {
   controller: null, started: false,
@@ -174,7 +179,7 @@ function setStep(chapter, step, { effects = false, signal } = {}) {
     button.setAttribute('aria-pressed', String(Number(button.dataset.storyStep) === step));
   });
   $$('.say', chapter).forEach((statement, index) => {
-    statement.setAttribute('aria-hidden', String(!motion.matches && index !== step));
+    statement.setAttribute('aria-hidden', String(index !== step));
   });
   // Manual steps may happen before the reveal observer fires.
   $$('[data-reveal]', chapter).forEach(el => el.classList.add('is-in'));
@@ -204,7 +209,7 @@ async function play(chapter) {
   if (!await wait(timing.second, signal)) return;
   setStep(chapter, 2, { effects: true, signal });
   // Original CSS chips and tool examples resolve, then hold indefinitely.
-  if (await wait(1500, signal)) chapter.dataset.storyPlaying = 'false';
+  if (await wait(900, signal)) chapter.dataset.storyPlaying = 'false';
 }
 for (const chapter of chapters) {
   chapter.dataset.step = '0';
@@ -214,7 +219,7 @@ for (const chapter of chapters) {
       const step = Number(button.dataset.storyStep);
       if (![0, 1, 2].includes(step)) return;
       stop(chapter); states.get(chapter).started = true; unobserveChapter(chapter);
-      setStep(chapter, motion.matches ? 2 : step);
+      setStep(chapter, step);
     });
   });
   $$('[data-story-replay]', chapter).forEach(button => {
@@ -286,8 +291,9 @@ if (onWindows && windowsDownload) footerDownloads.prepend(windowsDownload);
 
 // Lazy footer WebGL remains independent: failure leaves the static mark.
 const shieldStage = document.querySelector('.shield-stage');
-if (shieldStage) {
-  const mount = () => import('./shield.js?v=depth-1')
+const lowCapability = (navigator.hardwareConcurrency || 8) <= 2 || (navigator.deviceMemory || 8) <= 2;
+if (shieldStage && !motion.matches && !lowCapability) {
+  const mount = () => import('./shield.js?v=policy-track-1')
     .then(({ mountShield }) => mountShield(shieldStage)).catch(() => {});
   if (hasIO) {
     const observer = new IntersectionObserver(entries => {
