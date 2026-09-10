@@ -85,9 +85,9 @@ components:
   button-primary-hero:
     backgroundColor: "{colors.white}"
     textColor: "{colors.white-ink}"
-    rounded: "{rounded.md}"
-    padding: "0.75rem 1.5rem"
-    height: "58px"
+    rounded: "0.65rem"
+    padding: "0.85rem 1rem 0.85rem 1.25rem"
+    height: "82px"
   button-primary-hover:
     backgroundColor: "{colors.white-hover}"
     textColor: "{colors.white-ink}"
@@ -138,11 +138,11 @@ Manrope is self-hosted in `landing/assets/brand/Manrope-Variable.ttf`, with its 
 
 ## Composition
 
-The hero reads **“Your AI. Your rules.”** above one short explanation and an immediate platform download, beside the unboxed official shield. The alternate platform, film and free/open-source line reserve their space and begin appearing at 1.9 seconds. The sticky header keeps a download available while scrolling.
+The hero reads **“Your AI. Your rules.”** above one short explanation and an immediate cast-silver download control, beside the unboxed official shield. The control pairs a platform icon and label with the matching installer type and a trailing download arrow; its pressed movement follows the shallow lower edge. A compact compatibility strip names Claude Code, Codex and OpenCode and leads into the story. The alternate platform, film and free/open-source line reserve their space and begin appearing at 1.9 seconds. The sticky header keeps a download available while scrolling.
 
 The main story has three chapters. Write presents the instruction and proposed rules, with review and activation visibly separate. Hit blocks a request to include one client’s private pricing in another client’s email. Log carries that request and the same contract-terms rule into the decision record, followed by an allowed email using public pricing. Keep usage limits as a compact follow-up below this sequence. A compact footer closes with **“Put your rules to work.”** and explicit macOS, Windows and other-build links.
 
-The frame supports a 20rem minimum viewport and a 90rem content width. Gutters grow from 1.125rem to 2rem at 48rem. Content stacks on small screens; at 64rem the hero uses equal columns and the product story pairs a narrower text column with a wider panel. Wrap request text and technical strings. Full rule definitions stay inside native disclosures to keep the resting page concise.
+The frame supports a 20rem minimum viewport and a 90rem content width. Gutters grow from 1.125rem to 2rem at 48rem. Content stacks on small screens; at 64rem the hero uses equal columns with larger type and a viewport-constrained shield; the product story pairs a narrower text column with a wider panel. Wrap request text and technical strings. Full rule definitions stay inside native disclosures to keep the resting page concise.
 
 Product surfaces use one outer hairline, quiet charcoal chrome and restrained elevation. Separate rows with spacing and fine rules. Product panels use 0.25rem corners, actions 0.2rem and badges 0.15rem. Preserve the official shield silhouette and internal mark.
 

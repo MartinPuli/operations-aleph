@@ -16,7 +16,7 @@ Open [localhost:8080](http://localhost:8080). Serve over HTTP so local JavaScrip
 
 | Part | What it shows |
 | --- | --- |
-| Hero | The official shield on graphite, a short statement and the primary platform download. |
+| Hero | Larger type beside the official shield, a cast-silver download control with platform/build details, and a compact Claude Code, Codex and OpenCode compatibility strip. |
 | Write | A client confidentiality instruction becomes proposed rules. Native disclosures expose the full definitions; the visitor can review and activate the example. |
 | Hit | A request to use one client’s private pricing in another client’s email is blocked. Native radio controls show the refusal in Claude Code, Codex or OpenCode. |
 | Log | The same request and contract-terms rule appear beside an allowed follow-up using public pricing. |
@@ -29,7 +29,7 @@ Write has Describe, Review and Activate steps, Replay, and explicit Draft/Activa
 
 ## Progressive enhancement
 
-- Header and hero downloads are available from the first frame. Supporting platform/film links and the free/open-source line reserve their space and begin appearing after 1.9 seconds. No-JavaScript and reduced-motion visitors see them immediately.
+- Header and hero downloads are available from the first frame. The hero control keeps a native link, switches its label, installer and build caption together on Windows, and offers visible keyboard focus. Supporting platform/film links and the free/open-source line reserve their space and begin appearing after 1.9 seconds. No-JavaScript and reduced-motion visitors see them immediately.
 - `shield.js` lazily loads the vendored Three.js renderer near the hero shield. A finite 1.9-second entrance and fine-pointer reflection settle to rest; rendering pauses offscreen and in hidden tabs. The hero also drifts slightly with native scroll. A local PNG covers no-JavaScript, reduced-motion, low-capability and WebGL failure paths.
 - Reduced motion shows completed chapter content without typing, animated transitions or sticky story stages. Without JavaScript, content, full-rule disclosures and the radio-based tool selector remain readable; unavailable scripted controls are hidden. The head watchdog restores readable content if the main module cannot load, and a late module restores enhancement.
 - **Watch the film** is a normal media link enhanced into a native dialog with native video controls. Its 17-second MP4 source loads only after activation, with `preload="none"`. Closing pauses playback and restores focus. The media link remains the fallback.

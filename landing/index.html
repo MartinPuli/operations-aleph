@@ -73,11 +73,11 @@ setTimeout(function () {
   if (!window.__wardenReady) document.documentElement.classList.remove('js');
 }, 2500);
 </script>
-<link rel="stylesheet" href="foundation-v2.css?v=scroll-story-1">
-<link rel="stylesheet" href="experience-v2.css?v=scroll-story-1">
-<link rel="stylesheet" href="product-scenes-v2.css?v=scroll-story-1">
+<link rel="stylesheet" href="foundation-v2.css?v=hero-key-1">
+<link rel="stylesheet" href="experience-v2.css?v=hero-key-1">
+<link rel="stylesheet" href="product-scenes-v2.css?v=hero-key-1">
 <!-- Preload the page controller; content and downloads also work without it. -->
-<link rel="modulepreload" href="app.js?v=scroll-story-1">
+<link rel="modulepreload" href="app.js?v=hero-key-1">
 
 <!-- Anonymous Vercel page views remain available alongside the PostHog funnel.
      Only the production hostname loads this collector; local previews stay clean. -->
@@ -112,27 +112,31 @@ setTimeout(function () {
     <p class="sub">Decide what your team can share with connected AI tools.</p>
 
     <div class="cta">
-      <a class="btn btn-primary" data-platform-download href="https://github.com/Wardenlabs/warden/releases/latest/download/Warden-arm64.dmg">
+      <a class="btn hero-download" data-platform-download href="https://github.com/Wardenlabs/warden/releases/latest/download/Warden-arm64.dmg">
         <!-- Both marks ship in the markup and CSS shows one. app.js flips the
              class when the visitor is on Windows; swapping an SVG path from
              JavaScript would mean the button is wrong for as long as the module
              takes to arrive, and it is the first thing on the page. -->
         <svg class="os mac" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.36 12.78c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.48.83-.72 0-1.83-.81-3-.79-1.55.02-2.97.9-3.77 2.28-1.6 2.78-.41 6.9 1.15 9.16.76 1.1 1.67 2.34 2.87 2.3 1.15-.05 1.58-.75 2.97-.75 1.39 0 1.78.75 3 .72 1.24-.02 2.02-1.12 2.78-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.68zM14.1 5.99c.63-.77 1.06-1.83.94-2.9-.91.04-2.02.61-2.67 1.37-.58.68-1.09 1.77-.95 2.81 1.02.08 2.05-.52 2.68-1.28z"/></svg>
         <svg class="os win" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.6 10.2 4.6v6.9H3zM11.1 4.5 21 3v8.5h-9.9zM3 12.4h7.2v6.9L3 18.4zM11.1 12.4H21V21l-9.9-1.4z"/></svg>
-        <span class="txt">Download for macOS</span>
+        <span class="download-copy"><span class="txt">Download for macOS</span><span class="download-build" aria-hidden="true">Apple Silicon · .dmg</span></span>
+        <span class="download-arrow" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path class="arrow-stem" d="M12 3v12m-4-4 4 4 4-4"/><path d="M5 17v4h14v-4"/></svg></span>
       </a>
+      <p class="hero-free">Free for everyone. Open source.</p>
       <div class="hero-secondary">
         <a class="src alt" href="https://github.com/Wardenlabs/warden/releases/latest/download/Warden-Setup.exe">Also on Windows</a>
         <a class="src" href="assets/launch/launch.mp4?v=12" data-open-film><svg class="play-mark" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="m6 3 10 7-10 7V3Z"/></svg>Watch the film <span class="film-time">0:17</span></a>
       </div>
     </div>
-    <p class="hero-free">Free for everyone. Open source.</p>
     </div>
     <div class="hero-sculpture" aria-hidden="true">
       <img src="assets/3d/shield-fallback.png" alt="" width="960" height="960">
       <canvas width="960" height="960"></canvas>
     </div>
-    <a class="scroll-cue" href="#how">See what happens<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M10 3v13m-5-5 5 5 5-5"/></svg></a>
+    <div class="hero-foot">
+      <div class="hero-tools"><span class="tools-caption">Works with</span><ul aria-label="Connected AI tools"><li>Claude Code</li><li>Codex</li><li>OpenCode</li></ul></div>
+      <a class="scroll-cue" href="#how">See how<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M10 3v13m-5-5 5 5 5-5"/></svg></a>
+    </div>
   </div>
 </div>
 <section id="how"><div class="wrap sec"><div class="chapter" data-chapter="write">
@@ -312,9 +316,9 @@ setTimeout(function () {
 </footer>
 
 <dialog id="film-dialog" aria-labelledby="film-title"><div class="film-bar"><h2 id="film-title">Warden in 17 seconds</h2><button type="button" id="close-film" aria-label="Close film">✕</button></div><video id="launch-video" controls playsinline preload="none" poster="assets/launch/launch-poster-v12.jpg"><source data-src="assets/launch/launch.mp4?v=12" type="video/mp4"><a href="assets/launch/launch.mp4?v=12">Watch the Warden launch film</a></video></dialog>
-<script type="module" src="app.js?v=scroll-story-1"></script>
+<script type="module" src="app.js?v=hero-key-1"></script>
 
-<script type="module" src="analytics-entry.js?v=scroll-story-1"></script>
+<script type="module" src="analytics-entry.js?v=hero-key-1"></script>
 
 </body>
 </html>
