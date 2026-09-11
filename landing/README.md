@@ -1,16 +1,18 @@
 # Warden landing
 
-Static, same-origin files with no build step or package installation. A continuous graphite background, white text and restrained charcoal product surfaces frame the official silver shield, an immediate download, and one client confidentiality example. The hero reads **“Your AI. Your rules.”**; the page closes with a compact **“Download Warden”** heading and **“Free for everyone. Open source.”**
+Static, same-origin files plus a server endpoint for Kool download measurement. The build installs the isolated Kool SDK and copies its public browser helper. A continuous graphite background, white text and restrained charcoal product surfaces frame the official silver shield, an immediate download, and one client confidentiality example. The hero reads **“Your AI. Your rules.”**; the page closes with a compact **“Download Warden”** heading and **“Free for everyone. Open source.”**
 
 ## Run locally
 
 From the repository root:
 
 ```bash
-python3 -m http.server 8080 --directory landing
+npm ci --prefix integrations/kool --ignore-scripts --no-audit --no-fund
+node scripts/build-kool-browser.mjs
+node scripts/serve-kool-landing.mjs
 ```
 
-Open [localhost:8080](http://localhost:8080). Serve over HTTP so local JavaScript modules load correctly. The root [`vercel.json`](../vercel.json) deploys `landing/` with empty install and build commands.
+Open [127.0.0.1:4174](http://127.0.0.1:4174). This serves the page and `POST /api/download` together; a plain static server does not implement the download endpoint. Without a token, valid download requests still redirect to GitHub. The root [`vercel.json`](../vercel.json) deploys `landing/` and the endpoint, installs the isolated SDK and copies the browser helper. See [Kool download events](../docs/KOOL-DOWNLOADS.md) for the private `KOOL_INGEST_TOKEN`, test-mode setup and campaign attribution.
 
 ## Story and interaction
 
@@ -47,6 +49,7 @@ Write has Describe, Review and Activate steps, Replay, and explicit Draft/Activa
 | `hero-trace.js` | Finite request trace, native replay, visibility handling and reduced-motion fallback. |
 | `shield.js`, `assets/3d/` | Official-symbol renderer, vendored Three.js, license and static fallback. |
 | `analytics-entry.js`, `analytics-config.js`, `analytics.js` | Independent PostHog measurement, production-host gating and explicit local test mode. |
+| `kool-entry.js`, `kool-download.js`, `vendor/kool/browser.mjs` | Kool attribution capture and download submissions to the server endpoint; no browser credentials. |
 | `assets/brand/` | Official lockup and self-hosted Manrope with its SIL Open Font License. |
 | `assets/launch/` | Launch film and poster. |
 | `social-card.html`, `assets/share/warden-share-v2.png` | Source and 1200 × 630 PNG used by Open Graph and Twitter cards. |
